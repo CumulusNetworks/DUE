@@ -1,0 +1,24 @@
+Source: due
+Maintainer: Alex Doyle <alexddoyle@gmail.com>
+Section: admin
+Priority: optional
+Build-Depends: debhelper (>= 9),
+	       git,
+		   pandoc
+Standards-Version: 3.9.8
+Homepage: https://github.com/ehdoyle/DUE
+
+Package: due
+Architecture: all
+Depends: ${misc:Depends},
+	 docker.io | docker-ce,
+	 git,
+	 rsync
+Recommends: binfmt-support, qemu, qemu-user-static
+Description: Dedicated User Environment: run containers with user's home directory
+ This is useful when using the container as a build environment, as
+ configurations and local directories can easily be accessed by the container.
+ Since build dependencies can be preconfigured, different Debian based releases
+ can be used, and other CPU architectures can be supported via qemu. 
+ For example, DUE can set up a Jessie build environment for armel on an x86
+ host system running Ubuntu 18.04.

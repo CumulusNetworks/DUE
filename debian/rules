@@ -1,0 +1,54 @@
+#!/usr/bin/make -f
+
+# Uncomment the following to enable more makefile output
+#export DH_VERBOSE = 1
+
+#
+# The merge directory holds intermediate stages in setting
+# up an image. It is not needed to build DUE into a .deb,
+# but it will interfere with Git seeing a clean directory.
+#
+MERGE_DIR = due-build-merge
+
+# Manual page is generated from manpage-due-1.md via Pandoc
+MAN_PAGE = docs/due.1
+
+.PHONY: docs
+
+docs: 
+# Generate man page from man.md
+	@ echo "Generating man page due.1 from docs/man.md with:"
+	pandoc --standalone --to man docs/manpage-due-1.md -o docs/due.1
+
+# Discover any template builds before make targets
+# Forces wildcard cache to be up to date
+build: 
+
+# Build should keep man page up to date
+%: docs
+	dh $@
+
+
+override_dh_clean:
+# remove intermediate merge directories, if they exist
+ifneq ($(wildcard $(MERGE_DIR)),)
+	@echo ""
+	@echo "#######################################################################"
+	@echo "$(MERGE_DIR) Exists. Consider (re)moving it to build DUE as a .deb #"
+	@echo "#######################################################################"
+	@echo ""
+else
+	@echo "$(MERGE_DIR) does not exist. Continuing."
+endif
+
+ifneq ($(wildcard $(MAN_PAGE)),)
+	@echo "Deleting generated man page $(MAN_PAGE)"
+	rm $(MAN_PAGE)
+endif
+
+# Execute Debian clean
+	dh_clean
+
+
+
+

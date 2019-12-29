@@ -1,0 +1,47 @@
+# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+#
+#  SPDX-License-Identifier:     MIT
+# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
+
+FROM REPLACE_IMAGE_FROM
+MAINTAINER maintainer <yourmaintainer@your-organization.org>
+
+# For DUE the container type allows assigning default behaviors
+LABEL DUEImageType=REPLACE_DUE_IMAGE_TYPE_LABEL
+
+# DUE_INSERT_CONFIG
+
+LABEL org.yourorg.version="1.0.0"
+LABEL description=REPLACE_IMAGE_DESCRIPTION
+
+#
+# Default user to root to enable modifications of base container
+#
+USER root
+
+#
+# create a directory on the container to hold scripts to be run
+# within the container
+#
+RUN mkdir /due-configuration
+
+# Copy the contents of the current configuration directory
+# in to the image, and leave it there under /due-configuration
+# This directory is not deleted in the container to leave an
+# indication of what got changed from the baseline image.
+COPY ./ /due-configuration/
+
+
+# Add any additional packages as needed here.
+# This will:
+# - Run pre-install-config.sh
+#   - There is some mandatory package install here, as well as
+#     APT key handling
+# - Create /run/sshd for ssh support, should it be installed.
+# - Run post-install-config.sh
+# ...and if anything fails it will die, leaving a container
+#  named <none> to be cleaned up later (see due --manage --delete-matched )
+
+RUN /due-configuration/pre-install-config.sh \
+    && mkdir /run/sshd \
+	&& /due-configuration/post-install-config.sh

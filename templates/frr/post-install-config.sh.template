@@ -1,0 +1,85 @@
+#!/bin/bash
+# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
+# SCRIPT_PURPOSE: Run configuration inside the docker container, after package install.
+# Bash should be installed at this point.
+
+# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+#
+#  SPDX-License-Identifier:     MIT
+
+. /due-configuration/install-config-common.lib
+
+
+# Add any additional repository keys
+fxnInstallAptKeys
+
+# Add any additional sources.list files
+fxnInstallSourcesList
+
+# The default post install operations exist as a function
+# for easy invocation (or not) in overriding scripts.
+fxnPostInstallCommon
+
+
+#
+# apt-get install development packages
+# Note at this stage, any changes to the container's sources.list
+# passed via the command line will have happened.
+#
+# In the case of this FRR build, the FRR package repository key will
+# have been added allowing access to libyang packages that may not be
+# built for your distribution.
+#
+
+apt-get update
+
+# If there's anything else you'd like to have installed (emacs ?) add it here.
+
+DEBIAN_FRONTEND=noninteractive \
+			   apt-get install \
+			   --assume-yes \
+			   --no-install-recommends \
+			   	openssh-server \
+				iputils-ping \
+				devscripts \
+				git \
+				lsb-release \
+				x11-xkb-utils \
+				equivs \
+				autoconf automake libtool make libreadline-dev texinfo \
+				pkg-config libpam0g-dev libjson-c-dev bison flex python3-pytest \
+				libc-ares-dev python3-dev libsystemd-dev python-ipaddress python3-sphinx \
+				install-info build-essential libsystemd-dev libsnmp-dev perl libcap-dev \
+				libpcre3-dev libpcre16-3 libpcre32-3  libpcrecpp0v5 \
+				protobuf-c-compiler libprotobuf-c-dev libzmq5 libzmq3-dev \
+				dpkg-dev  || exit 1
+
+#
+# Left commented out for reference, if a manual install of libyang is required.
+# Access to the FRR repository _should_ have taken care of this.
+#
+
+# echo "Downloding fixed version of libyang debs"
+# wget https://ci1.netdef.org/artifact/LIBYANG-YANGRELEASE/shared/build-10/Debian-AMD64-Packages/libyang0.16_0.16.105-1_amd64.deb
+# wget https://ci1.netdef.org/artifact/LIBYANG-YANGRELEASE/shared/build-10/Debian-AMD64-Packages/libyang-dev_0.16.105-1_amd64.deb
+
+# echo "Installing libyang debs."
+# dpkg -i libyang*deb
+
+
+echo "Adding frr groups"
+groupadd -r -g 92 frr
+groupadd -r -g 85 frrvty
+adduser --system --ingroup frr --home /var/run/frr/ \
+   --gecos "FRR suite" --shell /sbin/nologin frr
+usermod -a -G frrvty frr
+
+echo "Adding Free Range Routing  package repository as /etc/apt/sources.list.d/frr.list"
+echo deb https://deb.frrouting.org/frr $(lsb_release -s -c) frr-stable | sudo tee -a /etc/apt/sources.list.d/frr.list
+
+apt-get update
+
+echo "Installing libyang0.16 libyang-dev, from the FRR package repository, if the distributon didn't already have it."
+apt-get install libyang0.16 libyang-dev
+
+echo "Done $0"

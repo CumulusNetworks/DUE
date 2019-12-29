@@ -1,0 +1,19 @@
+# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+#
+#  SPDX-License-Identifier:     MIT
+
+#anything to add to a user's bashrc
+
+if [ "REPLACE_ENABLE_DUE_BASHRC" = "TRUE" ];then
+   # Set prompt to print git branch of current directory
+   parse_git_branch() {
+   # Exit early if git is not installed
+   if [ -e /usr/bin/git ];then
+      git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ \[\1\]/'
+   fi
+   }
+
+# The --prompt option will set REPLACE_PROMPT
+  export PS1='DUE_REPLACE_PROMPT:\u@$(parse_git_branch)$ '
+
+fi

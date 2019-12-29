@@ -1,0 +1,5 @@
+# For release publishing, a more modern version of python-sphinx is required
+# Fortunately, stretch-backports has that.
+# Note that this may be problematic for other os's/versions, and should
+# probably be dynamically set.
+deb http://deb.debian.org/debian stretch-backports main

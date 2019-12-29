@@ -1,0 +1,216 @@
+#!/bin/bash
+# Script to run configuration inside the docker container.
+# After package install has happened.
+# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
+
+set -e
+# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+#
+#  SPDX-License-Identifier:     MIT
+
+. /due-configuration/install-config-common.lib
+
+
+# Add any additional sources.list files, like stretch-backports
+fxnInstallSourcesList
+
+# The default post install operations exist as a function
+# for easy invocation (or not) in overriding scripts.
+fxnPostInstallCommon
+
+
+#
+# Container specific configuration
+#
+# Add an onie specific build account
+USER_NAME=oniebuild
+
+# Put the user ID high enough to be unique, but not to conflict
+USER_ID=2201
+
+echo "Adding user [ $USER_NAME ] with UID [ $USER_ID ] to the container."
+
+adduser --home /home/$USER_NAME \
+				  --shell /bin/bash \
+				  --uid $USER_ID \
+				  --gecos "" \
+				  --disabled-password $USER_NAME > /dev/null || exit 1
+
+echo "Adding sudo ability for $USER_NAME"
+adduser $USER_NAME sudo > /dev/null || exit 1
+
+echo "Adding sudo without password."
+echo "$USER_NAME       ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+
+#
+# make sure directory is owned by user
+#
+chown $USER_NAME /home/$USER_NAME/.bashrc
+
+
+#
+# apt-get install development packages
+# Note at this stage, any changes to the container's sources.list
+# will have happened.
+#
+
+# Note: packages after xorriso are optional, but convenient to have.
+apt-get update
+
+# Packages used for secure boot (amd64 hardcode is fine as this is Intel only)
+#linux-headers-amd64?
+SECURE_BOOT=" qemu-utils ovmf  gnu-efi libfile-slurp-perl "
+
+# If you expect to do development in the container, these are useful.
+EDITORS="vim emacs-nox magit"
+
+# if this is a Debian 8 container, this isn't easily available.
+DEBIAN_RELEASE=$( grep "Debian GNU/Linux" /etc/issue | awk '{print$3}')
+
+if [ "$DEBIAN_RELEASE" = "8" ];then
+	echo "Debian 8: Skipping sbsigntool and python-sphinx"
+else
+	# These packages are available in Debian 9
+	DEBIAN_9_PACKAGES="sbsigntool"
+fi
+DEBIAN_FRONTEND=noninteractive \
+			   apt-get install \
+			   --assume-yes \
+			   --no-install-recommends \
+	openssh-server \
+	sudo \
+	autoconf \
+	automake \
+	bc \
+	bison \
+	bsdmainutils \
+	build-essential \
+	ca-certificates \
+	cpio \
+	curl \
+	device-tree-compiler \
+	dosfstools \
+	fakeroot \
+	flex \
+	gawk \
+	git \
+	gperf \
+	help2man \
+	libefivar-dev \
+	libexpat1 \
+	libexpat1-dev \
+	libfreetype6-dev \
+	libncurses5 \
+	libncurses5-dev \
+	libnss3-dev \
+	libnss3-tools \
+	libpopt-dev \
+	libssl-dev \
+	libtool \
+	libtool-bin \
+	mtools \
+	pkg-config \
+	openssl \
+	python-all-dev \
+	realpath \
+	rst2pdf \
+	rsync \
+	stgit \
+	texinfo \
+	u-boot-tools \
+	util-linux \
+	uuid-dev \
+	uuid-runtime \
+	wget \
+	x11-xkb-utils \
+	equivs \
+	xorriso \
+	vim \
+	telnet \
+	tmux \
+	$DEBIAN_9_PACKAGES \
+	$EDITORS \
+	$SECURE_BOOT \
+	locales-all || exit 1
+
+
+#
+# Do Git configuration now that git has been installed.
+#
+#
+# Supply a default .gitconfig
+#
+
+cat <<EOF > /home/$USER_NAME/.gitconfig
+[user]
+        name = ONIE build account
+        email = oniebuild@localhost
+[push]
+        default = simple
+EOF
+chown $USER_NAME /home/$USER_NAME/.gitconfig
+
+cd /home/$USER_NAME
+
+
+# Set some basic git configuration to keep things from failing.
+# Being a professional, these will, of course be updated at build time...
+git config --global user.name "ONIE build account"
+git config --global user.email "oniebuild@localhost"
+
+# Default to only upload current branch on push
+#git config push.default simple
+
+if [ "$DEBIAN_RELEASE" = "8" ];then
+	echo "Not installing python-sphinx. You'll have to get creative."
+else
+	# update version of python-sphinx from stretch backports. Needed to build docs
+	echo "Installing backports versions of sphinx packages"
+	DEBIAN_FRONTEND=noninteractive \
+			   apt-get install \
+			   --assume-yes \
+			   --no-install-recommends \
+			   -t stretch-backports \
+			   sphinx-common \
+			   python-sphinx \
+			   libjs-sphinxdoc
+fi
+#
+# Hub (https://github.com/github/hub) is not needed for build, but is handy for
+# managing pull requests.
+# Installing it here keeps the container the same for everyone using it.
+# Note: this assumes a 64bit AMD64 contiainer
+#
+
+HUB_VERSION="2.12.8"
+HUB_URL="https://github.com/github/hub/releases/download/v${HUB_VERSION}/hub-linux-amd64-${HUB_VERSION}.tgz"
+
+echo "Installing optional package 'hub' version $HUB_VERSION as a GitHub utility in /usr/local/bin."
+echo "wget $HUB_URL"
+wget $HUB_URL                                               || exit 1
+tar -xvf hub-linux-amd64-${HUB_VERSION}.tgz                 || exit 1
+cp hub-linux-amd64-${HUB_VERSION}/bin/hub /usr/local/bin    || exit 1
+
+echo "Cleaning up download of hub."
+rm -rf hub-linux-amd64-${HUB_VERSION}*
+
+#
+# Efi tools. Available in Debian Buster, but not earlier.
+#
+if [ "$SECURE_BOOT" != "" ];then
+	
+	EFI_TOOLS_VERSION="1.9.2"
+	EFI_TOOLS_URL="https://git.kernel.org/pub/scm/linux/kernel/git/jejb/efitools.git/snapshot/efitools-${EFI_TOOLS_VERSION}.tar.gz"
+	echo "Downloading efi tools."
+	wget $EFI_TOOLS_URL || exit 1
+	tar -xvf efitools-${EFI_TOOLS_VERSION}.tar.gz || exit 1
+	cd efitools-${EFI_TOOLS_VERSION}
+	echo "Building efi tools"
+	make || exit 1
+	echo "Installing *efi in /usr/local/bin"
+	sudo make install || exit 1
+
+fi
+
+echo "Done $0"

@@ -1,0 +1,64 @@
+#!/bin/sh
+# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0  
+# SCRIPT_PURPOSE: Script to run configuration inside the docker container before
+# package install.
+# CONTEXT: runs inside the container at creation time.
+
+# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+#
+#  SPDX-License-Identifier:     MIT
+
+#
+# Note: this script is 'sh' to provide bare minimum functionality to
+# allow the install of packages to be used by the post install script.
+# ( i.e. Bash ) as those packages may not come pre installed in the container
+
+
+echo " ___________________________________________________________________________ "
+echo "|" 
+echo "| Running REPLACE_IMAGE_NAME pre install configuration."                          
+echo "|___________________________________________________________________________"
+
+
+
+if [ ! -e /build ];then
+	echo "$0 Creating a /build directory as a common build mount point."
+	mkdir /build
+	chmod a+w /build
+fi
+
+#
+# Initial install of packages required for DUE to behave itself.
+# These have to come from the container's package repository
+# The important package here is gnupg, as it is needed for
+# any package repository key additions
+
+apt-get update
+if [ $? != 0 ];then
+	echo "$0 ERROR! Failed apt-get update. Exiting."
+	exit 1
+fi
+
+#
+# APT install just these packages.
+# Don't ask questions.
+# Don't get clever.
+#
+DEBIAN_FRONTEND=noninteractive \
+			   apt-get install \
+			   --assume-yes \
+			   --no-install-recommends \
+			   bash \
+			   sudo \
+			   gnupg 
+
+if [ $? != 0 ];then
+	echo "$0 ERROR! Failed apt-get install. Exiting."
+	exit 1
+fi
+
+#
+# Add any additional initial configuration here
+#
+exit 0
+

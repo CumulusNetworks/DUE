@@ -1,0 +1,1053 @@
+#!/bin/bash
+# SCRIPT_PURPOSE: Low-rent version of sbuild. Resolve dependencies. Build a debian package, and mabye more
+# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
+
+# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+#
+#  SPDX-License-Identifier:     MIT
+
+
+# Set top level directory to be where we are now
+if [ "$gTOP_DIR" = "" ];then
+    gTOP_DIR=$(pwd)
+fi
+
+# if command line args for later reference
+INVOKED_WITH="$*"
+
+# Hold any build errors. They can be masked by git reset
+RETURN_CODE="0"
+
+
+# if this is set as the first argument, enable debug trace
+if [ "$1" = "--script-debug" ];then
+    set -x
+    echo "$0 Enabling --script-debug "
+fi
+
+# Somewhat formatted status messages
+function fxnPP()
+{
+    echo "== $*"
+}
+
+function fxnWARN()
+{
+    echo ""
+    echo "## Warning:  $*"
+    echo ""
+}
+# A universal error checking function. Invoke as:
+# fxnEC <command line> || exit 1
+# Example:  fxnEC cp ./foo /home/bar || exit 1
+function fxnEC ()
+{
+
+    # actually run the command
+    "$@"
+
+    # save the status so it doesn't get overwritten
+    status=$?
+    # Print calling chain (BASH_SOURCE) and lines called from (BASH_LINENO) for better debug
+    if [ $status -ne 0 ];then
+        #echo "ERROR [ $status ] in ${BASH_SOURCE[1]##*/}, line #${BASH_LINENO[0]}, calls [ ${BASH_LINENO[*]} ] command: \"$*\"" 1>&2
+        echo "ERROR [ $status ] in $(caller 0), calls [ ${BASH_LINENO[*]} ] command: \"$*\"" 1>&2
+    fi
+
+    return $status
+}
+
+# Standardized error messaging
+# Line numbers are more of a suggestion than a rule
+function fxnERR
+{
+    # Print script name, and line original macro was on.
+    printf "ERROR at $(caller 0)  :  %s\\n" "$1"
+    echo ""
+}
+
+# Print messages with an offset for improved visibility.
+# MSG_SPACER can be used as needed for
+MSG_SPACER=" ---- "
+function fxnMSG ()
+{
+    echo "$MSG_SPACER"
+    if [ "$1" = "" ];then
+        return 0
+    fi
+    echo "${MSG_SPACER}$1 "
+    echo "$MSG_SPACER"
+
+}
+
+function fxnHelp()
+{
+    echo "Usage  : $(basename "$0"): [--cbuild|--source --type-arch-debs --type-all-debs ] <name>"
+    echo "  This script mimics sbuild with a few additional arguments."
+    echo ""
+    echo "  Build targets:"
+    echo "   -c|--cbuild                 Default container build Debian package (defaults to source, all and arch specific)"
+    echo "      --build-from-deb-source  Build from .dsc and tar.gz, if that's all you've got."
+	echo "      --default                Try to build with default settings."
+    echo ""
+    echo "  Build options:"
+    echo "   -j|--jobs <#>               Number of parallel builds to use."
+    echo "   --skip-tests                define DEB_BUILD_OPTIONS=nocheck before build."
+    echo "   --build-attempts <times>    Try to build this many times. Default is [ $BUILD_ATTEMPTS ]"
+    echo "   --dev-version <vers>        Insert string into changelog package version for pre-release builds."
+    echo "                                Note: you need to supply the leading ~ or +"
+    echo "   --just-dev-version          Exit after --dev-version applies"
+    echo "   --set-git-hash              If building type Git, do not autodiscover, use passed hash."
+    echo "   --source-date-epoch <d>     Force the creation time of files, via date +%s. Otherwise defaults to now."
+
+    echo "   --source-format-one         Clear git source history from package and set source to build as 1.0"
+    echo "   --install-debs-dir <dir>    Install all debs from <absolute path in container dir> before build."
+    echo "   --use-directory <dir>       cd to <dir> before trying to build."
+
+
+    echo "   --prebuild-script <scr>     Run script at container path <scr> before starting build. Pass 'NONE' to ignore."
+    echo "   --add-sources-list <file>   Container relative path to include sources.list in build dir."
+    echo "   --version                   Print version"
+    echo "   --script-debug              Enable -x if passed as first argument."
+
+    echo ""
+    echo ""
+    echo "  More information:"
+    echo "   --quiet                    Suppress output."
+    echo "   --verbose                  More info."
+    echo "   --help                     This message"
+    echo "   --help-examples            Print possible configurations."
+    echo ""
+}
+
+# Demonstrate cases of script usage
+function fxnHelpExamples()
+{
+    echo ""
+    echo " Examples:"
+    echo "  --cbuild passes whatever args are after it directly to dpkg-buildpackage."
+    echo "  The following pulls from the dpkg-buildpackage man pages for two different versions."
+    echo ""
+    echo "  So for example:"
+    echo "  --cbuild examples. (versions earlier than 1.18.5, found in Jessie 8.)"
+    echo "   $0 --cbuild takes:"
+    echo "     -A - architecture independent (type 'all')"
+    echo "     -B - architecture dependent (amd64, armel, etc)"
+    echo "     -S - source only."
+    echo "     -b - architecture dependent, independent, and no source."
+    echo ""
+    echo "  --cbuild examples. (versions later than 1.18.5, found in Stretch 9 + )"
+    echo "   $0 --cbuild --build= takes as , separated list:"
+    echo "     all    - architecture independent (type 'all')"
+    echo "     any    - architecture dependent (amd64, armel, etc)"
+    echo "     source - source only."
+    echo "     binary - architecture dependent, independent, and no source."
+    echo "     full   - build everything = source,any,all."
+    echo "    So to build all binaries, no source:"
+    echo "    $0 --cbuild  --build=any,all"
+    echo
+    echo "  Build source, arch specific and type 'all' (default -uc -us)"
+    echo "   $0 --cbuild "
+    echo ""
+    echo "  Insert a string into the version"
+    echo "   $0 --cbuild --dev-version ~1234"
+    echo ""
+}
+
+# Set an exit trap to log completion.
+function fxnExit()
+{
+
+    local returnCode="$?"
+
+    if [ "$returnCode" = "0" ];then
+        echo "Done - $0 [ $INVOKED_WITH ]"
+    else
+        echo "ERROR - $0 [ $INVOKED_WITH ] failed with return code [ $returnCode ]"
+    fi
+
+    return $returnCode
+}
+trap 'fxnExit $RETURN_CODE' EXIT
+
+#
+# Include script libraries for consistency, fxnPP, fxnEC, etc
+#
+
+# Clearly print what was passed, and any variables set.
+# This makes debugging after the fact way easier
+function fxnPrintConfig()
+{
+    echo " ______________________________________________________________________"
+    echo "|"
+    echo "| $0"
+    echo "| Invoked with:      $INVOKED_WITH"
+    if [ "$DO_DEFAULT" != "" ];then
+        echo "| Building with default settings"
+    fi	
+    echo "| dpkg command:      $DPKG_BUILDENV dpkg-buildpackage  $ADDITIONAL_BUILD_ARGS "
+    echo "|"
+    echo "| Build dir            [ $(pwd) ]"
+    echo "| Reproducible stamp   [ $(date -d @"$SOURCE_DATE_EPOCH") ]"
+    if [ "$DO_BUILD_ARCH_SPECIFIC" != "" ];then
+        echo "| Build arch specific  [ $DO_BUILD_ARCH_SPECIFIC ]"
+    fi
+    if [ "$ADDITIONAL_BUILD_ARGS" != "" ];then
+        # User is overriding defaults to dpkg-buildpackage
+        echo "| dpkg-buildpackage args [ $ADDITIONAL_BUILD_ARGS ]"
+    fi
+
+    if [ "$DO_BUILD_TYPE_ALL" != "" ];then
+        echo "| Build type 'all'     [ $DO_BUILD_TYPE_ALL ]"
+    fi
+
+    if [ "$DO_BUILD_SOURCE" != "" ];then
+        echo "| Build source pkg     [ $DO_BUILD_SOURCE ]"
+    fi
+    if [ "$USE_JESSIE_DPKG" != "" ];then
+        echo "| Older dpkg-build     [ $USE_JESSIE_DPKG ]"
+    fi
+    echo "| Build attempts       [ $BUILD_ATTEMPTS ]"
+    echo "| Git 3.0 build        [ $DO_GIT_BUILD ]"
+
+    # Print only if set
+    if [ "$ADD_SOURCES_LIST" != "" ];then
+        echo "| Extra sources.list    [ $PREBUILD_SCRIPT ]"
+    fi
+
+    if [ "$PREBUILD_SCRIPT" != "" ];then
+        echo "| Pre buld script      [ $PREBUILD_SCRIPT ]"
+    fi
+    if [ "$DEV_PACKAGE_VERSION" != "" ];then
+        echo "| Version change       [ $DEV_PACKAGE_VERSION ]"
+    fi
+
+    if [ "$DO_BUILD" = "TRUE" ];then
+        echo "| Build jobs           [ $BUILD_JOBS ]"
+        echo "| Build start at       [ $(date) ]"
+    fi
+
+
+    echo "|_____________________________________________________________________"
+}
+
+
+#
+# Create a version 1.0 source package that has no git in it.
+# The resulting source should build anywhere.
+#
+function fxnDebianSourceOne()
+{
+
+    #
+    # expect to be running in the directory that contans debian/
+    # packageName should be the base name of the package ( no versions )
+    #
+    if [ ! -e ~/.git ];then
+        fxnWarn "No .git directory found to remove. Skipping --source-format-one."
+    fi
+
+    # And make sure there's a format file before we start cleaning house.
+    if [ ! -e debian/control  ];then
+        fxnERR "Failed to find debian/control file off [ $(pwd) ] Build path looks wrong. Exiting."
+        exit 1
+    fi
+    if [ ! -e debian/source ];then
+        fxnWARN "No Debian source directory for [ $PACKAGE_NAME ]. Creating one."
+        fxnEC mkdir -p debian/source || exit 1
+    fi
+
+    # Delete any nested .git files to keep them from being included
+    fxnPP "Deleting .git and .gitignore files under [ $(pwd) ]"
+    find ./ -name .git -exec rm -rf {} \;
+    find ./ -name .gitignore -exec rm -rf {} \;
+
+    # Packages that build with xz compression won't play with the 1.0 code
+    if [ -e debian/source/options ];then
+        result=$( grep "compression" debian/source/options )
+        if [ "$result" != "" ];then
+            fxnWARN "Package [ $PACKAGE_NAME ] uses compression [ $result ]. Overwriting with gz."
+            echo "Compression swap to gz for [ $PACKAGE_NAME ]"  >> "${gTOP_DIR}"/PackagesWhereCompressionForcedToGZ.log
+            fxnEC sed -i 's/^compression*//g' ./debian/source/options || exit 1
+        fi
+    fi
+    # overwrite the format. Some packages, like hsflowd might not have one, so they get one now.
+    fxnPP "Forcing source format to 1.0 "
+    echo "1.0" > debian/source/format
+    echo "" >> debian/source/format
+
+    # if building tarfiles - this would continue. Commit once to save it
+    return 0
+
+}
+
+# Print missing build dependencies
+function fxnPrintMissingBuildDependencies()
+{
+    missingDepends=$( dpkg-checkbuilddeps 2>&1  | sed -e 's/^.*dependencies://g' )
+    echo ""
+    echo " # At least one of these build dependencies (via  dpkg-checkbuilddeps ) is missing"
+    echo " #  ----------------------------------------------------------------------------------"
+    echo " #"
+    echo " #  $missingDepends"
+    echo " #"
+    echo " #   ------------------------- End list of missing dependencies ------------------------"
+    echo ""
+}
+
+#
+# install all packages that can be installed to just print the ones that are a problem.
+#
+function fxnIsolatePackageDependencies()
+{
+    echo ""
+    echo " # Installing packages one at a time to try to isolate failures."
+    echo " #  ----------------------------------------------------------------------------------"
+    # strip any version references that'll be garbage when parsed
+    # Wipe out the terms in () by putting them 1 per line and matching
+    # otherwise sed gets greedy and takes out everything between the first ( and the last )
+    # Then reassemble as a list of packages.
+    missingDepends=$( dpkg-checkbuilddeps 2>&1  \
+                          | sed -e 's/^.*dependencies://g' \
+                          |  tr ' ' '\n' \
+                          | sed -e 's/^(.*//g' -e 's/.*)//g' \
+                          | tr '\n' ' ')
+
+    # Ignore shellcheck warning to "" missingDepends
+    for pkg in ${missingDepends[@]}
+    do
+        echo " #"
+        echo " # Attempting install of [$pkg]"
+        echo " #"
+        # 2 quiets to kill output
+        sudo apt-get install --quiet --quiet --assume-yes --no-install-recommends "$pkg"
+        if [ "$?" = "0" ];then
+            echo "Installed [ $pkg ]"
+        else
+            # Run a loud install to hilight the failure
+            fxnPP "Failed  [ $pkg ]. Retrying the install to get the errors."
+            sudo apt-get install --assume-yes --no-install-recommends "$pkg"
+        fi
+    done
+
+    # At this point, this list should be all install failures.
+    fxnPrintMissingBuildDependencies
+
+    return "$errorCode"
+}
+
+
+# Function to replace sbuild
+function fxnDoDebianBuild()
+{
+    local aptFilesPresent=""
+    local missingDepends=""
+    local errorCode=""
+
+    fxnMSG "Resolving build dependencies."
+    echo ""
+
+    # Build containers may not have run apt get update yet
+    # So if there are no files in this directory, run apt get update.
+    # Note: if a dpkg -i has been done, as would be the case of local debs
+    # being installed, a 'partial' file exists under /var/lib/apt/lists.
+    # Don't let 'partial' prevent an apt-get update.
+    aptFilesPresent=$( ls /var/lib/apt/lists | grep -v "partial" | wc -l  )
+    if [ "$aptFilesPresent" = "0" ];then
+        fxnPP "Running apt-get update, as no index files were found in /var/lib/apt/lists."
+        fxnEC sudo apt-get update || return 1
+    fi
+
+    # Make sure the environment has the tools to configure the environment.
+    if [ ! -e /usr/bin/mk-build-deps ];then
+        fxnPP "Failed to find mk-build-deps. Installing devscripts and equivs."
+        fxnEC sudo apt-get update || exit 1
+        fxnEC sudo apt-get install --assume-yes equivs devscripts || exit 1
+    fi
+
+    # Possibly a failed source extraction, or the fallout of a bad day.
+    # Either way, this has nowhere to go now.
+    if [ ! -e ./debian/control ];then
+        fxnERR "Failed to find ./debian/control in [ $(pwd) ]. Exiting."
+        exit 1
+    fi
+    # Create package with all needed build dependencies
+    # install it
+    # remove the .deb after to keep git from FREAKING OUT!
+    sudo mk-build-deps --install --remove ./debian/control --tool "apt-get -y"
+    errorCode="$?"
+    if [ "$errorCode" != "0" ];then
+        #note that an error was hit in case it's not a lack of dependencies.
+        fxnERR "Hit error [ $errorCode ] in : sudo mk-build-deps --install ./debian/control --tool apt-get -y"
+
+        # Print what was trying to be installed
+        fxnPrintMissingBuildDependencies
+
+        fxnPP "Running apt-get update to make sure package lists are up to date."
+
+        sudo apt-get update
+
+        # Go through the list. Since any one failure will break the installation of everything,
+        # try installing one at a time to figure out what will install, and reduce debug down
+        # to those packages that are truly broken.
+
+        fxnIsolatePackageDependencies
+
+        # Things should be as fixed as possible by this point, so run it again to highlight the errors.
+        fxnIsolatePackageDependencies
+
+        exit $?
+
+    fi
+    echo ""
+
+    #
+    # If setting source to 1.0 for universal rebuild
+    #
+    if [ "$DEBIAN_SOURCE_FORMAT_ONE" = "TRUE" ];then
+        fxnPP "Erasing source history, as --source-format-one was passed."
+        fxnEC fxnNoSourceHistory || exit 1
+    fi
+
+    while [ $(( BUILD_ATTEMPTS > 0 )) = 1 ]; do
+        fxnMSG "Building in [ $PACKAGE_DIR_NAME ] with [ $BUILD_ARGS ].  Attempt [ $BUILD_ATTEMPTS ]. "
+
+        BUILD_ATTEMPTS=$(( BUILD_ATTEMPTS - 1 ))
+        echo ""
+
+        # And ADDITIONAL_BUILD_ARGS was set
+        echo "bash -c  $DPKG_BUILDENV dpkg-buildpackage $BUILD_ARGS "
+        bash -c " $DPKG_BUILDENV dpkg-buildpackage $BUILD_ARGS "
+        result="$?"
+
+        if [ "$result" != "0" ];then
+
+            case $result in
+                "25" )
+                    fxnPP "Ignoring unsigned package build error - signing can happen later."
+                    ;;
+
+                "2" )
+                    if [ "$BUILD_ATTEMPTS" = "0" ];then
+                        fxnERR "dpkg-buildpackage $BUILD_ARGS failed with error [ $result ]"
+                        exit $result
+                    fi
+                    ;;
+
+                * )
+                    # Retry until the tries run out.
+                    if [ "$BUILD_ATTEMPTS" = "0" ];then
+                        fxnERR "dpkg-buildpackage $BUILD_ARGS failed with [ $result ]"
+                        exit $result
+                    fi
+            esac
+        fi
+
+    done
+    echo ""
+
+
+    fxnMSG "Built [ $PACKAGE_DIR_NAME ] - list follows:"
+    # use grep to avoid errors when no .debs found
+    ls -lrt ../ | grep ".deb"  | sed -e "s/^/${MSG_SPACER}/g"
+
+    echo ""
+}
+
+#
+# handle all build setup. Having this as a function simplifies
+# redirecting output to the log file
+#
+function fxnDoDevBuild()
+{
+
+    #################################################################
+    # Put a development string into the package version.            #
+    #################################################################
+
+    CHANGELOG_LINE=$( head -n 1 debian/changelog  )
+
+    # First item on the line
+    PACKAGE_NAME=$(  echo "$CHANGELOG_LINE" | awk '{print$1}' )
+
+    # Get the current version
+    # Delete all before first (
+    # Delete all after first ~  OR first )
+    DEBIAN_VERSION=$( echo "$CHANGELOG_LINE"  | sed -e 's/.*(//' | sed -e 's/\(~\|)\).*//'  )
+
+    # Format of development string to append to existing version
+    VERSION_SUFFIX="$DEV_PACKAGE_VERSION"
+
+    #
+    # TODO: if building a python package, hack it's version here.
+    #       Left as an exercise for the reader as versioning in Python packages varies
+    #
+
+    #
+    # Now that the dev string has been sorted,
+    # update the debain/changelog with dch
+    #
+
+    fxnMSG "Running dch --package $PACKAGE_NAME --force-bad-version --newversion  $DEBIAN_VERSION~$VERSION_SUFFIX \"Added dev string for $DEBIAN_VERSION-$VERSION_SUFFIX\""
+    fxnEC dch --package "$PACKAGE_NAME" \
+          --force-bad-version \
+          --newversion  "${DEBIAN_VERSION}${VERSION_SUFFIX}" "Added dev string for $DEBIAN_VERSION-$VERSION_SUFFIX" || return 1
+
+
+    if [ "$DO_GIT_BUILD" = "TRUE" ];then
+        fxnMSG "Commiting dev string to change log. To undo, run: git reset --hard $CURRENT_GIT_COMMIT"
+        # If python version files were modified, commit them here too
+        fxnEC git commit debian/changelog  -m "Added dev string for $DEBIAN_VERSION-$VERSION_SUFFIX"  || return 1
+    fi
+
+    fxnMSG "Running fxnDoDebianBuild with $BUILD_ARGS"
+    # --nolog - print everything to stdout
+    fxnDoDebianBuild  "$BUILD_ARGS"
+
+    #Reserve exit code through exit trap
+    RETURN_CODE="$?"
+    if [ "$RETURN_CODE" != "0" ];then
+        echo ""
+        echo "#"
+        echo "# $0 [ $INVOKED_WITH ] failed with [ $RETURN_CODE ]. Build failure log is in [ $BUILD_LOG_FILE ]"
+        echo "#"
+        echo ""
+
+    fi
+    return $RETURN_CODE
+}
+
+#
+# Do git reset to revert any version modifications
+#  made to the changelog
+#
+function fxnResetGit()
+{
+    local returnCode="$?"
+
+    if [ "$JUST_DEV_VERSION" = "TRUE" ];then
+        # User wanted time stamp set and exit, so don't reset it.
+        return 0
+    fi
+    # Revert the changelog to it's pre-modification state
+    if [ "$CURRENT_GIT_COMMIT" != "" ];then
+        # this is still a 3.0 (git) package
+        if [ "$DEBIAN_SOURCE_FORMAT_ONE" = "FALSE" ];then
+            # ...and build started as a 3.0 (git) package
+            if [ "$DO_GIT_BUILD" = "TRUE" ];then
+                # ...and a version to add to the change log was supplied
+                if [ "$DEV_PACKAGE_VERSION" != "" ];then
+                    fxnEC cd "$BUILD_DIR" || exit 1
+                    # ...and there is a .git directory to revert
+                    # (if this built with source history being erased, that's gone.)
+                    if [ -d .git ];then
+                        # OK, revert to prior saved commit.
+                        fxnMSG "Reverting add of dev string to changelog."
+                        fxnEC   git reset --hard "$CURRENT_GIT_COMMIT" || return 1
+                        echo ""
+                    fi
+                fi
+            fi
+        fi #DEBIAN_SOURCE_FORMAT_ONE
+    fi # CURRENT_GIT_COMMIT != ""
+    # Mirror standard exit functionality
+    echo "Done - $0 [ $INVOKED_WITH ] Return code [ $returnCode ]"
+    return $returnCode
+}
+
+
+#
+# set any default variables
+#
+# provide a version for use in upgrades
+SCRIPT_VERSION="1.0"
+
+TARGET_ARCHITECTURE=""
+
+# Save the git commit before it gets a dev version string
+CURRENT_GIT_COMMIT=""
+
+# Default to one build attempt
+BUILD_ATTEMPTS="1"
+
+# Default to build after dev version string application
+JUST_DEV_VERSION="FALSE"
+
+# Default to this many build threads
+BUILD_JOBS="4"
+
+# Don't revert to building with debian/source/format 1.0
+DEBIAN_SOURCE_FORMAT_ONE="FALSE"
+##################################################
+#                                                #
+# MAIN  - script processing starts here          #
+#                                                #
+##################################################
+
+
+
+if [ "$#" = "0" ];then
+    # Require an argument for action.
+    # Always trigger help messages on no action.
+    fxnHelp
+    exit 0
+fi
+
+#
+# Gather arguments and set action flags for processing after
+# all parsing is done. The only functions that should get called
+# from here are ones that take no arguments.
+while [[ $# -gt 0 ]]
+do
+    term="$1"
+
+    case $term in
+
+        --script-debug )
+            # Catch the debug flag here
+            echo "[ $0 ] Script debug is ON"
+            ;;
+        --install-debs-dir )
+            INSTALL_DEBS_DIR="$2"
+            if [ ! -e "$INSTALL_DEBS_DIR" ];then
+                fxnERR "Failed to find additonal deb directory [ $INSTALL_DEBS_DIR ]"
+                exit 1
+            fi
+            shift
+            ;;
+
+        --use-directory )
+            # as package builds put the build products in the directory above
+            # the source, the build may have been started a level above and
+            # will have to go into that directory.
+            BUILD_DIR="$2"
+            shift
+            ;;
+
+        --just-dev-version )
+            # apply dev string and exit
+            JUST_DEV_VERSION="TRUE"
+            ;;
+
+        --prebuild-script )
+            # Run this before starting package build. Probably contains commands
+            # to generate ./debian/* files
+            # Allow the option of it just being a placeholder if 'NONE' is passed.
+            if [ "$2" != "NONE" ];then
+                PREBUILD_SCRIPT="$2"
+                shift
+            fi
+            ;;
+
+        --add-sources-list )
+            ADD_SOURCES_LIST="$2"
+            if [ ! -e "$ADD_SOURCES_LIST" ];then
+                fxnERR "Container failed to find additional sources.list file [ $ADD_SOURCES_LIST ]. Exiting."
+                exit 1
+            fi
+            shift
+            ;;
+
+        -c | --cbuild )
+            # Default to build everything in container context
+            DO_BUILD="TRUE"
+			if [ "$2" != "" ];then
+				# More arguements? 
+				# skip over --cbuild	
+				shift
+				# The rest of the arguments passed should be given verbatim to
+				# whatever the build command is.
+				ADDITIONAL_BUILD_ARGS="$*"
+			fi
+            ;;
+
+		--default )
+			DO_DEFAULT="TRUE"
+			# --default is an exported hook that can be be called by DUE 
+			# when this container is run. The intent is to do a very 
+			# basic build operation to demonstrate functionality
+			# and hopefully cover common cases.
+			# For Debian packge build, the --cbuild option conveniently 
+			# does all this, so use it.
+			DO_BUILD="TRUE"
+			;;
+		
+        --build-from-deb-source )
+            # Build based off a debian source package .dsc, tar.gz
+            # Default to build everything
+            DO_BUILD="TRUE"
+            # flag this is coming from .dsc & tar.gz, not .git
+            BUILD_FROM_DEBIAN_SOURCE="TRUE"
+            ;;
+
+        -j* )
+            # number of build job threads
+            BUILD_JOBS="${term#-j}"
+            ;;
+
+        --jobs )
+            # number of build job threads
+            BUILD_JOBS="$2"
+            if [ "$2" = "" ];then
+                fxnERR "--jobs requires a #"
+                exit 1
+            fi
+            shift
+            ;;
+
+
+        --dev-version )
+            # String to add to development version.
+            # If $2 starts with ~, the packaging tools will see this version as
+            # being _less_ than a version without one
+            # Example:
+            #   foo_1.2~123_amd64.deb < foo_1.2_amd64.deb
+            # This allows for versions with a ~ to be seen as higher priority relative
+            # to each other, but when the release comes, the ~ is pulled and that version
+            # beats all the dev versions.  This way the changelog doesn't have to
+            # increment its version until it's ready.
+            DEV_PACKAGE_VERSION="$2"
+            shift
+            ;;
+
+        --skip-tests )
+            # Disable running of package tests
+            DPKG_BUILDENV+=" DEB_BUILD_OPTIONS=nocheck "
+            ;;
+
+        --source-date-epoch )
+            # Force the timestamp ( in date +%s format ) that files
+            # and directories in the packge will have.
+            # Debian tools key off the last changelog entry by default
+            # This will default to the current time, if this argument is
+            # not passed.
+            SOURCE_DATE_EPOCH="$2"
+            shift
+            ;;
+
+        --set-git-hash )
+            # force a Git hash string to use, overriding
+            # auto detect. Needed if building scrubbed source
+            # packages where the original .git dir is gone
+            # by build time
+            CURRENT_GIT_COMMIT="$2"
+            DO_GIT_BUILD="FALSE"
+            shift
+            ;;
+
+        --source-format-one )
+            # remove git source history from package and build as 1.0 format deb
+            DEBIAN_SOURCE_FORMAT_ONE="TRUE"
+            ;;
+
+        --build-attempts )
+            # Sometimes the first try isn't the charm.
+            BUILD_ATTEMPTS="$2"
+            if [ "$2" = "" ];then
+                fxnERR "--build-attempts reqires a number. Ex: --build-attempts 2.  Exiting."
+                exit 1
+            fi
+            shift
+            ;;
+
+
+        --version )
+            # Track version for upgrade purposes
+            echo "$SCRIPT_VERSION"
+            exit 0
+            ;;
+
+        -h|--help)
+            fxnHelp
+            exit 0
+            ;;
+
+        --help-examples)
+            # Show examples of script invocation
+            fxnHelpExamples
+            exit 0
+            ;;
+
+        --verbose )
+            DO_VERBOSE="TRUE"
+            ;;
+
+        --quiet )
+            DO_QUIET="TRUE"
+            ;;
+
+        *)
+            fxnHelp
+            echo "Unrecognized option [ $term ]. Exiting"
+            exit 1
+            ;;
+
+    esac
+    shift # skip over argument
+
+done
+
+# Building from top level if not specified otherwise
+if [ "$BUILD_DIR" = "" ];then
+    BUILD_DIR="$gTOP_DIR"
+fi
+
+#
+# Earlier versions of dpkg-buildpackage have slightly
+# different arguments than the 1.19 series that both
+# Ubuntu 18 and Debian 9 Stretch use
+#
+version=$( dpkg-buildpackage --version | grep " 1.17." )
+if [ "$version" != "" ];then
+    fxnMSG "Jessie era dpkg detected. Updating arguments."
+    USE_JESSIE_DPKG="TRUE"
+fi
+
+# Arguments passed to the dpkg build. This gets
+# appended by fxnParseBuildArgs
+if [ "$DO_BUILD" = "TRUE" ];then
+    if [ "$USE_JESSIE_DPKG" = "TRUE" ];then
+        BUILD_ARGS=" -uc -us "
+    else
+        BUILD_ARGS="  --unsigned-changes --unsigned-source "
+    fi
+
+    if [ "$ADDITIONAL_BUILD_ARGS" != "" ];then
+        # User is overriding defaults to dpkg-buildpackage, so
+		# take it literally with no defaults.
+        BUILD_ARGS="$ADDITIONAL_BUILD_ARGS"
+    fi
+
+fi
+
+# Jessie
+#  build source -S
+#  build arch specific -B
+
+# Stretch - options can , separate
+#   build any --build any
+#   build all --build all
+#   build source --build source
+
+# Add parallel build
+if [ "$BUILD_JOBS" != "" ];then
+   BUILD_ARGS+=" -j${BUILD_JOBS} "
+fi
+
+if [ "$ADD_SOURCES_LIST" != "" ];then
+    fxnPP "Copying $ADD_SOURCES_LIST to /etc/apt/sources.list.d"
+    sudo cp "$ADD_SOURCES_LIST" /etc/apt/sources.list.d
+fi
+
+
+# if the package source is of type 'git', any version changes
+# need to be committed to the changelog and then reverted out
+# otherwise the build will complain about unexpectedly modified
+# files in the build directory
+grep -iq "git" ./debian/source/format
+if [ $? = 0 ];then
+    DO_GIT_BUILD="TRUE"
+    # save the curent state of git for restore
+    CURRENT_GIT_COMMIT=$( git rev-parse --short HEAD )
+    trap 'fxnResetGit $RETURN_CODE' EXIT
+fi
+
+if [ "$BUILD_DIR" != "" ];then
+    if [ ! -e "$BUILD_DIR" ];then
+        fxnERR "--use-directory [ $BUILD_DIR ] does not exist in $(pwd)"
+        exit 1
+    fi
+    fxnEC cd "$BUILD_DIR" || exit 1
+fi
+
+
+# Files in the deb (use dpkg -c <debname> will have this date
+# This is the SOURCE_DATE_EPOCH variable from reproducible builds
+#    echo "| Reproducible stamp   [ $(dpkg-parsechangelog -SDate) ]"
+
+if [ "$SOURCE_DATE_EPOCH" = "" ];then
+    # default to the curent time if not set
+    SOURCE_DATE_EPOCH=$(date +%s)
+    export SOURCE_DATE_EPOCH
+fi
+
+#
+# Dump what's being run
+#
+fxnPrintConfig
+
+if [ "$PREBUILD_SCRIPT" != "" ];then
+    fxnHeader "Running pre build script [ $PREBUILD_SCRIPT ]"
+    bash "$PREBUILD_SCRIPT"
+fi
+
+if [ "$INSTALL_DEBS_DIR" != "" ];then
+    fxnPP "Installing additional *.debs from [ $INSTALL_DEBS_DIR ]. "
+    fxnWARN "Ignore dependency warnings - they will be resolved."
+
+    curDir="$(pwd)"
+    fxnEC cd "$INSTALL_DEBS_DIR" || exit 1
+    result=$( ls -l -- *.deb 2> /dev/null )
+    if [ "$result" != "" ];then
+        fxnPP "Found the following additional debs to install:"
+        echo "----------------------------------------------------------------------------"
+        echo ""
+        echo "$result"
+        echo ""
+        echo "----------------------------------------------------------------------------"
+
+        export DEBIAN_FRONTEND=noninteractive
+        sudo DEBIAN_FRONTEND=noninteractive dpkg --force-confnew -i -- *.deb
+        fxnPP "Ignore any install dependency issues from the above. Resolving with [ apt install -y -f ]"
+
+        #       sudo  apt-get install -y -f -o Dpkg::Options::="--force-confdef" || exit 1
+
+        fxnEC sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -f || exit 1
+
+    else
+        fxnPP "No *.debs in [ $INSTALL_DEBS_DIR ]. Continuing..."
+    fi
+
+    fxnEC cd "$curDir" || exit 1
+fi
+
+
+#
+# Take actions now that all arguments have been passed.
+#
+
+if [ "$DO_BUILD" = "TRUE" ];then
+
+    if [ ! -e debian/control ];then
+        # Debian build directories don't seem to be here.
+        # Is this a build from Debian source?
+        if  ls ./*.tar.gz 1> /dev/null 2>&1 ;then
+            fxnPP "No debian/control but did find .tar.gz. Attempting build from Debian source."
+            BUILD_FROM_DEBIAN_SOURCE="TRUE"
+        else
+            fxnERR "Failed to find debian/control directory or .tar.gz file to build from Debian source."
+            echo "Current directory: [ $(pwd) ]"
+            echo "Contents:"
+            ls -l
+            echo "Exiting."
+            exit 1
+        fi
+    fi
+
+    # if this is building a debian source package and not a
+    # git checkout, there should be only one each of .dsc and .tar.gz file
+    # Extract the code so there's a debian/control file and proceed.
+
+    if [ "$BUILD_FROM_DEBIAN_SOURCE" = "TRUE" ];then
+        # Use find, rather than ls, per shellcheck
+        if [ "$(find . -maxdepth 1 -name '*.tar.gz' | wc -l)" != 1 ];then
+            
+            fxnERR "Not building from source. Multiple tar.gz files found. Put target in its own directory."
+            ls -l ./*tar.gz
+            exit 1
+        fi
+
+        if [ "$DEV_PACKAGE_VERSION" != "" ];then
+            # Without a clean way to revert this (as is the case with git packages that take --revert )
+            # The package version strings will keep appending in the changelog, creating a mess.
+            # User can manually edit it if desired.
+            fxnWARN "Not adding [ $DEV_PACKAGE_VERSION ] to packages built from .dsc. Edit debian/changelog manually."
+            DEV_PACKAGE_VERSION=""
+        fi
+
+        dscFile=$( ls -- *.dsc )
+        fxnPP "Extracting source with dpkg-source -x $dscFile"
+        dpkg-source -x "$dscFile"
+        retCode=$?
+
+        case $retCode in
+            255 )
+                fxnWARN "Directory already exists. Continuing."
+                ;;
+            0 )
+                fxnPP "Extraction successful. Continuing."
+                ;;
+            * )
+                fxnERR "Got dpkg-source -x return code [ $retCode ]. Exiting."
+                exit 1
+                ;;
+        esac
+
+        # Time to guess the name of the package build directory, as these things are
+        # occasionally inconsistent
+        # Hope it's the name of the orig.tar.gz file, with:
+        #  the _ changed to -
+        #  and the orig.tar.gz gone
+        # The above dpkg-source -x should have generated this directory.
+        # If not, we've no idea where to go, and are done.
+        buildDir=$( find . -maxdepth 1 -name '*.orig.tar.gz' | tr '_' '-' | sed -e 's/.orig.tar.gz//g' )
+
+        if [ ! -e "$buildDir" ];then
+            fxnERR "Failed to find expected source directory [ $buildDir ] in [ $(pwd) ]. Exiting."
+            exit 1
+        fi
+        # hop in the build directory and let it go from there
+        fxnPP "Setting current working directory to [ $buildDir ]"
+        fxnEC cd "$buildDir" || exit 1
+    fi
+    #
+    # Figure out what sbuild parameters were passed and translate
+    # them to a dpkg-buildpackage command line
+    #
+
+    PACKAGE_DIR_NAME="$(basename "$(dirname "$(pwd)")")"
+    BUILD_LOG_FILE="$(dirname "$(pwd)")/${PACKAGE_DIR_NAME}_$(date +%s)_${TARGET_ARCHITECTURE}.build"
+
+    fxnMSG "Logging to [ $BUILD_LOG_FILE ]"
+
+
+    if [ "$INSTALL_DEBS_DIR" != "" ];then
+        # If we're building dependent packages, toast all debs in the directory above
+        # so we don't have multiple versions of the same deb to try and install.
+        # otherwise just leave them
+        fxnWARN "Deleting ../*deb files for a clean copy to [ $INSTALL_DEBS_DIR ]"
+        rm ../*deb
+    fi
+
+    #
+    # actually do the build
+    #
+
+    if [ "$DEV_PACKAGE_VERSION" = "" ];then
+        # This is the default, don't have to advertise.
+        #fxnPP "Building without a dev version string."
+        # --nolog - print everything to stdout
+        fxnDoDebianBuild --nolog  | tee -a "$BUILD_LOG_FILE"
+    else
+        fxnPP "Building with dev version $DEV_PACKAGE_VERSION"
+        fxnDoDevBuild  2>&1 | tee -a  "$BUILD_LOG_FILE"
+    fi
+
+    # Preserve exit code through exit trap
+    RETURN_CODE=${PIPESTATUS[0]}
+
+    # step out of debian
+    cd ..
+
+
+    if [ "$RETURN_CODE" = "0" ];then
+        if [ "$INSTALL_DEBS_DIR" != "" ];then
+            fxnPP "Copying built .debs into [ $INSTALL_DEBS_DIR ] for future dependency builds."
+            echo "Debs to copy in [ $(pwd) ]:"
+            ls -l
+            echo "To [ $INSTALL_DEBS_DIR ]"
+            ls -l "$INSTALL_DEBS_DIR"
+            # *deb should get udebs as well
+            fxnEC cp -- *.deb "$INSTALL_DEBS_DIR" || exit 1
+            echo "Contents of $INSTALL_DEBS_DIR:"
+            ls -lrt "$INSTALL_DEBS_DIR"
+
+            fxnPP "Build finished at [ $(date) ]"
+        fi
+    else
+        fxnERR "Build FAILED with return code [ $RETURN_CODE ] at [ $(date) ]"
+    fi
+
+    exit "$RETURN_CODE"
+
+fi

@@ -1,0 +1,520 @@
+#!/bin/bash 
+# SCRIPT_PURPOSE: Example framework for default build script.
+# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
+
+# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+#
+#  SPDX-License-Identifier:     MIT
+
+# Have last command in a pipe to fail return error code.
+# This prevents use of tee from hiding fails.
+set -o pipefail
+
+# Set top level directory to be where we are now
+if [ "$gTOP_DIR" = "" ];then
+    gTOP_DIR=$(pwd)
+fi
+
+# if command line args for later reference
+INVOKED_WITH="$*"
+
+# Hold any build errors. They can be masked by git reset
+RETURN_CODE="0"
+
+# Only build one target for now
+DO_MULTIPLE_BUILDS="FALSE"
+
+# Rename this to something more appropriate
+BUILD_LOG_FILE="local-build.log"
+
+# if this is set as the first argument, enable debug trace
+if [ "$1" = "--script-debug" ];then
+    set -x
+    echo "$0 Enabling --script-debug "
+fi
+
+# Somewhat formatted status messages
+function fxnPP()
+{
+    echo "== $*"
+}
+
+function fxnWARN()
+{
+    echo ""
+    echo "## Warning:  $*"
+    echo ""
+}
+# A universal error checking function. Invoke as:
+# fxnEC <command line> || exit 1
+# Example:  fxnEC cp ./foo /home/bar || exit 1
+function fxnEC ()
+{
+
+    # actually run the command
+    "$@"
+
+    # save the status so it doesn't get overwritten
+    status=$?
+    # Print calling chain (BASH_SOURCE) and lines called from (BASH_LINENO) for better debug
+    if [ $status -ne 0 ];then
+        #echo "ERROR [ $status ] in ${BASH_SOURCE[1]##*/}, line #${BASH_LINENO[0]}, calls [ ${BASH_LINENO[*]} ] command: \"$*\"" 1>&2
+        echo "ERROR [ $status ] in $(caller 0), calls [ ${BASH_LINENO[*]} ] command: \"$*\"" 1>&2
+    fi
+
+    return $status
+}
+
+# Standardized error messaging
+# Line numbers are more of a suggestion than a rule
+function fxnERR
+{
+    # Print script name, and line original macro was on.
+    printf "ERROR at $(caller 0)  :  %s\\n" "$1"
+    echo ""
+}
+
+# Print messages with an offset for improved visibility.
+# MSG_SPACER can be used as needed for
+MSG_SPACER=" ---- "
+function fxnMSG ()
+{
+    echo "$MSG_SPACER"
+    if [ "$1" = "" ];then
+        return 0
+    fi
+    echo "${MSG_SPACER}$1 "
+    echo "$MSG_SPACER"
+
+}
+
+function fxnHelp()
+{
+    echo "Usage  : $(basename "$0"): [--cbuild|--source --type-arch-debs --type-all-debs ] <name>"
+    echo "  This script mimics sbuild with a few additional arguments."
+    echo ""
+    echo "  Build targets:"
+    echo "   -c|--cbuild <args>          Build kvm by default instructions"
+    echo "                               <args> is a list of additional build commands. Must be last argument."
+    echo "      --default                Try to build with default settings."
+    echo "      --machine                Target platform to build for"
+    echo "      --vendor                 Name of vendor (dell, accton, etc )"
+    echo "      --build-targets          all recovery-iso demo"
+    echo ""
+    echo "  Build options:"
+    echo "   -j|--jobs <#>               Number of parallel builds to use."
+    echo "   --build-attempts <times>    Try to build this many times. Default is [ $BUILD_ATTEMPTS ]"	
+    echo "   --use-directory <dir>       cd to <dir> before trying to build."
+    echo "   --prebuild-script <scr>     Run script at container path <scr> before starting build. Pass 'NONE' to ignore."
+    echo "   --version                   Print version"
+    echo "   --script-debug              Enable -x if passed as first argument."
+
+    echo ""
+    echo ""
+    echo "  More information:"
+    echo "   --quiet                    Suppress output."
+    echo "   --verbose                  More info."
+    echo "   --help                     This message"
+    echo "   --help-examples            Print possible configurations."
+    echo ""
+}
+
+# Demonstrate cases of script usage
+function fxnHelpExamples()
+{
+    echo ""
+    echo " Examples:"
+    echo ""
+    echo "  Build."
+    echo "   $0 --cbuild "
+    echo ""
+    echo "  Build default - a simple/standard build case."
+    echo "   $0 --cbuild --default"
+    echo "  Pass additional arguments to build."
+    echo "   $0 --cbuild  REPLACE_THIS build example"
+    echo ""
+}
+
+# Set an exit trap to log completion.
+function fxnExit()
+{
+
+    local returnCode="$?"
+
+    if [ "$returnCode" = "0" ];then
+        echo "Done - $0 [ $INVOKED_WITH ]"
+    else
+        echo "ERROR - $0 [ $INVOKED_WITH ] failed with return code [ $returnCode ]"
+    fi
+
+    return $returnCode
+}
+trap 'fxnExit $RETURN_CODE' EXIT
+
+#
+# Include script libraries for consistency, fxnPP, fxnEC, etc
+#
+
+# Clearly print what was passed, and any variables set.
+# This makes debugging after the fact way easier
+function fxnPrintConfig()
+{
+    echo " ______________________________________________________________________"
+    echo "|"
+    echo "| $0"
+    echo "| Invoked with:      $INVOKED_WITH"
+    if [ "$DO_DEFAULT" != "" ];then
+        echo "| Building with default settings"
+    fi	
+    echo "|"
+    echo "| Build dir            [ $(pwd) ]"
+    echo "| Build attempts       [ $BUILD_ATTEMPTS ]"
+    if [ "$PREBUILD_SCRIPT" != "" ];then
+        echo "| Pre buld script      [ $PREBUILD_SCRIPT ]"
+    fi
+    if [ "$DO_BUILD" = "TRUE" ];then
+        echo "| Build jobs           [ $BUILD_JOBS ]"
+        echo "| Build start at       [ $(date) ]"
+    fi
+    if [ "$VENDOR_NAME" != "" ];then
+        echo "| Vendor               [ $VENDOR_NAME ]"
+    fi
+    if [ "$MACHINE" != "" ];then
+        echo "| Machine              [ $MACHINE ]"
+    fi
+    if [ "$BUILD_TARGETS" != "" ];then
+        echo "| Build targets        [ $BUILD_TARGETS ]"
+    fi
+    echo "|_____________________________________________________________________"
+}
+
+
+
+
+# Do the build
+# Takes:
+# 1 - machine model
+# 2 - targets to build (all, rescue-iso, etc)
+# 3 - vendor name (not required for virtual targets)
+function fxnDoBuild()
+{
+
+    local machine="$1"
+    local buildTargets="$2"
+
+    local useVendorName=""
+    # Vendor name isn't always needed for build
+    local useVendorName
+    if [ "$3" != "" ];then
+	useVendorName=" MACHINEROOT=../machine/$3 "
+    fi
+
+    while [ $(( BUILD_ATTEMPTS > 0 )) = 1 ]; do
+        fxnMSG "Building ONIE in [ $BUILD_TARGET_DIR_NAME ] with [ $BUILD_ARGS ].  Attempt [ $BUILD_ATTEMPTS ]. "
+
+        BUILD_ATTEMPTS=$(( BUILD_ATTEMPTS - 1 ))
+        echo ""
+
+	buildCommand="make -j$BUILD_JOBS $useVendorName  MACHINE=$machine $buildTargets "
+#        echo "Running  make -j$BUILD_JOBS $useVendorName  MACHINE=$machine $buildTargets "
+	#        bash -c " make -j$BUILD_JOBS $useVendorName  MACHINE=$machine $buildTargets
+	echo "Running $buildCommand"
+	bash -c "$buildCommand"
+	
+        result="$?"
+
+        if [ "$result" != "0" ];then
+
+            case $result in
+
+                * )
+                    # Retry until the tries run out.
+                    if [ "$BUILD_ATTEMPTS" = "0" ];then
+                        fxnERR "Build $buildCommand failed with [ $result ]"
+                        exit $result
+                    fi
+            esac
+        fi
+
+    done
+    echo ""
+
+
+    fxnMSG "$buildCommand complete. Output is in ../build/images"
+    ls -l ../build/images
+    
+    # use grep to avoid errors when no .debs found
+
+    echo ""
+}
+
+
+#
+# set any default variables
+#
+# provide a version for use in upgrades
+SCRIPT_VERSION="1.0"
+
+# Default to one build attempt
+BUILD_ATTEMPTS="1"
+
+# Default to this many build threads
+BUILD_JOBS="4"
+
+BUILD_TARGET_DIR_NAME="$( dirname $PWD )/build"
+##################################################
+#                                                #
+# MAIN  - script processing starts here          #
+#                                                #
+##################################################
+
+
+
+if [ "$#" = "0" ];then
+    # Require an argument for action.
+    # Always trigger help messages on no action.
+    fxnHelp
+    exit 0
+fi
+
+#
+# Gather arguments and set action flags for processing after
+# all parsing is done. The only functions that should get called
+# from here are ones that take no arguments.
+while [[ $# -gt 0 ]]
+do
+    term="$1"
+
+    case $term in
+
+        --script-debug )
+            # Catch the debug flag here
+            echo "[ $0 ] Script debug is ON"
+            ;;
+
+        --use-directory )
+            # as package builds put the build products in the directory above
+            # the source, the build may have been started a level above and
+            # will have to go into that directory.
+            BUILD_DIR="$2"
+            shift
+            ;;
+
+        -c | --cbuild )
+            # Default to build everything in container context.
+            # skip over --cbuild	
+            DO_BUILD="TRUE"
+	    if [ "$2" != "" ];then
+		shift
+		# The rest of the arguments passed should be given verbatim to
+		# whatever the build command is.
+		ADDITIONAL_BUILD_ARGS="$*"
+	    fi
+            ;;
+
+	--default )
+	    DO_DEFAULT="TRUE"
+	    # --default is an exported hook that can be be called by DUE 
+	    # when this container is run. The intent is to do a very 
+	    # basic build operation to demonstrate functionality
+	    # and hopefully cover common cases.
+	    # For ONIE, this would be the kvm build
+	    VENDOR_NAME=""
+	    MACHINE="kvm_x86_64"
+	    BUILD_TARGETS=" all recovery-iso demo"
+#	    ADDITIONAL_BUILD_ARGS="make MACHINE=kvm_x86_64 all recovery-iso demo"
+	    DO_BUILD="TRUE"
+	    ;;
+	
+	--vendor )
+	    # Company that makes the hardware
+	    VENDOR_NAME="$2"
+	    shift
+	    ;;
+
+	--machine )
+	    # The hardware
+	    DO_BUILD="TRUE"
+	    MACHINE="$2"
+	    shift
+	    ;;
+
+	--build-targets )	    
+	    # all, rescue-iso, etc
+	    # this must be the last argument
+	    shift
+	    BUILD_TARGETS="$*"
+	    break
+	    ;;
+	
+        -j* )
+            # number of build job threads
+            BUILD_JOBS="${term#-j}"
+            ;;
+
+        --jobs )
+            # number of build job threads
+            BUILD_JOBS="$2"
+            if [ "$2" = "" ];then
+                fxnERR "--jobs requires a #"
+                exit 1
+            fi
+            shift
+            ;;
+
+	
+        --prebuild-script )
+            # Run this before starting package build. Probably contains commands
+            # to generate ./debian/* files
+            # Allow the option of it just being a placeholder if 'NONE' is passed.
+            if [ "$2" != "NONE" ];then
+                PREBUILD_SCRIPT="$2"
+                shift
+            fi
+            ;;
+	
+        --build-attempts )
+            # Sometimes the first try isn't the charm.
+            BUILD_ATTEMPTS="$2"
+            if [ "$2" = "" ];then
+                fxnERR "--build-attempts reqires a number. Ex: --build-attempts 2.  Exiting."
+                exit 1
+            fi
+            shift
+            ;;
+
+        --version )
+            # Track version for upgrade purposes
+            echo "$SCRIPT_VERSION"
+            exit 0
+            ;;
+
+        -h|--help)
+            fxnHelp
+            exit 0
+            ;;
+
+        --help-examples)
+            # Show examples of script invocation
+            fxnHelpExamples
+            exit 0
+            ;;
+
+        --verbose )
+            DO_VERBOSE="TRUE"
+            ;;
+
+        --quiet )
+            DO_QUIET="TRUE"
+            ;;
+
+        *)
+            fxnHelp
+            echo "Unrecognized option [ $term ]. Exiting"
+            exit 1
+            ;;
+
+    esac
+    shift # skip over argument
+
+done
+
+# Building from top level if not specified otherwise
+if [ "$BUILD_DIR" = "" ];then
+    BUILD_DIR="$gTOP_DIR"
+fi
+
+
+# Arguments passed to the makefile. This gets
+# appended by fxnParseBuildArgs
+if [ "$DO_BUILD" = "TRUE" ];then
+
+    if [ "$ADDITIONAL_BUILD_ARGS" != "" ];then
+
+        BUILD_ARGS="$ADDITIONAL_BUILD_ARGS"
+    fi
+
+    if [ "$VENDOR_NAME" = "all" ];then
+	DO_MULTIPLE_BUILDS="TRUE"
+	VENDOR_LIST="$( ls -1 ../machine )"
+    fi
+
+
+    if [ "$MACHINE" = "all" ];then
+	# Any machine dir with an INSTALL file is a build target
+	TARGET_LIST=$( find ../machine/ -maxdepth 3 -iname INSTALL -type f | sed -e 's#/INSTALL##g' )
+    fi
+fi
+
+# Add parallel build
+if [ "$BUILD_JOBS" != "" ];then
+    BUILD_ARGS+=" -j${BUILD_JOBS} "
+fi
+
+
+if [ "$BUILD_DIR" != "" ];then
+    if [ ! -e "$BUILD_DIR" ];then
+        fxnERR "--use-directory [ $BUILD_DIR ] does not exist in $(pwd)"
+        exit 1
+    fi
+    fxnEC cd "$BUILD_DIR" || exit 1
+fi
+
+#
+# Dump what's being run
+#
+fxnPrintConfig
+
+if [ "$PREBUILD_SCRIPT" != "" ];then
+    fxnHeader "Running pre build script [ $PREBUILD_SCRIPT ]"
+    bash "$PREBUILD_SCRIPT"
+fi
+
+#
+# Take actions now that all arguments have been passed.
+#
+
+if [ "$DO_BUILD" = "TRUE" ];then
+
+    if [ "$MACHINE" = "all" ];then
+	echo "$TARGET_LIST"
+	for target in $TARGET_LIST ; do
+	    targetDir=$( dirname $target)
+	    vendor=${targetDir##../machine/}
+	    if [ "$vendor" = "../machine" ];then
+		# its a virtual machine. No vendor.
+		vendor=""
+	    fi
+	    machine=$( basename $target)
+
+	    echo "Building [ $vendor ] [ $machine ]"
+	    #invoked with $0 --machine all --build-targets all
+	    fxnDoBuild $machine "$BUILD_TARGETS" $vendor 2>&1 | tee -a  "build-log-${vendor}-${machine}"
+	    if [ $? -ne 0 ];then
+		# Log failed builds, but keep going. User can ls *FAILED to see what
+		# didn't work.
+		mv build-log-${vendor}-${machine} build-log-${vendor}-${machine}-FAILED
+		echo  "$0 failed to build [ $vendor ] [ $machine ] [ $BUILD_TARGETS ] "	>>  build-log-${vendor}-${machine} build-log-${vendor}-${machine}-FAILED
+	    fi
+	done
+    else
+	find ../machine/ -maxdepth 3 -iname INSTALL -type f
+	#    for vendor in $VENDOR_LIST ; do
+	BUILD_LOG_FILE="example-build.log"
+	#
+	# actually do the build
+	#
+
+	fxnPP "Building "
+	fxnDoBuild $MACHINE "$BUILD_TARGETS" $VENDOR 2>&1 | tee -a  "$BUILD_LOG_FILE"
+	
+
+	# Preserve exit code through exit trap
+	RETURN_CODE=${PIPESTATUS[0]}
+
+	echo "Build exited at $(date) with return code [ $RETURN_CODE ]"
+    fi
+ #   done
+    
+    exit "$RETURN_CODE"
+fi

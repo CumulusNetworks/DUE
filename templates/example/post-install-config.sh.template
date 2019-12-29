@@ -1,0 +1,18 @@
+#!/bin/bash
+# SCRIPT_PURPOSE: Run configuration inside the docker container, after package install.
+# Bash should be installed at this point.
+# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
+
+# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+#
+#  SPDX-License-Identifier:     MIT
+
+. /due-configuration/install-config-common.lib
+
+# The default post install operations exist as a function
+# for easy invocation (or not) in overriding scripts.
+fxnPostInstallCommon
+
+ # Insert post install actions here:
+
+echo "Done $0"
