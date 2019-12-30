@@ -8,7 +8,7 @@ DUE supports building for **different architectures** and **OS versions**.
 
 Tired of users missing a step in configuring the build dependencies for your software?
 Supply a "template" to configure a Docker image and now everybody is using DUE
-to **build in the same environment**.
+to **build in identical environments**.
 
 Painfully aware you're building in a container because the configuration
 you'd get from your home directory isn't present, and you have to copy files around?
