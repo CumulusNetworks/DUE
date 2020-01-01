@@ -15,6 +15,7 @@ if [ "REPLACE_ENABLE_DUE_BASHRC" = "TRUE" ];then
 
 # Supply D- to indicate Docker container. 
 # The --prompt option will set REPLACE_PROMPT
+if [[ $PS1 != *D-DUE_REPLACE_PROMPT* ]];then
   export PS1='D-DUE_REPLACE_PROMPT:\u@$(parse_git_branch)$ '
 
 fi
@@ -23,4 +24,6 @@ fi
 # Force the user path to start with sbin so
 # certian tools will be found.
 #
-PATH="/sbin:/usr/sbin:$PATH"
+if [[ $PATH != */usr/sbin* ]];then
+   PATH="/sbin:/usr/sbin:$PATH"
+fi

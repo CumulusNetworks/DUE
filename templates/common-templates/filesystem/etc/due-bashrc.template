@@ -13,7 +13,8 @@ if [ "REPLACE_ENABLE_DUE_BASHRC" = "TRUE" ];then
    fi
    }
 
-# The --prompt option will set REPLACE_PROMPT
-  export PS1='DUE_REPLACE_PROMPT:\u@$(parse_git_branch)$ '
-
+   # The --prompt option will set REPLACE_PROMPT
+   if [[ $PS1 != *D-DUE_REPLACE_PROMPT* ]];then 
+      export PS1='DUE_REPLACE_PROMPT:\u@$(parse_git_branch)$ '
+   fi
 fi
