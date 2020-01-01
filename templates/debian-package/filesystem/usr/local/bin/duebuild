@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 # SCRIPT_PURPOSE: Low-rent version of sbuild. Resolve dependencies. Build a debian package, and mabye more
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 
@@ -86,9 +86,10 @@ function fxnHelp()
     echo "  This script mimics sbuild with a few additional arguments."
     echo ""
     echo "  Build targets:"
-    echo "   -c|--cbuild                 Default container build Debian package (defaults to source, all and arch specific)"
+    echo "   -c|--cbuild <args>          <args> takes the rest of the command line and passes it"
+    echo "                               to dpkg-buildpackage. Must be the last argument on the line."
     echo "      --build-from-deb-source  Build from .dsc and tar.gz, if that's all you've got."
-	echo "      --default                Try to build with default settings."
+    echo "      --default                Try to build with default settings."
     echo ""
     echo "  Build options:"
     echo "   -j|--jobs <#>               Number of parallel builds to use."
@@ -651,14 +652,15 @@ do
         -c | --cbuild )
             # Default to build everything in container context
             DO_BUILD="TRUE"
-			if [ "$2" != "" ];then
-				# More arguements? 
-				# skip over --cbuild	
-				shift
-				# The rest of the arguments passed should be given verbatim to
-				# whatever the build command is.
-				ADDITIONAL_BUILD_ARGS="$*"
-			fi
+	    if [ "$2" != "" ];then
+		# More arguements? 
+		# skip over --cbuild	
+		shift
+		# The rest of the arguments passed should be given verbatim to
+		# whatever the build command is.
+		ADDITIONAL_BUILD_ARGS="$*"
+	    fi
+	    break
             ;;
 
 		--default )
@@ -844,7 +846,7 @@ fi
 # need to be committed to the changelog and then reverted out
 # otherwise the build will complain about unexpectedly modified
 # files in the build directory
-grep -iq "git" ./debian/source/format
+grep -iq "git" ./debian/source/format 2>/dev/null
 if [ $? = 0 ];then
     DO_GIT_BUILD="TRUE"
     # save the curent state of git for restore
