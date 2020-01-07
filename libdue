@@ -716,7 +716,7 @@ function fxnSelectContainer()
 
 		if [ "$filterByType" != "" ];then
 			# pass filter type and REPOSITORY header
-			theContainers=$( echo "$theContainers" | grep "$filterByType\|REPOSITORY" )
+			theContainers=$( echo "$theContainers" | grep "$filterByType\|CONTAINER\ ID" )
 		fi
 
         if [ "$DO_VIEW_ALL" = "TRUE" ];then
@@ -855,9 +855,6 @@ function fxnDoLogin()
     local doOperation="$1"
 	local useImage="$2"
 
-	echo "use image $useImage"
-
-	
 	# Default to assuming it's a preconfigured due image they're trying to run.
 	local isDUEImage="TRUE"
 
