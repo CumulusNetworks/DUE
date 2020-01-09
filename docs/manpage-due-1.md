@@ -99,6 +99,11 @@ DUE. This can be useful with image creation debug.
  Example: look at /proc and the password file in a container:
           ./due --run --command "ls -lrt /proc"  \; "cat /etc/passwd"
 
+--debug
+:	Sets defaults of --username root --userid 0 and the --any option to show
+images that were not created by DUE. Helpful for internal debug if image
+creation dies running internal configuration scripts.
+
 --home-dir [host path]
 :   Absolute path to a directory to use as the home directory
  when the user logs in. Defaults to the user's home directory unless overridden

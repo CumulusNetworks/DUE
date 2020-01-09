@@ -269,6 +269,8 @@ function fxnHelpRun()
 	echo "                              --command will be interpreted as the command."
 	echo "                              NOTE2:  Quote \"\" your arguments if using multiple commands!"
 	echo "                              NOTE3:  \ any ; so everything after the ; goes to DUE"
+	echo "        --debug               Debug partially built container. Defaults to setting:"
+	echo "                              --any --username root --userid 0"
 	echo ""
 	echo " Host directories to mount in the container:"
 	echo "        --home-dir <host path> Absolute path on host system to mount as container user home directory"
@@ -615,6 +617,15 @@ function fxnParseRunArgs()
 				break
 				;;
 
+			--debug )
+				# Settings to debug a failed container creation.
+				# Default to root account,
+				# Show containers not labeled as created by DUE
+				USER_NAME="root"
+				USER_ID="0"
+				FILTER_SHOW_ONLY_DUE="FALSE"
+
+				;;
 			-b | --build )
 				# execute /usr/local/bin/duebuild
 				# Take the rest of the line as the command, so any arguments
