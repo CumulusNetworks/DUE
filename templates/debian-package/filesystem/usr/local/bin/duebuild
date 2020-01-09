@@ -6,6 +6,9 @@
 #
 #  SPDX-License-Identifier:     MIT
 
+# Have last command in a pipe to fail return error code.
+# This prevents use of tee from hiding fails.
+set -o pipefail
 
 # Set top level directory to be where we are now
 if [ "$gTOP_DIR" = "" ];then
