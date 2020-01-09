@@ -206,11 +206,11 @@ function fxnAddUserInContainer()
 #
 function fxnRunAsUser()
 {
-
+	local result
     echo "|___________________________________________________________________________"	
 	# To pass a build command in, so that the build happens as the user,
     # use the format:
-	#  due --run --command /usr/local/bin/dpkg-plus 
+	#  due --run --command /usr/local/bin/duebuild
 	#      --use-directory /host-absolute-path-to-builddir/
 	#      --build 
 	if [ "$COMMAND_LIST" != "" ];then
@@ -222,6 +222,12 @@ function fxnRunAsUser()
         # Suggested format for chaining commands in command list: cmd1 && cmd2 && cmd3
         # Run as specified user
         /bin/su - ${USER_NAME} bash -c "$COMMAND_LIST"
+		result=$?
+        echo " ___________________________________________________________________________"
+        echo "|                                                                           |"				
+		echo "| Done   [ $COMMAND_LIST ]"
+		echo "| Status [ $result ]"
+        echo "|___________________________________________________________________________|"
     else
         echo "|                                                                           |"		
         echo "| Container log in text follows:                                            |"
