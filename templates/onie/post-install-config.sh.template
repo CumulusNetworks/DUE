@@ -28,26 +28,30 @@ USER_NAME=oniebuild
 # Put the user ID high enough to be unique, but not to conflict
 USER_ID=2201
 
-echo "Adding user [ $USER_NAME ] with UID [ $USER_ID ] to the container."
+# Check based on directory
+if [ -d /home/$USER_NAME ];then
+    echo "User [ $USER_NAME ] exists. Continuing."
+else
+    echo "Adding user [ $USER_NAME ] with UID [ $USER_ID ] to the container."
 
-adduser --home /home/$USER_NAME \
-				  --shell /bin/bash \
-				  --uid $USER_ID \
-				  --gecos "" \
-				  --disabled-password $USER_NAME > /dev/null || exit 1
+    adduser --home /home/$USER_NAME \
+	    --shell /bin/bash \
+	    --uid $USER_ID \
+	    --gecos "" \
+	    --disabled-password $USER_NAME > /dev/null || exit 1
 
-echo "Adding sudo ability for $USER_NAME"
-adduser $USER_NAME sudo > /dev/null || exit 1
+    echo "Adding sudo ability for $USER_NAME"
+    adduser $USER_NAME sudo > /dev/null || exit 1
 
-echo "Adding sudo without password."
-echo "$USER_NAME       ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
+    echo "Adding sudo without password."
+    echo "$USER_NAME       ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 
-#
-# make sure directory is owned by user
-#
-chown $USER_NAME /home/$USER_NAME/.bashrc
-
+    #
+    # make sure directory is owned by user
+    #
+    chown $USER_NAME /home/$USER_NAME/.bashrc
+fi
 
 #
 # apt-get install development packages
@@ -162,20 +166,35 @@ git config --global user.email "oniebuild@localhost"
 # Default to only upload current branch on push
 #git config push.default simple
 
-if [ "$DEBIAN_RELEASE" = "8" ];then
-	echo "Not installing python-sphinx. You'll have to get creative."
-else
-	# update version of python-sphinx from stretch backports. Needed to build docs
-	echo "Installing backports versions of sphinx packages"
-	DEBIAN_FRONTEND=noninteractive \
-			   apt-get install \
-			   --assume-yes \
-			   --no-install-recommends \
-			   -t stretch-backports \
-			   sphinx-common \
-			   python-sphinx \
-			   libjs-sphinxdoc
+
+#
+# Sphinx is really only needed for updating ONIE documentation
+# Only pull it in on Debian containers, as that is
+# 'official build environment'. Let other distributions build
+# without it ( or change the initial check below to include it.
+
+if [ "$DEBIAN_RELEASE" != "" ];then
+	if [ "$DEBIAN_RELEASE" = "8" ];then
+		echo "Not installing python-sphinx. You'll have to get creative."
+	else
+
+		if [ "$DEBIAN_RELEASE" = "9" ];then
+			echo "Installing backports versions of sphinx packages"	
+			SPHINX_STRETCH_BACKPORTS=" -t stretch-backports "
+		fi
+
+		# Get it
+		DEBIAN_FRONTEND=noninteractive \
+					   apt-get install \
+					   --assume-yes \
+					   --no-install-recommends \
+					   $SPHINX_STRETCH_BACKPORTS \
+					   sphinx-common \
+					   python-sphinx \
+					   libjs-sphinxdoc
+	fi
 fi
+
 #
 # Hub (https://github.com/github/hub) is not needed for build, but is handy for
 # managing pull requests.

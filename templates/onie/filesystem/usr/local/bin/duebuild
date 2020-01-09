@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash  
 # SCRIPT_PURPOSE: Example framework for default build script.
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 
@@ -94,8 +94,7 @@ function fxnHelp()
     echo "  This script mimics sbuild with a few additional arguments."
     echo ""
     echo "  Build targets:"
-    echo "   -c|--cbuild <args>          Build kvm by default instructions"
-    echo "                               <args> is a list of additional build commands. Must be last argument."
+    echo "   -c|--cbuild <args>          <args> is the standard ONIE make syntax. Incompatible with other arguments."
     echo "      --default                Try to build with default settings."
     echo "      --machine                Target platform to build for"
     echo "      --vendor                 Name of vendor (dell, accton, etc )"
@@ -203,10 +202,33 @@ function fxnDoBuild()
     local buildTargets="$2"
 
     local useVendorName=""
-    # Vendor name isn't always needed for build
-    local useVendorName
-    if [ "$3" != "" ];then
-	useVendorName=" MACHINEROOT=../machine/$3 "
+
+    #
+    # If ADDITIONAL_BUILD_ARGS is set, it is a straight make.
+    # Otherwise, check duebuild flags
+    #
+    if [ "$ADDITIONAL_BUILD_ARGS" = "" ];then
+	# Sanity check duebuid flags
+	# Vendor name isn't always needed for build
+	if [ "$3" != "" ];then
+	    case $3 in
+		kvm_x86_64 | qemu_arm* )
+		    echo "As [ $3 ] is an emulated build, not supplying MACHINEROOT"
+		    ;;
+		* )
+		    useVendorName=" MACHINEROOT=../machine/$3 "
+		    ;;
+	    esac
+	fi
+
+	if [ "$buildTargets" = "" ];then
+	    fxnERR "Must supply --build-targets (all, recovery-iso, demo, etc...)"
+	    exit 1
+	fi
+    fi
+    
+    if [[ $PATH != */usr/sbin* ]];then
+	PATH="/sbin:/usr/sbin:$PATH"
     fi
 
     while [ $(( BUILD_ATTEMPTS > 0 )) = 1 ]; do
@@ -215,9 +237,14 @@ function fxnDoBuild()
         BUILD_ATTEMPTS=$(( BUILD_ATTEMPTS - 1 ))
         echo ""
 
-	buildCommand="make -j$BUILD_JOBS $useVendorName  MACHINE=$machine $buildTargets "
-#        echo "Running  make -j$BUILD_JOBS $useVendorName  MACHINE=$machine $buildTargets "
-	#        bash -c " make -j$BUILD_JOBS $useVendorName  MACHINE=$machine $buildTargets
+	if [ "$ADDITIONAL_BUILD_ARGS" != "" ];then
+	    # Passed straight in
+	    fxnPP "Using --cbuild make $ADDITIONAL_BUILD_ARGS"
+	    buildCommand="make $ADDITIONAL_BUILD_ARGS"
+	else
+	    # Compiled from duebuild args
+	    buildCommand="make -j$BUILD_JOBS $useVendorName  MACHINE=$machine $buildTargets "
+	fi
 	echo "Running $buildCommand"
 	bash -c "$buildCommand"
 	
@@ -310,6 +337,7 @@ do
 		# whatever the build command is.
 		ADDITIONAL_BUILD_ARGS="$*"
 	    fi
+	    break
             ;;
 
 	--default )
@@ -498,23 +526,29 @@ if [ "$DO_BUILD" = "TRUE" ];then
 	    fi
 	done
     else
-	find ../machine/ -maxdepth 3 -iname INSTALL -type f
-	#    for vendor in $VENDOR_LIST ; do
-	BUILD_LOG_FILE="example-build.log"
-	#
-	# actually do the build
-	#
-
-	fxnPP "Building "
-	fxnDoBuild $MACHINE "$BUILD_TARGETS" $VENDOR 2>&1 | tee -a  "$BUILD_LOG_FILE"
+	BUILD_LOG_FILE="build-${MACHINE}.log"
 	
+	if [ "$ADDITIONAL_BUILD_ARGS" != "" ];then
+	    fxnDoBuild 2>&1 | tee -a "$BUILD_LOG_FILE"
+	else
+	    if [ "$MACHINE" = "" ];then
+		fxnERR "Must specify a machine type to build. Exiting."
+		exit 1
+	    fi
+	    # Machine names should be unique, so just pull the vendor path out.
+	    VENDOR_NAME=$( find ../machine/ -maxdepth 3 -iname $MACHINE -type d | awk -F "/" '{print$3}' )
 
+	    #
+	    # actually do the build
+	    #
+
+	    fxnPP "Building "
+	    fxnDoBuild $MACHINE "$BUILD_TARGETS" ${VENDOR_NAME} 2>&1 | tee -a  "$BUILD_LOG_FILE"
+	fi
 	# Preserve exit code through exit trap
 	RETURN_CODE=${PIPESTATUS[0]}
-
 	echo "Build exited at $(date) with return code [ $RETURN_CODE ]"
     fi
- #   done
     
     exit "$RETURN_CODE"
 fi
