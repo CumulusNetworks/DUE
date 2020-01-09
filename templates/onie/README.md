@@ -11,7 +11,7 @@ Create default onie build environment with: ./due --create --from debian:9  --de
   * Name it onie-build
   * Tag it as onie-build
   * Set the user's PS1 prompt in the image to be ONIE so the context is (more) obvious
-  * Merge in the files from ./templates/debian-package when creating the configuration directory
+  * Merge in the files from ./templates/onie when creating the configuration directory
 
 ## Additional configuration
 This lists changes that are unique to this container.
@@ -48,7 +48,7 @@ You can use `due --run`  and select the image built in the previous step, which 
 
 ## Build without interaction
 
-There are a number of ways to use the container to build a Debian package without logging in
+There are a number of ways to use the container to build ONIE without logging in
 to the container.
 
 See `DUE/docs/Building.md` for additional information.

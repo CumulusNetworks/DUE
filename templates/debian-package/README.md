@@ -1,61 +1,93 @@
 # debian-package
 
-Build a Debian package
+Create an image that is configured for building Debian packages.
 
-## Notes:
-This is a container with Debian package tools
+## Debian 10 build environment creation example
+Create default Debian 10 build environment with: ./due --create --from debian:10 --description "Package Build for Debian 10" --name package-debian-10 --prompt PKGD10 --tag package-debian-10 --use-template debian-package  
 
-This comes with a script - `dpkg-plus`, which tries to emulate some of the
-functionality of sbuild. See it's --help for more information.
+### Explanation of the above:
+  * Use a Debian 10 container (though ubuntu:18.04 works nicely as well (see below))
+  * Name it package-debian-10
+  * Tag it as package-debian-10
+  * Set the prompt in container to be PGKD10 so the context is (more) obvious
+  * Merge in the files from ./templates/debian-package when creating the configuration directory
 
-
-## Suggested configuration:
-	Use a debian 10 container (though ubuntu:18.04 works nicely as well)
-	name it package-debian-10
-	tag it as package-debian-10
-	set the prompt in container to be PGKD10 so the context is (more) obvious
-	merge in the files from ./templates/debian-package when creating the configuraton direcotry
-
-## Image creation example for a Debian Buster build environment.
-<br>
-Create default Debian 10 build environment with: ./due --create --from debian:10 --description "Package Build for Debian 10" --name package-debian-10 --prompt PKGD10 --tag package-debian-10 --use-template debian-package
-<br>
-
-## Image creaton example for an Ubuntu 18.04 build environment.
-<br>
+## Ubuntu 18.04 build environment image creation example:
 Create default Ubuntu 18.04 Debian package build environment with: ./due --create --from ubuntu:18.04 --description "Package Build for Ubuntu 18.04" --name pkg-u-18.04 --prompt PKGU1804 --tag pkg-ubuntu-18.04 --use-template debian-package
 
+## Additional configuration
+Apart from the expectedly unique `duebuild` and install scripts, there is no additional configuration.
 
-## Use
+# Use
 
-### Build as yourself
+## Build as yourself
 
-You can use `due --run`  and select the container built in the previous step, which will
-mount your home directory, and allow you to work in the container, provided ONIE is checked out in your home directory.
+You can use `due --run`  and select the image built in the previous step, which will:
+
+1.  Mount your "home" directory ( this doesn't have to be your host's ~/ - see `docs/GettingStarted.md` )
+2.  Create an account for you in the container, with your username and user ID.
+3.  Source a .bashrc, and allow access to any other . files.
+4.  ...and now you can navigate to your build directory, to build from the command line.  
 
 
-### Build without interaction
-DUE allows commands to be run in a container, so if you want to just build a Debian package
-without having to log in to the container (and assuming due-package-debian-10 is the name of your Debian build contianer)
-<br>
-1. cd to the top level of the package directory ( Hint: ls ./debian/control should succeed )
-<br>
-2. 	If all the build dependencies are already in the container, run:
-<br>
-.. `due --run --image due-package-debian-10 --command dpkg-buildpackage -uc -us`
-or, if you are typing averse...
-.. `due -r -i due-package-debian-10 -c dpkg-buildpackage -uc -us`
-<br>
-Or you can use a wrapper script that will resolve dependencies and do a few other things.
-`./due --run --image due-package-debian-10 --command /usr/local/bin/dpkg-plus --build`
-<br>
-**tip** get help with: `due --run --command /usr/local/bin/dpkg-plus --help`
+## Build without interaction
+There are a number of ways to use the container to build a Debian package without logging in
+to the container.
 
-<br>
+See DUE/docs/Building.md for additional information.
 
-If you checked out the DUE code from GitHub, you can test it by building DUE into a Debian Package. 
-For example, if you built the Ubuntu image above you can:
-1. cd to the top level DUE directory ( such that running ls ./debian/control will succeed.)
-2. Run: ./due --run-image due-pkg-u-18.04 --command /usr/local/bin/dpkg-plus --build
+Start by: cd -ing to the top level package directory ( such that running `ls ./debian/control` will succeed.)
+DUE will auto-mount the current directory if it is running a command rather than a login.
 
+Then try one of the following:
    
+
+#### Using --command
+**Purpose:** execute everything after --command in a Bash shell.  
+**Description:** Here the container executes everything after `--command` in a Bash shell.  
+**Example:** due --run --command sudo mk-build-deps --install --remove ./debian/control --tool \"apt-get -y\" \; dpkg-buildpackage -uc -us
+
+**NOTES:**
+1.  The **\;** used to separate the two commands to be run in the container. Without the **'\'**,
+the invoking shell will interpret everything after the **';'** as a command to be run _after_ invoking DUE.
+This can create confusion and complicate debugging as it will not be obvious the second command is failing outside of the container.
+
+
+#### Using --build
+**Purpose:** Use container's `duebuild` script to perform additional configuration.  
+**Description:** Here, `--build` is a shortcut to invoke the `/usr/local/bin/duebuild` script in the container, and provide
+a bit of abstraction so as to not bother the user with the details of the build.
+
+**Tip:** get help for the container's `duebuild` script by running: `due --run --build help`
+
+#### --build --default
+**Purpose:** This will build a target that should always work to sanity check the build environment.  
+**Description:** This will run `duebuild` to resolve and install all build dependencies for the package
+in the current directory, and then execute a `dpkg-buildpackage -uc -us` to produce deb(s) in the
+directory above the one where the build is being run.  
+
+**Example:** due --run --build --default
+
+#### Using `--build --cbuild`
+**Purpose:** The `--cbuild` option runs any default `duebuild` configuration (ex: dependency resolution ) and then passes subsequent arguments to dpkg-buildpackage 
+**Example:** build just the source package: due --run --build --cbuild -us -uc --build=source
+
+
+### Building a Debian package with different arguments
+Here the duebuild script can provide some convenience in the build by specifying the build
+details as arguments that get passed to build.
+It's just another way of arriving at the final makefile invocation, however.
+
+**Example:** Edit the debian/changelog to set a development version string for the package:
+  due --run --build --dev-version ~123 --cbuild
+
+## Debugging
+Or, a descriptive collection of ways things have failed. Expect this list to grow.  
+
+
+#  Additional notes:
+None.
+
+
+
+
