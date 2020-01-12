@@ -69,11 +69,16 @@ Well, give me an environment with the different versions and I'll build there.
 6.  It has to be **easy to use**, because I'll be encouraging people with priorities other than designing build
 environments to use it, and, apart from being friendly, the less the end user has to do, the less support I'll have to do.
 
-7.  It should **work with build automation**. I want developers using the same environment my automated build code
+7.  It has to be **easy to modify**, since developer requirements will vary. By writing it with Bash scripts the code
+resembles the commands the developers woudld want to run anyway.
+
+8.  It has to work on **shared user systems**. Many users should be able to run containers off the same image without colliding.
+
+9.  It should **work with build automation**. I want developers using the same environment my automated build code
 will use so that bugs caused by environmental discrepancies can be avoided.
 This is a variant of #2, but I think it's significant enough to warrant its own mention.
 
-8.  The framework for this should be **commonly available** so that developers can distribute their own templates and know end users
+10.  The framework for this should be **commonly available** so that developers can distribute their own templates and know end users
 can easily obtain the framework to turn those templates into build environments.
 
 # Getting started
