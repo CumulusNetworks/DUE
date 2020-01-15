@@ -3,4 +3,4 @@ due-build-merge/
 # This is generated from docs/manpage-due-1.md and is added to the
 # package, but isn't under version control, since it's originating
 # file is.
-docs/due.1
+#docs/due.1

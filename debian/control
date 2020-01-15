@@ -3,8 +3,7 @@ Maintainer: Alex Doyle <alexddoyle@gmail.com>
 Section: admin
 Priority: optional
 Build-Depends: debhelper (>= 9),
-	       git,
-		   pandoc
+	       git
 Standards-Version: 3.9.8
 Homepage: https://github.com/ehdoyle/DUE
 
