@@ -8,6 +8,9 @@ set -e
 #
 #  SPDX-License-Identifier:     MIT
 
+# NOTE: there are configuration differences between Debian 8 and 9.
+#  Expect similar issues if using Ubuntu.
+
 . /due-configuration/install-config-common.lib
 
 
@@ -62,9 +65,6 @@ fi
 # Note: packages after xorriso are optional, but convenient to have.
 apt-get update
 
-# Packages used for secure boot (amd64 hardcode is fine as this is Intel only)
-#linux-headers-amd64?
-SECURE_BOOT=" qemu-utils ovmf  gnu-efi libfile-slurp-perl "
 
 # If you expect to do development in the container, these are useful.
 EDITORS="vim emacs-nox magit"
@@ -73,10 +73,15 @@ EDITORS="vim emacs-nox magit"
 DEBIAN_RELEASE=$( grep "Debian GNU/Linux" /etc/issue | awk '{print$3}')
 
 if [ "$DEBIAN_RELEASE" = "8" ];then
-	echo "Debian 8: Skipping sbsigntool and python-sphinx"
+    echo "Debian 8: Skipping Secure boot packages, sbsigntool and python-sphinx"
+
 else
 	# These packages are available in Debian 9
-	DEBIAN_9_PACKAGES="sbsigntool"
+    DEBIAN_9_PACKAGES="sbsigntool"
+    
+    # Packages used for secure boot (amd64 hardcode is fine as this is Intel only)
+    #linux-headers-amd64?    
+    SECURE_BOOT=" qemu-utils ovmf gnu-efi libfile-slurp-perl "
 fi
 DEBIAN_FRONTEND=noninteractive \
 			   apt-get install \

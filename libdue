@@ -101,10 +101,12 @@ function fxnListContainersForCreation()
 		# in exactly the same way for all, with everything up to the 'with:' getting deleted,
 		# and the last field being --use-template, as that gets prepended to the example string
 		# via awk to speicify the type of container being created.
-		find "${SPECIFIC_TEMPLATE_PATH}" -name README.md -exec grep "^Create" {} \; \
+		find "${SPECIFIC_TEMPLATE_PATH}" \
+			 -name README.md \
+			 -exec grep "^Create" {} \; \
 			| grep -- --from \
 			| sed -e 's/^.*with://g' \
-			| awk '{printf "%-20s %s\n", $NF, $0}'
+			| awk '{printf "%-20s %s\n", $NF, $0}' | sort
 
 
 		echo ""
@@ -559,6 +561,10 @@ function fxnMakeNewDockerImage()
 		# modifications.
 		echo ""
 		fxnPP "Confirmed directory $imageName exists."
+		echo ""
+		fxnPP "If there were changes in the /templates directory, clean the build area with:"
+		echo "      rm -r ${BUILD_MERGE_DIR}/$imageName"
+		echo ""
 		fxnPP "To create the new image, run: $0 --create --build-dir ${BUILD_MERGE_DIR}/$imageName"
 		echo ""
 	fi
@@ -675,8 +681,16 @@ function fxnSelectContainer()
     if [ "$doOperation" = "start" ];then
         #
         # Run a container
-        #
-        theContainers=$( docker images --format 'table  {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.ID}}')
+        # 
+        theContainers=$( docker images --format 'table  {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.ID}}') 
+		if [ $? != 0 ];then
+			# As this is frequently the first access of the system's Docker daemon,
+			# Fail gracefully if it's not installed.
+			echo ""
+			echo "Error: the Docker daemon not seem to be running. Is docker.io installed?  Exiting DUE."
+			echo ""
+			exit 1
+		fi
 
 		#
 		# filter out containers the user isn't interested in
@@ -915,7 +929,7 @@ function fxnDoLogin()
 		echo ""
 		echo "#########################################################"
 		echo "#                                                       #"
-		echo "# NOTE: This container wasn't created by DUE.           #"
+		echo "# NOTE: This container does not have any DUE labels.    #"
 		echo "# You may have to run DUE again with:                   #"
 		echo "#   --login-shell to /bin/sh                            #"
 		echo "#   --username    to root                               #"

@@ -4,8 +4,8 @@ This image is configured to build ONIE images using a Debian 9 Stretch image.
 Currently Debian 10 (and related releases) aren't supported by ONIE.  
 
 ## ONIE build environment creation example
-Create default onie build environment with: ./due --create --from debian:9  --description "ONIE Build" --name onie-build --prompt ONIE --tag onie --use-template onie
-
+Create latest default onie build environment with: ./due --create --from debian:9  --description "ONIE Build Debian 9" --name onie-build --prompt ONIE --tag onie --use-template onie
+Create Debian 8  onie build environment with: ./due --create --from debian:8  --description "ONIE Build Debian 8" --name onie-build-8 --prompt ONIE-8 --tag onie-8 --use-template onie
 ### Explanation of the above:
   * Use a debian 9 image
   * Name it onie-build
