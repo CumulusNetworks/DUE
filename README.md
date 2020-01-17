@@ -2,6 +2,12 @@
 
 DUE is a build environment for building easy to use build environments.
 
+## The TL:DR
+See **./docs/GettingStarted.md** to get started creating and running an example image.  
+Or run `./due --help`
+to jump right in with the comprehensive command line help and examples.
+
+
 ## The elevator pitch
 Need to build for Debian 8 armel, but only have an x86 host with Ubuntu 18.04?  
 DUE supports building for **different architectures** and **OS versions**.
@@ -14,9 +20,6 @@ Painfully aware you're building in a container because the configuration
 you'd get from your home directory isn't present, and you have to copy files around?
 DUE lets you **be yourself in a container**.
 
-## The TL:DR
-See **docs/GettingStarted.md** to create and run an example image, or run `./due --help`
-to jump right in with the comprehensive command line help and examples.
 
 ## The L:DR
 If you're building software, odds are it requires some level of build environment configuration.

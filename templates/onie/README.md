@@ -1,13 +1,15 @@
 # Open Network Install Environment
 
-This image is configured to build ONIE images using a Debian 9 Stretch image.  
+Create ONIE build environments using a Debian 8 (Jessie) or Debian 9 (Stretch) image.
+**Note** The Debian 9 version is recommended for new platforms.
 Currently Debian 10 (and related releases) aren't supported by ONIE.  
 
 ## ONIE build environment creation example
-Create latest default onie build environment with: ./due --create --from debian:9  --description "ONIE Build Debian 9" --name onie-build --prompt ONIE --tag onie --use-template onie
-Create Debian 8  onie build environment with: ./due --create --from debian:8  --description "ONIE Build Debian 8" --name onie-build-8 --prompt ONIE-8 --tag onie-8 --use-template onie
-### Explanation of the above:
-  * Use a debian 9 image
+Create latest default ONIE build environment with: ./due --create --from debian:9  --description "ONIE Build Debian 9" --name onie-build --prompt ONIE --tag onie --use-template onie  
+**OR**  
+Create Debian 8 ONIE build environment with: ./due --create --from debian:8  --description "ONIE Build Debian 8" --name onie-build-8 --prompt ONIE-8 --tag onie-8 --use-template onie
+### Explanation of the first example:
+  * Use a Debian 9 image
   * Name it onie-build
   * Tag it as onie-build
   * Set the user's PS1 prompt in the image to be ONIE so the context is (more) obvious

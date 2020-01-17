@@ -1,5 +1,32 @@
 # Getting Started
 
+**Formatting Conventions**  
+If you are viewing this document as a text file, literal commands to type
+are start and end with backticks like `this`. If you are using a Markdown viewer,
+these will not be visible but the font will be `different`.  
+**The point**  
+Skip the backtick characters, if any, when you cut and paste.
+
+
+## Install DUE requirements
+To run DUE from the source directory, you will need to install the following
+packages:  
+  *  docker.io  (docker.ce works as well)
+  *  git  
+
+If this is a Debian based Linux, like Ubuntu `sudo apt-get update; sudo apt-get install git docker.io` will handle this.  
+Once Docker is installed, add yourself to the docker group with:
+
+`sudo usermod -a -G docker $(whoami)`
+
+You will probably have to log out and back in for your new membership to take effect
+
+If you have downloaded the source (as Debian package builds of DUE
+are not widely available) you can run it without installing by invoking
+it with a ./
+Ex: ./due
+
+
 ## Creating Images
 
 The first step in using DUE will be creating a image.
@@ -12,12 +39,16 @@ for a DUE image, and is useful as a starting point for customization,
 or just testing the mechanics of DUE image creation.
 
 1. Run:  
+ `./due --create help`
+ You will see a list of example image build commands
+
+2. Cut and paste the one whose Image Type is `example`  
  `./due --create --from debian:10 --description "Debian 10 example" --name example-debian-10 --prompt Ex --tag example-debian-10 --use-template example`  
-   This will determine if you have installed all the software necessary to run DUE, and will then create a Docker image by downloading the Debian:10 image, and then applying the files in the `DUE/templates/example` directory to it. This process should end with:  
+   This will determine if you have installed all the software necessary to run DUE, and will then create a Docker image by downloading the Debian:10 image, and then apply the files in the `DUE/templates/example` directory to it. This process should end with:  
    `Successfully tagged due-example-debian-10:debian-10`  
    If it does not, see  `DUE/docs/Troubleshooting.md`
    
-2. Run `./due --run`
+3. Run `./due --run`
    If the image you just created is the only one on the system, it will be run by default. Otherwise DUE will present a menu of images to choose from.  
 
 
@@ -27,14 +58,14 @@ or just testing the mechanics of DUE image creation.
     `2  due-package-debian-10          debian-10             732MB               6053b1f43bcd`  
     `3  due-onie-build                 debian-9              823MB               70cb5b66aa87`    
 
-3. For reference, the Docker command used to start the container will scroll by, as well as the output
+4. For reference, the Docker command used to start the container will scroll by, as well as the output
 from the DUE scripts that dynamically create your user account in the container, and any other additional
 configuration
-4. You are now in a bash shell in the container. DUE defaults to setting the prompt to something that indicates
+5. You are now in a bash shell in the container. DUE defaults to setting the prompt to something that indicates
 the role of the container, as it may not be obvious to the user that they are in one. The example sets the
 prompt to `<username>@due-example-debian-10`
-5. Your home directory in the container is your home directory on the host system, although the DUE configuration file can be set to change this.
-6. Type `exit` to leave the container.
+6. Your home directory in the container is your home directory on the host system, although the DUE configuration file can be set to change this.
+7. Type `exit` to leave the container.
 
 ..And that's the basics of using DUE to create and run containers.
 
