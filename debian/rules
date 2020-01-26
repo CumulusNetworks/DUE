@@ -30,7 +30,7 @@ build:
 docs: $(MAN_PAGE)
 # Docs will not automatically rebuild.
 # Run:
-#      /usr/bin/make -f ./debian/control docs
+#      /usr/bin/make -f ./debian/rules docs
 # To update documentation.
 # If Pandoc is installed generate the man page from man.md
 # Otherwise, use the last checked in version of it.
