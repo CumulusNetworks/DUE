@@ -3,7 +3,7 @@
 Create an image that is configured for building Debian packages.
 
 ## Debian 10 build environment creation example
-Create default Debian 10 build environment with: ./due --create --from debian:10 --description "Package Build for Debian 10" --name package-debian-10 --prompt PKGD10 --tag package-debian-10 --use-template debian-package  
+Create default Debian 10 build environment with: ./due --create --from debian:10    --description "Package Build for Debian 10" --name package-debian-10 --prompt PKGD10 --tag package-debian-10 --use-template debian-package  
 
 ### Explanation of the above:
   * Use a Debian 10 container (though ubuntu:18.04 works nicely as well (see below))
@@ -11,6 +11,9 @@ Create default Debian 10 build environment with: ./due --create --from debian:10
   * Tag it as package-debian-10
   * Set the prompt in container to be PGKD10 so the context is (more) obvious
   * Merge in the files from ./templates/debian-package when creating the configuration directory
+
+## Debian Sid (unstable)  build environment image creation example:
+Create default Debian Sid  Debian package build environment with: ./due --create --from debian:sid   --description "Package Build for Debian Unstable" --name pkg-sid --prompt PKGSid --tag pkg-sid --use-template debian-package
 
 ## Ubuntu 18.04 build environment image creation example:
 Create default Ubuntu 18.04 Debian package build environment with: ./due --create --from ubuntu:18.04 --description "Package Build for Ubuntu 18.04" --name pkg-u-18.04 --prompt PKGU1804 --tag pkg-ubuntu-18.04 --use-template debian-package
