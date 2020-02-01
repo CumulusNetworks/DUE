@@ -1,8 +1,17 @@
-due (1.0.1) UNRELEASED; urgency=medium
+due (1.0.1) RELEASED; urgency=medium
 
-  * Ongoing development
+  * ONIE template fixes for Debian 8, duebuild script, better docs.
+  * Added --run --debug option to debug partially created images.
+  * Added more printouts of shell/Docker commands DUE runs.
+  * Added date printouts to --delete-matched, clarified script name.
+  * Fixed --login skipping the first entry.
+  * Fixed double setting of prompt/path in due-bashrc.template.
+  * Fixed --cbuild parsing passed arguments rather than passing them.
+  * Documentation has more examples and formatting consistency.
+  * Documented existing --build option that reduces build invocation typing.
+  * Documentation rebuild is now separate from package build.
 
- -- Alex Doyle <alexddoyle@gmail.com>  Sun, 29 Dec 2019 14:52:02 -0700
+ -- Alex Doyle <alexddoyle@gmail.com>  Sat, 01 Feb 2020 08:08:08 -0700
 
 due (1.0.0) RELEASED; urgency=medium
 
