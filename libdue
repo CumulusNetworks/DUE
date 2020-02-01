@@ -205,7 +205,7 @@ function fxnWarn()
 #          fxnDodDelete "none"
 #
 # List of targets to delete, for user review
-DELETE_SCRIPT="delete_these_docker_containers.sh"
+DELETE_SCRIPT="delete_these_docker_images.sh"
 
 function fxnDeleteImage()
 {

@@ -102,7 +102,7 @@ can be persisted by copying them there.
 ## Cleaning up failed images
 Run `due --manage --delete-matched none`  
 This gets the IDs of all images that have 'none' in their name and generates 
-a script named `delete_these_docker_containers.sh` that can be run to delete all those images.
+a script named `delete_these_docker_images.sh` that can be run to delete all those images.
 
 --delete-matched filters images with  with `*term-supplied*` so you should 
 check that the images listed in the script are, indeed,
