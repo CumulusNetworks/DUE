@@ -733,12 +733,13 @@ function fxnSelectContainer()
 			theContainers=$( echo "$theContainers" | grep "$filterByType\|CONTAINER\ ID" )
 		fi
 
-        if [ "$DO_VIEW_ALL" = "TRUE" ];then
-            echo "- Select one of the following running containers. Use just '--login' to see only $userIs's containers."
+        if [ "$FILTER_SHOW_ONLY_DUE" = "FALSE" ];then
+            echo "- Select one of the following active containers. Omit '--all' to see containers filtered by [ $userIs ]"
         else
-            echo "- Select one of the following running containers. Use '--login --all' to see other containers."
+            echo "- Select one of the following active containers filtered by [ $filterByType ]. Use '--all' to see every available container."
         fi
     fi
+
     echo "-------------------------------------------------------------------------------------------------------------------------"
 
     if [ "$theContainers" = "" ];then
@@ -1074,7 +1075,7 @@ function fxnDoLogin()
 
 		# Skip network configuration for now
         #                --network=\"host\" \
-			# use --rm to delete the container on exit
+		# use --rm to delete the container on exit
 
         runCMD="$doInteractive \
                 --rm \
@@ -1310,4 +1311,35 @@ function fxnPrintContainerLabels()
 	echo "| DUECreationVersion   $DUECreationVersion"
 	echo "|"
 
+}
+
+#
+# Stop a running container.
+# Note that if the container was started with DUE it will be removed, as
+# DUE containers clean up on exit.
+#
+function fxnDoContainerStop()
+{
+	local filterByUser
+	local containerInfo
+	local countDown=5
+	if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
+		filterByUser="${USER_NAME}"
+	fi
+	
+	fxnSelectContainer "running" $filterByUser
+	echo "Stopping container in 5 seconds. Use Ctrl-C to cancel."
+	containerInfo=$(docker ps | grep $SELECTED_CONTAINER_ID)
+	echo $containerInfo
+	while [ $countDown -ne 0 ]
+	do
+		echo -n "${countDown}..."
+		((countDown--))
+		sleep 1
+	done
+	echo ""
+	echo "Stopping container."
+	fxnEC docker stop $SELECTED_CONTAINER_ID || exit 1
+	logger "due: $(whoami) stopped container [ $containerInfo ]"
+	echo "Stopped."
 }

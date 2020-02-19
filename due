@@ -109,7 +109,8 @@ function fxnHelpManage()
 	echo "   --snapshot <name>        Save a running container as a Docker image named [name]"
 	echo "   --copy-config            Create a personal DUE configuration file in ~/.config/due/due.config"
 	echo "   --make-dev-dir <dir>     Populate a local directory for DUE container development."	
-	echo "   --list-templates         List available templates."	
+	echo "   --list-templates         List available templates."
+	echo "   --stop                   Stop a running container"
     echo ""
 	echo "   --delete-matched [term]  Delete containers that contain this term. USE WITH CAUTION!"
 	echo "   --git-clean              Run 'git -dfx' to remove untracked files in local dir."
@@ -259,7 +260,7 @@ function fxnHelpRun()
 	echo ""
     echo "  Image selection:"
 	echo "   <default>                  Select image to run from a menu."	
-	echo "        --view-all            Do not filter list of available containers."
+	echo "        --all                 Do not filter list of available containers."
 	echo "        --ignore-type         Treat container as if it was not made by DUE."
 	echo "        --debug               Debug partially built container. Defaults to setting:"
 	echo "                              --any --username root --userid 0"	
@@ -598,12 +599,6 @@ function fxnParseRunArgs()
 				FILTER_SHOW_ONLY_DUE="FALSE"
 				;;
 
-			--view-all )
-				# List available containers
-				DO_VIEW_ALL="TRUE"
-				FILTER_SHOW_ONLY_DUE="FALSE"
-				;;
-
 			-c | --command )
 				# Run a command in the container.
 				# Skip over --command
@@ -829,6 +824,17 @@ function fxnParseManageArgs()
 				exit
 				;;
 
+			-a | --all | --any  )
+				# Run any downloaded image
+				#and log in as root
+				FILTER_SHOW_ONLY_DUE="FALSE"
+				;;
+			
+			--stop )
+				# Use the menu interface to stop a running container
+				DO_STOP_CONTAINER="TRUE"
+				;;
+			
 			--delete )
 				# Delete an existing image
 				DO_DELETE="TRUE"
@@ -1160,10 +1166,10 @@ if [ "$DO_DELETE" = "TRUE" ];then
 	exit
 fi
 
-if [ "$DO_VIEW_ALL" = "TRUE" ];then
-	echo "TODO: Fix this error message."
-	fxnERR "--view-all is used with --run or --login."
-	exit 1
+if [ "$DO_STOP_CONTAINER" = "TRUE" ];then
+	# Stop a running container. This will remove the container
+	fxnDoContainerStop "$USE_IMAGE_NAME"
+	exit 
 fi
 
 

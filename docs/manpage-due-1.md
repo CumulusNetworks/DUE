@@ -234,6 +234,12 @@ make working with containers/images easier.
 -l,  --list-images
 :	 List images created by DUE.
 
+--stop
+:	 Use the menu interface to stop a running container. Works with
+     --all to show containers not started by the user.
+	 NOTE: since all DUE containers are started with -rm, stopping
+	 a container deletes it and all the data in it from memory.
+
 --snapshot [name]
 :    Save a running container as a Docker image named name.
 

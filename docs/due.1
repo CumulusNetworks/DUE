@@ -309,6 +309,14 @@ List images created by DUE.
 .RS
 .RE
 .TP
+.B \-\-stop
+Use the menu interface to stop a running container.
+Works with \-\-all to show containers not started by the user.
+NOTE: since all DUE containers are started with \-rm, stopping a
+container deletes it and all the data in it from memory.
+.RS
+.RE
+.TP
 .B \-\-snapshot name (#name)
 Save a running container as a Docker image named name.
 .RS
