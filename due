@@ -113,7 +113,6 @@ function fxnHelpManage()
 	echo "   --stop                   Stop a running container"
     echo ""
 	echo "   --delete-matched [term]  Delete containers that contain this term. USE WITH CAUTION!"
-	echo "   --git-clean              Run 'git -dfx' to remove untracked files in local dir."
 	echo "   --docker-clean           Run 'docker system prune ; docker image prune' to reclaim disk space."
 	echo ""
 	echo "   --help                   This help."
@@ -179,8 +178,9 @@ function fxnHelpCreate()
 	echo ""
 	echo "  2 - Build a Docker image from the image build directory."
 	echo ""
-	echo "    --build-dir <dirname>             Build using an existing configuration directory."
+	echo "   --build-dir <dirname>       Build using an existing configuration directory."
 	echo ""
+	echo "   --clean                      Remove due-build-merge directory."
 	echo "   --help                       This help."
 	echo "   --help-examples              Examples of using create."
 	echo ""
@@ -436,6 +436,13 @@ function fxnParseCreateArgs()
 				fi
 				;;
 
+			--clean )
+				# remove the build directory
+				DO_CREATE_CLEAN="TRUE"
+				# nothing else to parse after this
+				break
+				;;
+			
 			#
 			# use a directory that has already been generated
 			#
@@ -851,19 +858,6 @@ function fxnParseManageArgs()
 				shift
 				;;
 
-			--git-clean )
-				# Tried this in a DUE development directory under a DUE
-				# checkout and it annihilated it, which struck me as
-				# undesireable and unexpected behavior.
-				# Only let this run from a top level checkout.
-				if [ ! -e .git ];then
-					fxnERR "No .git found in current directory. Exiting."
-					exit 1
-				fi
-				fxnPP "Running 'git clean -dfx' to clean."
-				git clean -dfx
-				exit
-				;;
 
 			--docker-clean )
 				# Clean out cache disk space used by docker
@@ -984,7 +978,7 @@ do
 			fxnParseRunArgs "$@"
 			break
 			;;
-
+		
 		--debug )
 			# trigger internal debugging
 			DO_DEBUG="TRUE"
@@ -1109,6 +1103,24 @@ if [ "$DO_CREATE_NEW_IMAGE" = "TRUE" ];then
 	fxnMakeNewDockerImage "$FROM_IMAGE_TYPE" "$NEW_IMAGE_NAME" "$IMAGE_DESCRIPTION"
 	exit
 fi
+
+#
+# Clean out the staging areas where images are assembled.
+#
+if [ "$DO_CREATE_CLEAN" = "TRUE" ];then
+	echo ""	
+	if [ -d "$BUILD_MERGE_DIR" ];then
+		fxnPP "Removing $BUILD_MERGE_DIR"
+		fxnEC rm -rf "$BUILD_MERGE_DIR" || exit 1
+		fxnPP "Done removing $BUILD_MERGE_DIR"
+	else
+		fxnPP "$BUILD_MERGE_DIR not found."
+		fxnPP " Build area is clean."
+	fi
+	echo ""	
+	exit
+fi
+
 
 if [ "$DO_CREATE_DIRECTORY" = "TRUE" ];then
 	if [ "$FROM_IMAGE_TYPE" = "" ];then

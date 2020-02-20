@@ -225,6 +225,9 @@ Optional:
 --dir [dirname]
 :	  Build using an existing configuration directory.
 
+--clean
+:	  Delete the due-build-merge staging directories.
+
 
 --mangage options
 -------
@@ -254,9 +257,6 @@ make working with containers/images easier.
 
 --delete-matched [term]
 :    Delete containers that contain this term. USE WITH CAUTION!
-
---git-clean
-:    Run 'git -dfx' to remove untracked files in local dir.
 
 --docker-clean
 :    Run 'docker system prune ; docker image prune' to reclaim disk space.
