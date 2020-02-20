@@ -226,7 +226,6 @@ function fxnDeleteImage()
               >> "$DELETE_SCRIPT"
 
 
-
     echo " ________________________________________________________________________"
     echo "|                                                                       "
     echo "| Run [ ./$DELETE_SCRIPT ]                                "
@@ -239,7 +238,7 @@ function fxnDeleteImage()
     # show what's left when the script is run
     echo "docker images"       >> "$DELETE_SCRIPT"
     echo ""                    >> "$DELETE_SCRIPT"
-    # clean up after ourselves
+    # cleanf up after ourselves
     echo "rm ./$DELETE_SCRIPT" >> "$DELETE_SCRIPT"
 
     echo ""
@@ -1028,8 +1027,7 @@ function fxnDoLogin()
             CONTAINER_MOUNT_DIR="$DEFAULT_CONTAINER_MOUNT_BUILD_DIR"
         fi
 
-
-        if [ "$DO_RUN_BACKGROUND" = "TRUE" ];then
+		if [ "$DO_RUN_BACKGROUND" = "TRUE" ];then
             # default to whatever the container's default is.
             executeProgram=""
             doInteractive=""
@@ -1067,8 +1065,12 @@ function fxnDoLogin()
 		fi
 
         # assign a name
-
-        imname="${USE_HOSTNAME}"
+		if [ "$SET_CONTAINER_NAME" != "" ];then
+			# User is overriding defaults with --container-name
+			imname="$SET_CONTAINER_NAME"
+		else
+			imname="${USE_HOSTNAME}"
+		fi
 
 		# Note that any variables here that are not set will evaluate to
 		# blank space and not be parsed as arguments.

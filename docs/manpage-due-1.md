@@ -118,6 +118,13 @@ DUE. This can be useful with image creation debug.
 images that were not created by DUE. Helpful for internal debug if image
 creation dies running internal configuration scripts.
 
+--container-name [name]
+:	Change the name of the running container. This can provide clarity in a
+ build automation environment, where containers may be automatically spun up.
+ Note that if the new name does not have 'due' in it, it will be filtered
+ out from DUE's --login option unless --all is also provided.
+ This may or may not be desirable behavior.
+ 
 --home-dir [host path]
 :   Absolute path to a directory to use as the home directory
  when the user logs in. Defaults to the user's home directory unless overridden

@@ -158,6 +158,17 @@ configuration scripts.
 .RS
 .RE
 .TP
+.B \-\-container\-name name (#name)
+Change the name of the running container.
+This can provide clarity in a build automation environment, where
+containers may be automatically spun up.
+Note that if the new name does not have \[aq]due\[aq] in it, it will be
+filtered out from DUE\[aq]s \-\-login option unless \-\-all is also
+provided.
+This may or may not be desirable behavior.
+.RS
+.RE
+.TP
 .B \-\-home\-dir [host path]
 Absolute path to a directory to use as the home directory when the user
 logs in.
