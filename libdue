@@ -238,7 +238,7 @@ function fxnDeleteImage()
     # show what's left when the script is run
     echo "docker images"       >> "$DELETE_SCRIPT"
     echo ""                    >> "$DELETE_SCRIPT"
-    # cleanf up after ourselves
+    # clean up after ourselves
     echo "rm ./$DELETE_SCRIPT" >> "$DELETE_SCRIPT"
 
     echo ""
@@ -886,6 +886,8 @@ function fxnDoLogin()
 	local DUEMountHostDirsUp
 	# Add --debug as first argument to turn on debugging in container-create-user.sh
     local executeProgram="/usr/local/bin/container-create-user.sh "
+	
+	# Docker settings for user interaction. Not used with --command
     local doInteractive=" --interactive --tty "
 
 
@@ -1062,6 +1064,9 @@ function fxnDoLogin()
 				# when it runs below.
 				cmdList="$COMMAND_LIST "
 			fi
+
+			# if this is a command, eliminate the --interactive and --tty options
+			doInteractive=""
 		fi
 
         # assign a name
@@ -1131,7 +1136,7 @@ function fxnDoLogin()
         echo "Logging in to running  [ $SELECTED_CONTAINER_ID ] with: "
         echo " ___________________________________________________________________________"
         echo "|"
-        echo "|  docker exec --interactive --tty $userNameArg ${SELECTED_CONTAINER_ID}  $LOGIN_SHELL"
+        echo "|  docker exec $doInteractive $userNameArg ${SELECTED_CONTAINER_ID}  $LOGIN_SHELL"
         echo "|___________________________________________________________________________"
         echo ""
         echo ""
@@ -1141,7 +1146,7 @@ function fxnDoLogin()
 		# all output from here on down is from the container session, rather than the
 		# launch from DUE
 
-        docker exec --interactive --tty  $userNameArg "${SELECTED_CONTAINER_ID}" $LOGIN_SHELL
+        docker exec $doInteractive  $userNameArg "${SELECTED_CONTAINER_ID}" $LOGIN_SHELL
     fi
     # User typed 'exit' or something blew up?
     return $?
