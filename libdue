@@ -655,8 +655,21 @@ function fxnSelectContainer()
     local containerID=""
 
     local doOperation="$1"
-    local filterByType="$2"
+	local imageName="$2"
+    local filterByType
+	local filterByTag
 
+	# If the image name has a :tag at the end
+	# Ex: myImage:myTag
+	if [[ "$imageName"  == *:* ]];then
+		# Split this up on the : so that  filtering matches type, then tag
+		# Delete characters after :
+		filterByType=${imageName%%:*}
+		# Delete characters before :
+		filterByTag=${imageName##*:}
+	else
+		filterByType="$imageName"
+	fi
     local userIs="${USER_NAME}"
 
 	# Default to having the user choose the image/container
@@ -695,8 +708,14 @@ function fxnSelectContainer()
 		# filter out containers the user isn't interested in
 		#
 		if [ "$filterByType" != "" ];then
-			# Pass filter type and REPOSITORY header
-			theContainers=$( echo "$theContainers" | grep "$filterByType\|REPOSITORY" )
+			# Pass filter type and REPOSITORY header.
+			# Match string against start of line, and leave a space at the end to
+			# terminate it in case it would match a longer string.
+			theContainers=$( echo "$theContainers" | grep "^$filterByType \|REPOSITORY" )
+			# If a tag is present, filter the results using that, too.
+			if [ "$filterByTag" != "" ];then
+				theContainers=$( echo "$theContainers" | grep " $filterByTag \|REPOSITORY")
+			fi
 		fi
 
 		if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
