@@ -501,10 +501,10 @@ function fxnMakeNewDockerImage()
 
 				# Copy the host system's QEMU for ARM to a location where it will be
 				# installed in the container.
-				if [ ! -e ${BUILD_MERGE_DIR}/"$imageName"/filesystem/usr/bin ];then
-					mkdir -p ${BUILD_MERGE_DIR}/"$imageName"/filesystem/usr/bin
+				if [ ! -e "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin ];then
+					mkdir -p "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin
 				fi
-				fxnEC cp -a /usr/bin/qemu-arm-static ${BUILD_MERGE_DIR}/"$imageName"/filesystem/usr/bin/qemu-arm-static || exit 1
+				fxnEC cp -a /usr/bin/qemu-arm-static "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin/qemu-arm-static || exit 1
 				# Set this to pass to Dockerfile configuration so that qemu-static
 				# will be present in the image _before_ Docker executes any commands in the image.
 				QEMU_STATIC="qemu-arm-static"
@@ -516,36 +516,35 @@ function fxnMakeNewDockerImage()
 		# appropriate directory locations to configure the image
 		fxnHeader "Replacing REPLACE strings in template files with supplied values."
 		# Supply directory destination for output of processed template
-		fxnPreProcessDockerLoginMessage ${BUILD_MERGE_DIR}/"$imageName"/filesystem/etc
+		fxnPreProcessDockerLoginMessage "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/etc
 
 		# Changes to the bashrc
-		fxnPreProcessDueBashrc          ${BUILD_MERGE_DIR}/"$imageName"/filesystem/etc
+		fxnPreProcessDueBashrc          "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/etc
 
 		# Common functions used by pre/post install
-		fxnPreProcessInstallConfigLib   ${BUILD_MERGE_DIR}/"$imageName"
+		fxnPreProcessInstallConfigLib   "${BUILD_MERGE_DIR}"/"$imageName"
 
 		# First script to run
-		fxnPreProcessPreInstallConfig   ${BUILD_MERGE_DIR}/"$imageName"
+		fxnPreProcessPreInstallConfig   "${BUILD_MERGE_DIR}"/"$imageName"
 
 		# Last script to run
-		fxnPreProcessPostInstallConfig  ${BUILD_MERGE_DIR}/"$imageName"
+		fxnPreProcessPostInstallConfig  "${BUILD_MERGE_DIR}"/"$imageName"
 
 		# Set parameters in the generated Docker file
 		# If qemu needs to be installed, QEMU_STATIC will not be empty
-		fxnPreProcessDockerFile         ${BUILD_MERGE_DIR}/"$imageName" $QEMU_STATIC
+		fxnPreProcessDockerFile         "${BUILD_MERGE_DIR}"/"$imageName" $QEMU_STATIC
 
 		#
 		# Put the current verison of DUE in the incoming Dockerfile.config for
 		# any future compatibility determinations
 		#
 		fxnPP "Embedding current version of DUE into the new image."
-		echo "" >> ${BUILD_MERGE_DIR}/${imageName}/Dockerfile.config
-		echo "#Version of DUE this was created with, for future compatibility" >> \
-			 ${BUILD_MERGE_DIR}/${imageName}/Dockerfile.config
-		echo "LABEL DUECreationVersion=$DUE_VERSION" >> \
-			 ${BUILD_MERGE_DIR}/${imageName}/Dockerfile.config
-		echo "" >> ${BUILD_MERGE_DIR}/${imageName}/Dockerfile.config
-
+		{
+			echo ""
+			echo "#Version of DUE this was created with, for future compatibility" 
+			echo "LABEL DUECreationVersion=$DUE_VERSION" 
+			echo ""  
+		} >> "${BUILD_MERGE_DIR}"/"${imageName}"/Dockerfile.config
 		
 		#
 		# Merge any information from Dockerfile.config into the Dockerfile.create
@@ -786,6 +785,7 @@ function fxnSelectContainer()
 		#
 		# Default to not filtering by user for now...
 		#
+		# TODO: evaluate removing the else case
 		if [ "TRUE" = "TRUE" ];then
 			# set -n - clip first line
 			# cat -n - put a number at the start
@@ -1214,7 +1214,7 @@ function fxnGenerateTemplate()
 		fxnEC mkdir -p "$BUILD_MERGE_DIR" || exit 1
 	fi
 
-	if [ -e ${BUILD_MERGE_DIR}/"${templateName}" ];then
+	if [ -e "${BUILD_MERGE_DIR}"/"${templateName}" ];then
 		fxnWarn " [ ${BUILD_MERGE_DIR}/$templateName ] directory already exists. Skipping generation."
 		return 0
 	fi
@@ -1222,7 +1222,7 @@ function fxnGenerateTemplate()
 	# here -template will stick with the directories and get filtered
 
 	# --preserve Keep mode,owner,timestamp, etc
-	fxnEC cp  --recursive --preserve "$COMMON_TEMPLATE_PATH" ${BUILD_MERGE_DIR}/"$templateName" || exit 1
+	fxnEC cp  --recursive --preserve "$COMMON_TEMPLATE_PATH" "${BUILD_MERGE_DIR}"/"$templateName" || exit 1
 	fxnListDirContents "${BUILD_MERGE_DIR}/$templateName"
 
 	# --dereference  softlinks in the templates directory get resolved to
@@ -1231,7 +1231,7 @@ function fxnGenerateTemplate()
 	#                and frr
 	
 	fxnHeader "Merging in [ $name ] specific files from ${MERGE_IN_TEMPLATE_PATH} to ${BUILD_MERGE_DIR}/$templateName"
-	fxnEC cp --dereference --recursive --preserve  "${MERGE_IN_TEMPLATE_PATH}"/* ${BUILD_MERGE_DIR}/"${templateName}"/ || exit 1
+	fxnEC cp --dereference --recursive --preserve  "${MERGE_IN_TEMPLATE_PATH}"/* "${BUILD_MERGE_DIR}"/"${templateName}"/ || exit 1
     fxnListDirContents "${BUILD_MERGE_DIR}/$templateName" 
 
 	#
@@ -1367,10 +1367,10 @@ function fxnDoContainerStop()
 		filterByUser="${USER_NAME}"
 	fi
 	
-	fxnSelectContainer "running" $filterByUser
+	fxnSelectContainer "running" "$filterByUser"
 	echo "Stopping container in 5 seconds. Use Ctrl-C to cancel."
-	containerInfo=$(docker ps | grep $SELECTED_CONTAINER_ID)
-	echo $containerInfo
+	containerInfo=$(docker ps | grep "$SELECTED_CONTAINER_ID")
+	echo "$containerInfo"
 	while [ $countDown -ne 0 ]
 	do
 		echo -n "${countDown}..."
@@ -1379,7 +1379,8 @@ function fxnDoContainerStop()
 	done
 	echo ""
 	echo "Stopping container."
-	fxnEC docker stop $SELECTED_CONTAINER_ID || exit 1
-	logger "due: $(whoami) stopped container [ $containerInfo ]"
+	fxnEC docker stop "$SELECTED_CONTAINER_ID" || exit 1
+	# Leave some evidence in the system log in case this was not what was intended.
+	/usr/bin/logger "due: $(whoami) stopped container [ $containerInfo ]"
 	echo "Stopped."
 }
