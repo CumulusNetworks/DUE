@@ -12,7 +12,7 @@
 # Enable extended pattern matching
 shopt -s extglob
 
-DUE_VERSION="1.0.1"
+DUE_VERSION="1.1.0"
 
 # Get enough information to add the current user account to a container
 USER_NAME=$(whoami)
@@ -112,7 +112,7 @@ function fxnListContainersForCreation()
 		echo ""
 		
 		echo "Available image templates from: $SPECIFIC_TEMPLATE_PATH"
-		cd "${SPECIFIC_TEMPLATE_PATH}"
+		fxnEC cd "${SPECIFIC_TEMPLATE_PATH}" || exit 1
 		ls -d */
 
 	fi
@@ -226,7 +226,6 @@ function fxnDeleteImage()
               >> "$DELETE_SCRIPT"
 
 
-
     echo " ________________________________________________________________________"
     echo "|                                                                       "
     echo "| Run [ ./$DELETE_SCRIPT ]                                "
@@ -235,15 +234,18 @@ function fxnDeleteImage()
 
     echo ""
     grep "Delete" "$DELETE_SCRIPT" | sed -e 's/# Delete:/   /g'
-    echo ""                    >> "$DELETE_SCRIPT"
-    # show what's left when the script is run
-    echo "docker images"       >> "$DELETE_SCRIPT"
-    echo ""                    >> "$DELETE_SCRIPT"
-    # clean up after ourselves
-    echo "rm ./$DELETE_SCRIPT" >> "$DELETE_SCRIPT"
+	
+	# echo all the text in one pass
+	{
+		echo ""
+		# show what's left when the script is run
+		echo "docker images"
+		echo ""
+		# clean up after ourselves
+		echo "rm ./$DELETE_SCRIPT" 
 
-    echo ""
-
+		echo ""
+	} >> "$DELETE_SCRIPT"
     if [ "$DO_DELETE_NOW" = "TRUE" ];then
         ./"$DELETE_SCRIPT"
     fi
@@ -255,11 +257,12 @@ function fxnDeleteImage()
 #  values, specific to the container.
 
 # Takes: Path to where the file will be written out
+#        Optional argument to indicate non native architecture container: use qemu
 # Does:  Generates a Dockerfile.create file in the container creation directory.
 function fxnPreProcessDockerFile()
 {
 	local destDir="$1"
-
+	local useQEMU="$2"
 	# If there is an existing copy, do not overwrite.
 	# user may have custom modifications.
 
@@ -273,9 +276,11 @@ function fxnPreProcessDockerFile()
 		if [ "$FROM_IMAGE_TYPE" != "" ];then
 			sed -i "s#REPLACE_IMAGE_FROM\$#$FROM_IMAGE_TYPE#g" "$destDir"/Dockerfile.create
 			sed -i "s#REPLACE_DUE_IMAGE_TYPE_LABEL\$#$DUE_IMAGE_TYPE_LABEL#g" "$destDir"/Dockerfile.create
-#			sed -i "s#REPLACE_DUE_MOUNT_HOST_DIRS_UP\$#$DUE_MOUNT_HOST_DIRS_UP#g" $destDir/Dockerfile.create
-#			sed -i "s#REPLACE_VENDOR\$#$YOUR_VENDOR#g" $destDir/Dockerfile.create
-#			sed -i "s#REPLACE_IMAGE_DESCRIPTION#\"$IMAGE_DESCRIPTION\"#g" $destDir/Dockerfile.create
+			# If qemu is to be installed, uncomment the copy of it
+			if [ "$useQEMU" != "" ];then
+				fxnPP "Configuring Dockerfile to copy in qemu as the first step."
+				sed -i "s/#REPLACE_DUE_INSTALL_QEMU//#g" "$destDir"/Dockerfile.create
+			fi
 		fi
 	fi
 }
@@ -409,12 +414,10 @@ function fxnPreProcessInstallConfigLib()
 # Create a new Docker Image
 # Takes: FROM_IMAGE_TYPE    - source image to build on
 #        NEW_IMAGE_NAME     - Local name for image (my-stretch-build, for example)
-#        IMAGE_DESCRIPTION  - Description string for the image to identify itself with
 function fxnMakeNewDockerImage()
 {
 	local imageFrom="$1"
 	local imageName="$2"
-	local imageDescription="$3"
 
 	if [ "$2" = "" ];then
 		# 3rd argument is optional
@@ -450,7 +453,7 @@ function fxnMakeNewDockerImage()
 	# Create a directory that will have a all the files that go into
 	# the container, if it hasn't already been created.
 	#
-	if [ ! -e ${BUILD_MERGE_DIR}/"${imageName}" ];then
+	if [ ! -e "${BUILD_MERGE_DIR}"/"${imageName}" ];then
 		if [ "$MERGE_IN_TEMPLATE_PATH" != "" ];then
 			# User has specified a template directory to pull in
 			# This sets USE_TEMPLATE_PATH
@@ -473,7 +476,7 @@ function fxnMakeNewDockerImage()
 			  --archive \
 			  --verbose \
 			  --exclude=*.template \
-			  "${USE_TEMPLATE_PATH}"/ ${BUILD_MERGE_DIR}/"${imageName}" || exit 1
+			  "${USE_TEMPLATE_PATH}"/ "${BUILD_MERGE_DIR}"/"${imageName}" || exit 1
 
 		fxnListDirContents "${BUILD_MERGE_DIR}/${imageName}"
 		
@@ -481,24 +484,30 @@ function fxnMakeNewDockerImage()
 		# Check for cross architecture containers
 		# These can be run in emulation if they have QEMU as part of the container
 		# Currently only supporting armel, but more can be added.
-		HOST_ARCH=$( uname -m )		
+
+		HOST_ARCH=$( uname -m )
+		# TODO: make this support other architectures, beyond the armel hardcode here.
 		if [ "$HOST_ARCH" = "x86_64" ];then
-			# If this is an x86 system, building an armel container
-			echo "$imageFrom" | grep -q "arm32v5"
-			if [ $? = 0 ];then
+			# If this is an x86 system, building an armel container...
+			if [[ "$imageFrom" = *arm32v5* ]];then
+				fxnPP "Image architecture does not match host's [ $HOST_ARCH ]. Copying qemu-arm-static in for emulation."
+				
 				# Have qemu-arm-static in there so it can run
 				fxnPP "Adding qemu-arm-static to $imageName/filesystem/usr/bin/qemu-arm-static."
 				if [ ! -e /usr/bin/qemu-arm-static ];then
-					fxnERR "Host system must install qemu-arm-static to run an armel container. apt-get install qemu."
+					fxnERR "Host system must have qemu-arm-static to run an armel container. sudo apt install qemu-user-static."
 					exit 1
 				fi
 
 				# Copy the host system's QEMU for ARM to a location where it will be
 				# installed in the container.
-				if [ ! -e ${BUILD_MERGE_DIR}/"$imageName"/filesystem/usr/bin ];then
-					mkdir -p ${BUILD_MERGE_DIR}/"$imageName"/filesystem/usr/bin
+				if [ ! -e "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin ];then
+					mkdir -p "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin
 				fi
-				fxnEC cp -a /usr/bin/qemu-arm-static ${BUILD_MERGE_DIR}/"$imageName"/filesystem/usr/bin/qemu-arm-static || exit 1
+				fxnEC cp -a /usr/bin/qemu-arm-static "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin/qemu-arm-static || exit 1
+				# Set this to pass to Dockerfile configuration so that qemu-static
+				# will be present in the image _before_ Docker executes any commands in the image.
+				QEMU_STATIC="qemu-arm-static"
 			fi
 		fi
 
@@ -507,35 +516,35 @@ function fxnMakeNewDockerImage()
 		# appropriate directory locations to configure the image
 		fxnHeader "Replacing REPLACE strings in template files with supplied values."
 		# Supply directory destination for output of processed template
-		fxnPreProcessDockerLoginMessage ${BUILD_MERGE_DIR}/"$imageName"/filesystem/etc
+		fxnPreProcessDockerLoginMessage "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/etc
 
 		# Changes to the bashrc
-		fxnPreProcessDueBashrc          ${BUILD_MERGE_DIR}/"$imageName"/filesystem/etc
+		fxnPreProcessDueBashrc          "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/etc
 
 		# Common functions used by pre/post install
-		fxnPreProcessInstallConfigLib   ${BUILD_MERGE_DIR}/"$imageName"
+		fxnPreProcessInstallConfigLib   "${BUILD_MERGE_DIR}"/"$imageName"
 
 		# First script to run
-		fxnPreProcessPreInstallConfig   ${BUILD_MERGE_DIR}/"$imageName"
+		fxnPreProcessPreInstallConfig   "${BUILD_MERGE_DIR}"/"$imageName"
 
 		# Last script to run
-		fxnPreProcessPostInstallConfig  ${BUILD_MERGE_DIR}/"$imageName"
+		fxnPreProcessPostInstallConfig  "${BUILD_MERGE_DIR}"/"$imageName"
 
 		# Set parameters in the generated Docker file
-		fxnPreProcessDockerFile         ${BUILD_MERGE_DIR}/"$imageName"
+		# If qemu needs to be installed, QEMU_STATIC will not be empty
+		fxnPreProcessDockerFile         "${BUILD_MERGE_DIR}"/"$imageName" $QEMU_STATIC
 
 		#
 		# Put the current verison of DUE in the incoming Dockerfile.config for
 		# any future compatibility determinations
 		#
 		fxnPP "Embedding current version of DUE into the new image."
-		echo "" >> ${BUILD_MERGE_DIR}/${imageName}/Dockerfile.config
-		echo "#Version of DUE this was created with, for future compatibility" >> \
-			 ${BUILD_MERGE_DIR}/${imageName}/Dockerfile.config
-		echo "LABEL DUECreationVersion=$DUE_VERSION" >> \
-			 ${BUILD_MERGE_DIR}/${imageName}/Dockerfile.config
-		echo "" >> ${BUILD_MERGE_DIR}/${imageName}/Dockerfile.config
-
+		{
+			echo ""
+			echo "#Version of DUE this was created with, for future compatibility" 
+			echo "LABEL DUECreationVersion=$DUE_VERSION" 
+			echo ""  
+		} >> "${BUILD_MERGE_DIR}"/"${imageName}"/Dockerfile.config
 		
 		#
 		# Merge any information from Dockerfile.config into the Dockerfile.create
@@ -562,8 +571,11 @@ function fxnMakeNewDockerImage()
 		echo ""
 		fxnPP "Confirmed directory $imageName exists."
 		echo ""
-		fxnPP "If there were changes in the /templates directory, clean the build area with:"
+		fxnPP "If there were changes in the /templates directory, delete this particular build with: "
 		echo "      rm -r ${BUILD_MERGE_DIR}/$imageName"
+		echo ""
+		echo " Or delete all of ${BUILD_MERGE_DIR} with:"
+		echo "     $0 --create --clean "
 		echo ""
 		fxnPP "To create the new image, run: $0 --create --build-dir ${BUILD_MERGE_DIR}/$imageName"
 		echo ""
@@ -656,8 +668,21 @@ function fxnSelectContainer()
     local containerID=""
 
     local doOperation="$1"
-    local filterByType="$2"
+	local imageName="$2"
+    local filterByType
+	local filterByTag
 
+	# If the image name has a :tag at the end
+	# Ex: myImage:myTag
+	if [[ "$imageName"  == *:* ]];then
+		# Split this up on the : so that  filtering matches type, then tag
+		# Delete characters after :
+		filterByType=${imageName%%:*}
+		# Delete characters before :
+		filterByTag=${imageName##*:}
+	else
+		filterByType="$imageName"
+	fi
     local userIs="${USER_NAME}"
 
 	# Default to having the user choose the image/container
@@ -696,8 +721,14 @@ function fxnSelectContainer()
 		# filter out containers the user isn't interested in
 		#
 		if [ "$filterByType" != "" ];then
-			# Pass filter type and REPOSITORY header
-			theContainers=$( echo "$theContainers" | grep "$filterByType\|REPOSITORY" )
+			# Pass filter type and REPOSITORY header.
+			# Match string against start of line, and leave a space at the end to
+			# terminate it in case it would match a longer string.
+			theContainers=$( echo "$theContainers" | grep "^$filterByType \|REPOSITORY" )
+			# If a tag is present, filter the results using that, too.
+			if [ "$filterByTag" != "" ];then
+				theContainers=$( echo "$theContainers" | grep " $filterByTag \|REPOSITORY")
+			fi
 		fi
 
 		if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
@@ -754,6 +785,7 @@ function fxnSelectContainer()
 		#
 		# Default to not filtering by user for now...
 		#
+		# TODO: evaluate removing the else case
 		if [ "TRUE" = "TRUE" ];then
 			# set -n - clip first line
 			# cat -n - put a number at the start
@@ -887,6 +919,8 @@ function fxnDoLogin()
 	local DUEMountHostDirsUp
 	# Add --debug as first argument to turn on debugging in container-create-user.sh
     local executeProgram="/usr/local/bin/container-create-user.sh "
+	
+	# Docker settings for user interaction. Not used with --command
     local doInteractive=" --interactive --tty "
 
 
@@ -1028,8 +1062,7 @@ function fxnDoLogin()
             CONTAINER_MOUNT_DIR="$DEFAULT_CONTAINER_MOUNT_BUILD_DIR"
         fi
 
-
-        if [ "$DO_RUN_BACKGROUND" = "TRUE" ];then
+		if [ "$DO_RUN_BACKGROUND" = "TRUE" ];then
             # default to whatever the container's default is.
             executeProgram=""
             doInteractive=""
@@ -1064,11 +1097,18 @@ function fxnDoLogin()
 				# when it runs below.
 				cmdList="$COMMAND_LIST "
 			fi
+
+			# if this is a command, eliminate the --interactive and --tty options
+			doInteractive=""
 		fi
 
         # assign a name
-
-        imname="${USE_HOSTNAME}"
+		if [ "$SET_CONTAINER_NAME" != "" ];then
+			# User is overriding defaults with --container-name
+			imname="$SET_CONTAINER_NAME"
+		else
+			imname="${USE_HOSTNAME}"
+		fi
 
 		# Note that any variables here that are not set will evaluate to
 		# blank space and not be parsed as arguments.
@@ -1129,7 +1169,7 @@ function fxnDoLogin()
         echo "Logging in to running  [ $SELECTED_CONTAINER_ID ] with: "
         echo " ___________________________________________________________________________"
         echo "|"
-        echo "|  docker exec --interactive --tty $userNameArg ${SELECTED_CONTAINER_ID}  $LOGIN_SHELL"
+        echo "|  docker exec $doInteractive $userNameArg ${SELECTED_CONTAINER_ID}  $LOGIN_SHELL"
         echo "|___________________________________________________________________________"
         echo ""
         echo ""
@@ -1139,7 +1179,7 @@ function fxnDoLogin()
 		# all output from here on down is from the container session, rather than the
 		# launch from DUE
 
-        docker exec --interactive --tty  $userNameArg "${SELECTED_CONTAINER_ID}" $LOGIN_SHELL
+        docker exec $doInteractive  $userNameArg "${SELECTED_CONTAINER_ID}" $LOGIN_SHELL
     fi
     # User typed 'exit' or something blew up?
     return $?
@@ -1174,7 +1214,7 @@ function fxnGenerateTemplate()
 		fxnEC mkdir -p "$BUILD_MERGE_DIR" || exit 1
 	fi
 
-	if [ -e ${BUILD_MERGE_DIR}/"${templateName}" ];then
+	if [ -e "${BUILD_MERGE_DIR}"/"${templateName}" ];then
 		fxnWarn " [ ${BUILD_MERGE_DIR}/$templateName ] directory already exists. Skipping generation."
 		return 0
 	fi
@@ -1182,7 +1222,7 @@ function fxnGenerateTemplate()
 	# here -template will stick with the directories and get filtered
 
 	# --preserve Keep mode,owner,timestamp, etc
-	fxnEC cp  --recursive --preserve "$COMMON_TEMPLATE_PATH" ${BUILD_MERGE_DIR}/"$templateName" || exit 1
+	fxnEC cp  --recursive --preserve "$COMMON_TEMPLATE_PATH" "${BUILD_MERGE_DIR}"/"$templateName" || exit 1
 	fxnListDirContents "${BUILD_MERGE_DIR}/$templateName"
 
 	# --dereference  softlinks in the templates directory get resolved to
@@ -1191,7 +1231,7 @@ function fxnGenerateTemplate()
 	#                and frr
 	
 	fxnHeader "Merging in [ $name ] specific files from ${MERGE_IN_TEMPLATE_PATH} to ${BUILD_MERGE_DIR}/$templateName"
-	fxnEC cp --dereference --recursive --preserve  "${MERGE_IN_TEMPLATE_PATH}"/* ${BUILD_MERGE_DIR}/"${templateName}"/ || exit 1
+	fxnEC cp --dereference --recursive --preserve  "${MERGE_IN_TEMPLATE_PATH}"/* "${BUILD_MERGE_DIR}"/"${templateName}"/ || exit 1
     fxnListDirContents "${BUILD_MERGE_DIR}/$templateName" 
 
 	#
@@ -1327,10 +1367,10 @@ function fxnDoContainerStop()
 		filterByUser="${USER_NAME}"
 	fi
 	
-	fxnSelectContainer "running" $filterByUser
+	fxnSelectContainer "running" "$filterByUser"
 	echo "Stopping container in 5 seconds. Use Ctrl-C to cancel."
-	containerInfo=$(docker ps | grep $SELECTED_CONTAINER_ID)
-	echo $containerInfo
+	containerInfo=$(docker ps | grep "$SELECTED_CONTAINER_ID")
+	echo "$containerInfo"
 	while [ $countDown -ne 0 ]
 	do
 		echo -n "${countDown}..."
@@ -1339,7 +1379,8 @@ function fxnDoContainerStop()
 	done
 	echo ""
 	echo "Stopping container."
-	fxnEC docker stop $SELECTED_CONTAINER_ID || exit 1
-	logger "due: $(whoami) stopped container [ $containerInfo ]"
+	fxnEC docker stop "$SELECTED_CONTAINER_ID" || exit 1
+	# Leave some evidence in the system log in case this was not what was intended.
+	/usr/bin/logger "due: $(whoami) stopped container [ $containerInfo ]"
 	echo "Stopped."
 }

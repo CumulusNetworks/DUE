@@ -11,6 +11,7 @@ Package: due
 Architecture: all
 Depends: ${misc:Depends},
 	 docker.io | docker-ce,
+	 bsdutils,
 	 git,
 	 rsync
 Recommends: binfmt-support, qemu, qemu-user-static

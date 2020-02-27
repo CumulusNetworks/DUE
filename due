@@ -20,6 +20,8 @@ if [ ! -e "$LIBRARY_FILE"  ];then
 	exit 1
 fi
 
+
+# Source the installed or checked out version of libdue
 . "$LIBRARY_FILE"
 
 # Verbosity level. 0 is terse.
@@ -113,7 +115,6 @@ function fxnHelpManage()
 	echo "   --stop                   Stop a running container"
     echo ""
 	echo "   --delete-matched [term]  Delete containers that contain this term. USE WITH CAUTION!"
-	echo "   --git-clean              Run 'git -dfx' to remove untracked files in local dir."
 	echo "   --docker-clean           Run 'docker system prune ; docker image prune' to reclaim disk space."
 	echo ""
 	echo "   --help                   This help."
@@ -179,8 +180,9 @@ function fxnHelpCreate()
 	echo ""
 	echo "  2 - Build a Docker image from the image build directory."
 	echo ""
-	echo "    --build-dir <dirname>             Build using an existing configuration directory."
+	echo "   --build-dir <dirname>       Build using an existing configuration directory."
 	echo ""
+	echo "   --clean                      Remove due-build-merge directory."
 	echo "   --help                       This help."
 	echo "   --help-examples              Examples of using create."
 	echo ""
@@ -274,7 +276,8 @@ function fxnHelpRun()
 	echo "                              NOTE2:  Quote \"\" your arguments if using multiple commands!"
 	echo "                              NOTE3:  \ any ; so everything after the ; goes to DUE"
 	echo "        --build               Invoke container's /usr/local/bin/duebuild script"
-	echo "                              (if present in container) in current directory."	
+	echo "                              (if present in container) in current directory."
+	echo "        --container-name <n>  Change the name of the container to <n>"
 	echo ""
 	echo " Host directories to mount in the container:"
 	echo "        --home-dir <host path> Absolute path on host system to mount as container user home directory"
@@ -436,6 +439,13 @@ function fxnParseCreateArgs()
 				fi
 				;;
 
+			--clean )
+				# remove the build directory
+				DO_CREATE_CLEAN="TRUE"
+				# nothing else to parse after this
+				break
+				;;
+			
 			#
 			# use a directory that has already been generated
 			#
@@ -447,7 +457,7 @@ function fxnParseCreateArgs()
 					fxnListContainersForCreation "JustDirs"
 					exit 1
 				fi
-				BASE_NAME=$( basename $2 )
+				BASE_NAME=$( basename "$2" )
 				# Sanitize the image name to not contain illegal characters
 				NEW_IMAGE_NAME="$( echo "$BASE_NAME" | tr -d '/')"
 				FROM_IMAGE_TYPE=$( grep "FROM" "$2"/Dockerfile.create | sed -e 's/FROM //g' | tr ":" "-" | tr "/" "-" )
@@ -655,7 +665,15 @@ function fxnParseRunArgs()
 				# in the container will be passed the commands
 				break
 				;;
-				
+
+			--container-name )
+				# Change the default name of the running container
+				# Note if 'due' is not part of the name, it will be automatically filtered
+				# when DUE lists running containers unless '--all' is also supplied.
+				# This may or may not be desirable behavior.
+				SET_CONTAINER_NAME="$2"
+				shift
+				;;
 			#
 			# username, user id, groupname, group id all default
 			# to the current user's settings. These are override options
@@ -851,19 +869,6 @@ function fxnParseManageArgs()
 				shift
 				;;
 
-			--git-clean )
-				# Tried this in a DUE development directory under a DUE
-				# checkout and it annihilated it, which struck me as
-				# undesireable and unexpected behavior.
-				# Only let this run from a top level checkout.
-				if [ ! -e .git ];then
-					fxnERR "No .git found in current directory. Exiting."
-					exit 1
-				fi
-				fxnPP "Running 'git clean -dfx' to clean."
-				git clean -dfx
-				exit
-				;;
 
 			--docker-clean )
 				# Clean out cache disk space used by docker
@@ -984,7 +989,7 @@ do
 			fxnParseRunArgs "$@"
 			break
 			;;
-
+		
 		--debug )
 			# trigger internal debugging
 			DO_DEBUG="TRUE"
@@ -1106,9 +1111,27 @@ if [ "$DO_CREATE_NEW_IMAGE" = "TRUE" ];then
 	fi
 
 	# Make an image using one of the directory configurations
-	fxnMakeNewDockerImage "$FROM_IMAGE_TYPE" "$NEW_IMAGE_NAME" "$IMAGE_DESCRIPTION"
+	fxnMakeNewDockerImage "$FROM_IMAGE_TYPE" "$NEW_IMAGE_NAME" 
 	exit
 fi
+
+#
+# Clean out the staging areas where images are assembled.
+#
+if [ "$DO_CREATE_CLEAN" = "TRUE" ];then
+	echo ""	
+	if [ -d "$BUILD_MERGE_DIR" ];then
+		fxnPP "Removing $BUILD_MERGE_DIR"
+		fxnEC rm -rf "$BUILD_MERGE_DIR" || exit 1
+		fxnPP "Done removing $BUILD_MERGE_DIR"
+	else
+		fxnPP "$BUILD_MERGE_DIR not found."
+		fxnPP " Build area is clean."
+	fi
+	echo ""	
+	exit
+fi
+
 
 if [ "$DO_CREATE_DIRECTORY" = "TRUE" ];then
 	if [ "$FROM_IMAGE_TYPE" = "" ];then
@@ -1123,7 +1146,7 @@ if [ "$DO_CREATE_DIRECTORY" = "TRUE" ];then
 	fi
 
 	# Make an image using one of the directory configurations
-	fxnMakeNewDockerImage "$FROM_IMAGE_TYPE" "$NEW_IMAGE_NAME" "$IMAGE_DESCRIPTION"
+	fxnMakeNewDockerImage "$FROM_IMAGE_TYPE" "$NEW_IMAGE_NAME"
 	exit
 fi
 

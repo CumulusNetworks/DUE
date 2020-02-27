@@ -158,6 +158,17 @@ configuration scripts.
 .RS
 .RE
 .TP
+.B \-\-container\-name name (#name)
+Change the name of the running container.
+This can provide clarity in a build automation environment, where
+containers may be automatically spun up.
+Note that if the new name does not have \[aq]due\[aq] in it, it will be
+filtered out from DUE\[aq]s \-\-login option unless \-\-all is also
+provided.
+This may or may not be desirable behavior.
+.RS
+.RE
+.TP
 .B \-\-home\-dir [host path]
 Absolute path to a directory to use as the home directory when the user
 logs in.
@@ -299,6 +310,11 @@ Useful for debugging directory configuration issues.
 Build using an existing configuration directory.
 .RS
 .RE
+.TP
+.B \-\-clean
+Delete the due\-build\-merge staging directories.
+.RS
+.RE
 .SS \-\-mangage options
 .PP
 These options are accessed after the \-\-manage argument, and can make
@@ -340,11 +356,6 @@ List available templates.
 .B \-\-delete\-matched [term]
 Delete containers that contain this term.
 USE WITH CAUTION!
-.RS
-.RE
-.TP
-.B \-\-git\-clean
-Run \[aq]git \-dfx\[aq] to remove untracked files in local dir.
 .RS
 .RE
 .TP

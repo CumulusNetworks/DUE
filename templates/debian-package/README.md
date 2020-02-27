@@ -12,6 +12,9 @@ Create default Debian 10 build environment with: ./due --create --from debian:10
   * Set the prompt in container to be PGKD10 so the context is (more) obvious
   * Merge in the files from ./templates/debian-package when creating the configuration directory
 
+## Debian 10 armel build environment creation example
+Create default Debian 10 build environment with: ./due --create --from arm32v5/debian:10    --description "Package Build for arm32v5/Debian 10" --name package-armel-debian-10 --prompt PKGD10-arm --tag package-armel-debian-10 --use-template debian-package  
+
 ## Debian Sid (unstable)  build environment image creation example:
 Create default Debian Sid  Debian package build environment with: ./due --create --from debian:sid   --description "Package Build for Debian Unstable" --name pkg-sid --prompt PKGSid --tag pkg-sid --use-template debian-package
 
