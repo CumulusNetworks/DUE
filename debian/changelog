@@ -1,3 +1,9 @@
+due (1.1.1) UNRELEASED; urgency=medium
+
+  * Version bump for ongoing development.
+
+ -- Alex Doyle <alexddoyle@gmail.com>  Sun, 01 Mar 2020 01:01:01 -0800
+
 due (1.1.0) RELEASED; urgency=medium
 
   * Added --stop option for running containers.
@@ -8,7 +14,7 @@ due (1.1.0) RELEASED; urgency=medium
   * Fixed bug where image tags were not considered in filtering.
   * Script incremental cleanup with ShellCheck
 
- -- adoyle <alexddoyle@gmail.com>  Thu, 29 Feb 2020 12:00:01 -0800
+ -- Alex Doyle <alexddoyle@gmail.com>  Sat, 29 Feb 2020 12:00:01 -0800
 
 due (1.0.1) RELEASED; urgency=medium
 
