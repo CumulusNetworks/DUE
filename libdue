@@ -112,7 +112,7 @@ function fxnListContainersForCreation()
 		echo ""
 		
 		echo "Available image templates from: $SPECIFIC_TEMPLATE_PATH"
-		cd "${SPECIFIC_TEMPLATE_PATH}"
+		fxnEC cd "${SPECIFIC_TEMPLATE_PATH}" || exit 1
 		ls -d */
 
 	fi
@@ -234,15 +234,18 @@ function fxnDeleteImage()
 
     echo ""
     grep "Delete" "$DELETE_SCRIPT" | sed -e 's/# Delete:/   /g'
-    echo ""                    >> "$DELETE_SCRIPT"
-    # show what's left when the script is run
-    echo "docker images"       >> "$DELETE_SCRIPT"
-    echo ""                    >> "$DELETE_SCRIPT"
-    # clean up after ourselves
-    echo "rm ./$DELETE_SCRIPT" >> "$DELETE_SCRIPT"
+	
+	# echo all the text in one pass
+	{
+		echo ""
+		# show what's left when the script is run
+		echo "docker images"
+		echo ""
+		# clean up after ourselves
+		echo "rm ./$DELETE_SCRIPT" 
 
-    echo ""
-
+		echo ""
+	} >> "$DELETE_SCRIPT"
     if [ "$DO_DELETE_NOW" = "TRUE" ];then
         ./"$DELETE_SCRIPT"
     fi
@@ -254,11 +257,12 @@ function fxnDeleteImage()
 #  values, specific to the container.
 
 # Takes: Path to where the file will be written out
+#        Optional argument to indicate non native architecture container: use qemu
 # Does:  Generates a Dockerfile.create file in the container creation directory.
 function fxnPreProcessDockerFile()
 {
 	local destDir="$1"
-
+	local useQEMU="$2"
 	# If there is an existing copy, do not overwrite.
 	# user may have custom modifications.
 
@@ -272,9 +276,11 @@ function fxnPreProcessDockerFile()
 		if [ "$FROM_IMAGE_TYPE" != "" ];then
 			sed -i "s#REPLACE_IMAGE_FROM\$#$FROM_IMAGE_TYPE#g" "$destDir"/Dockerfile.create
 			sed -i "s#REPLACE_DUE_IMAGE_TYPE_LABEL\$#$DUE_IMAGE_TYPE_LABEL#g" "$destDir"/Dockerfile.create
-#			sed -i "s#REPLACE_DUE_MOUNT_HOST_DIRS_UP\$#$DUE_MOUNT_HOST_DIRS_UP#g" $destDir/Dockerfile.create
-#			sed -i "s#REPLACE_VENDOR\$#$YOUR_VENDOR#g" $destDir/Dockerfile.create
-#			sed -i "s#REPLACE_IMAGE_DESCRIPTION#\"$IMAGE_DESCRIPTION\"#g" $destDir/Dockerfile.create
+			# If qemu is to be installed, uncomment the copy of it
+			if [ "$useQEMU" != "" ];then
+				fxnPP "Configuring Dockerfile to copy in qemu as the first step."
+				sed -i "s/#REPLACE_DUE_INSTALL_QEMU//#g" "$destDir"/Dockerfile.create
+			fi
 		fi
 	fi
 }
@@ -408,12 +414,10 @@ function fxnPreProcessInstallConfigLib()
 # Create a new Docker Image
 # Takes: FROM_IMAGE_TYPE    - source image to build on
 #        NEW_IMAGE_NAME     - Local name for image (my-stretch-build, for example)
-#        IMAGE_DESCRIPTION  - Description string for the image to identify itself with
 function fxnMakeNewDockerImage()
 {
 	local imageFrom="$1"
 	local imageName="$2"
-	local imageDescription="$3"
 
 	if [ "$2" = "" ];then
 		# 3rd argument is optional
@@ -449,7 +453,7 @@ function fxnMakeNewDockerImage()
 	# Create a directory that will have a all the files that go into
 	# the container, if it hasn't already been created.
 	#
-	if [ ! -e ${BUILD_MERGE_DIR}/"${imageName}" ];then
+	if [ ! -e "${BUILD_MERGE_DIR}"/"${imageName}" ];then
 		if [ "$MERGE_IN_TEMPLATE_PATH" != "" ];then
 			# User has specified a template directory to pull in
 			# This sets USE_TEMPLATE_PATH
@@ -472,7 +476,7 @@ function fxnMakeNewDockerImage()
 			  --archive \
 			  --verbose \
 			  --exclude=*.template \
-			  "${USE_TEMPLATE_PATH}"/ ${BUILD_MERGE_DIR}/"${imageName}" || exit 1
+			  "${USE_TEMPLATE_PATH}"/ "${BUILD_MERGE_DIR}"/"${imageName}" || exit 1
 
 		fxnListDirContents "${BUILD_MERGE_DIR}/${imageName}"
 		
@@ -480,15 +484,18 @@ function fxnMakeNewDockerImage()
 		# Check for cross architecture containers
 		# These can be run in emulation if they have QEMU as part of the container
 		# Currently only supporting armel, but more can be added.
-		HOST_ARCH=$( uname -m )		
+
+		HOST_ARCH=$( uname -m )
+		# TODO: make this support other architectures, beyond the armel hardcode here.
 		if [ "$HOST_ARCH" = "x86_64" ];then
-			# If this is an x86 system, building an armel container
-			echo "$imageFrom" | grep -q "arm32v5"
-			if [ $? = 0 ];then
+			# If this is an x86 system, building an armel container...
+			if [[ "$imageFrom" = *arm32v5* ]];then
+				fxnPP "Image architecture does not match host's [ $HOST_ARCH ]. Copying qemu-arm-static in for emulation."
+				
 				# Have qemu-arm-static in there so it can run
 				fxnPP "Adding qemu-arm-static to $imageName/filesystem/usr/bin/qemu-arm-static."
 				if [ ! -e /usr/bin/qemu-arm-static ];then
-					fxnERR "Host system must install qemu-arm-static to run an armel container. apt-get install qemu."
+					fxnERR "Host system must have qemu-arm-static to run an armel container. sudo apt install qemu-user-static."
 					exit 1
 				fi
 
@@ -498,6 +505,9 @@ function fxnMakeNewDockerImage()
 					mkdir -p ${BUILD_MERGE_DIR}/"$imageName"/filesystem/usr/bin
 				fi
 				fxnEC cp -a /usr/bin/qemu-arm-static ${BUILD_MERGE_DIR}/"$imageName"/filesystem/usr/bin/qemu-arm-static || exit 1
+				# Set this to pass to Dockerfile configuration so that qemu-static
+				# will be present in the image _before_ Docker executes any commands in the image.
+				QEMU_STATIC="qemu-arm-static"
 			fi
 		fi
 
@@ -521,7 +531,8 @@ function fxnMakeNewDockerImage()
 		fxnPreProcessPostInstallConfig  ${BUILD_MERGE_DIR}/"$imageName"
 
 		# Set parameters in the generated Docker file
-		fxnPreProcessDockerFile         ${BUILD_MERGE_DIR}/"$imageName"
+		# If qemu needs to be installed, QEMU_STATIC will not be empty
+		fxnPreProcessDockerFile         ${BUILD_MERGE_DIR}/"$imageName" $QEMU_STATIC
 
 		#
 		# Put the current verison of DUE in the incoming Dockerfile.config for
@@ -561,8 +572,11 @@ function fxnMakeNewDockerImage()
 		echo ""
 		fxnPP "Confirmed directory $imageName exists."
 		echo ""
-		fxnPP "If there were changes in the /templates directory, clean the build area with:"
+		fxnPP "If there were changes in the /templates directory, delete this particular build with: "
 		echo "      rm -r ${BUILD_MERGE_DIR}/$imageName"
+		echo ""
+		echo " Or delete all of ${BUILD_MERGE_DIR} with:"
+		echo "     $0 --create --clean "
 		echo ""
 		fxnPP "To create the new image, run: $0 --create --build-dir ${BUILD_MERGE_DIR}/$imageName"
 		echo ""

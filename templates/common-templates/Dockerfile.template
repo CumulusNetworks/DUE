@@ -1,7 +1,7 @@
 # Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
-# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
+# DUE_VERSION_COMPATIBILITY_TRACKING=1.1.0
 
 FROM REPLACE_IMAGE_FROM
 MAINTAINER maintainer <yourmaintainer@your-organization.org>
@@ -18,6 +18,12 @@ LABEL description=REPLACE_IMAGE_DESCRIPTION
 # Default user to root to enable modifications of base container
 #
 USER root
+
+# If this image is using qemu to support another
+# architecture, copy qemu files in before Docker tries
+# to run anything. Otherwise you'll get:
+# standard_init_linux.go:211: exec user process caused "no such file or directory"
+#REPLACE_DUE_INSTALL_QEMU COPY ./filesystem/usr/bin/qemu* /usr/bin/
 
 #
 # create a directory on the container to hold scripts to be run
