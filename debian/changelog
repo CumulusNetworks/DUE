@@ -1,8 +1,14 @@
-due (1.0.2) UNRELEASED; urgency=medium
+due (1.1.0) RELEASED; urgency=medium
 
-  * Version bump for continuing development
+  * Added --stop option for running containers.
+  * Added --create --clean option to delete due-buid-merge directory.
+  * Added --container-name option to set the name of a container.
+  * Fixed arm32v5 (armel) container creation with qemu on amd64
+  * Fixed bug where --command was run as --interactive, when it is not.
+  * Fixed bug where image tags were not considered in filtering.
+  * Script incremental cleanup with ShellCheck
 
- -- adoyle <alexddoyle@gmail.com>  Sat, 01 Feb 2020 08:44:53 -0800
+ -- adoyle <alexddoyle@gmail.com>  Thu, 29 Feb 2020 12:00:01 -0800
 
 due (1.0.1) RELEASED; urgency=medium
 
