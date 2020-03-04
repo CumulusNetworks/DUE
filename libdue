@@ -41,6 +41,11 @@ KNOWN_IMAGES="
  arm32v5/debian:buster
 "
 
+# Max number of containers per user.
+# Sometimes people need a reminder to clean up.
+# The config file will override this, provided a read works.
+DUE_USER_CONTIANER_LIMIT=10
+
 # expected directory for template patch files
 SPECIFIC_TEMPLATES_DIR="templates"
 
@@ -229,7 +234,7 @@ function fxnDeleteImage()
     echo " ________________________________________________________________________"
     echo "|                                                                       "
     echo "| Run [ ./$DELETE_SCRIPT ]                                "
-    echo "|   to delete the following containers that matched \"$DELETE_TERM\"                   "
+    echo "|   to delete the following images that matched \"$DELETE_TERM\"                   "
     echo "|________________________________________________________________________"
 
     echo ""
@@ -910,6 +915,11 @@ function fxnDoLogin()
 
 	# Image name minus offending characters
 	local sanitizedContainerName=""
+
+	# Users may forget they have containers running.
+	# Remind them.
+	local usersContainers
+
 	
 	# Docker image label hinting where the mount point should be
 	# on an independently run command.
@@ -989,6 +999,21 @@ function fxnDoLogin()
 
     # If we are starting a new container
     if [ "$1" = "start" ];then
+n
+		if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
+			usersContainers=$( docker ps | grep " ${USER_NAME}_" | wc -l )
+			# include this container they're starting
+			usersContainers=$(( usersContainers + 1 ))
+			if [ $(( usersContainers > DUE_USER_CONTAINER_LIMIT )) = 1 ];then
+				echo ""
+				echo " Error: You have [ $usersContainers ] containers running, exceding the system limit of [ $DUE_USER_CONTAINER_LIMIT ] on $(hostname)"
+				echo ""
+				echo " Stop some with:  $DUE_NAME --manage --stop"
+				echo ""
+				exit 2
+			fi
+		fi
+
 		#
 		# Figure out the particulars of any directory mounts
 		#
@@ -1140,13 +1165,17 @@ function fxnDoLogin()
         echo " ----------------------------------------------------------------------------"
         echo " ------ : start and log in to [ $SELECTED_CONTAINER_ID ] with this command:      -- "
         echo "   docker run $formatRunCMD"
-
+		
         echo ""
         echo " ----------------------------------------------------------------------------"
         echo " ------ Host filesystems are mounted as follows: ----------------------------"
         echo " -"
 		# Put this on two lines and delete the starting space newline..
 		echo "$ADDITIONAL_MOUNTS" | sed -e 's/--volume/\n -   --volume/g' | sed -e '/^ $/d'
+
+		echo " - "
+		echo " - You now have  [ $usersContainers ] containers running on $(hostname)."
+		echo " - User limit is [ $DUE_USER_CONTAINER_LIMIT ]" 
         echo " -"
         echo " ----------------------------------------------------------------------------"
         echo " -------- Type 'exit' to leave.  Docker Container Output Follows ------------"
@@ -1300,7 +1329,8 @@ function fxnReadConfigFile()
 	# store variable name / value pairs
 	local configVars   
 	local homeDir
-
+	local maxContainers
+	
 	if [ -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then
 		# Unless the user has a local version...
 		CONFIG_FILE_PATH="$DUE_HOME_CONFIG_ABSOLUTE_PATH"
@@ -1316,6 +1346,13 @@ function fxnReadConfigFile()
 		eval "$( echo $homeDir )"			
 	fi
 
+	# Parse the DUE_USER_CONTAINER_LIMIT variable, and ovedrride the
+	# default set at the top of this file.
+	maxContainers=$(echo "$configVars" | grep DUE_USER_CONTAINER_LIMIT | tail -n 1 )
+	if [ "$maxContainers" != "" ];then
+		DUE_USER_CONTAINER_LIMIT="$maxContainers"
+	fi
+	
 }
 
 # DUE embeds labels into the images it creates to get hints for how the containers should
@@ -1357,30 +1394,83 @@ function fxnPrintContainerLabels()
 # Stop a running container.
 # Note that if the container was started with DUE it will be removed, as
 # DUE containers clean up on exit.
-#
+# Takes: Optional pattern match as first argument
+
+STOP_SCRIPT="stop_these_docker_images.sh"
+
 function fxnDoContainerStop()
 {
 	local filterByUser
 	local containerInfo
+	local stopTerm="$1"	
 	local countDown=5
 	if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
 		filterByUser="${USER_NAME}"
 	fi
-	
-	fxnSelectContainer "running" "$filterByUser"
-	echo "Stopping container in 5 seconds. Use Ctrl-C to cancel."
-	containerInfo=$(docker ps | grep "$SELECTED_CONTAINER_ID")
-	echo "$containerInfo"
-	while [ $countDown -ne 0 ]
-	do
-		echo -n "${countDown}..."
-		((countDown--))
-		sleep 1
-	done
-	echo ""
-	echo "Stopping container."
-	fxnEC docker stop "$SELECTED_CONTAINER_ID" || exit 1
-	# Leave some evidence in the system log in case this was not what was intended.
-	/usr/bin/logger "due: $(whoami) stopped container [ $containerInfo ]"
-	echo "Stopped."
+
+	if [ "$stopTerm" = "" ];then
+		fxnSelectContainer "running" "$filterByUser"
+		echo "Stopping container in 5 seconds. Use Ctrl-C to cancel."
+		containerInfo=$(docker ps | grep "$SELECTED_CONTAINER_ID")
+		echo "$containerInfo"
+		while [ $countDown -ne 0 ]
+		do
+			echo -n "${countDown}..."
+			((countDown--))
+			sleep 1
+		done
+		echo ""
+		echo "Stopping container."
+		fxnEC docker stop "$SELECTED_CONTAINER_ID" || exit 1
+		# Leave some evidence in the system log in case this was not what was intended.
+		/usr/bin/logger "due: $(whoami) stopped container [ $containerInfo ]"
+		echo "Stopped."		
+	else
+		header=$( docker ps | head -n 1 )
+		terms=$( docker ps | grep "$stopTerm" )
+		if [ "$filterByUser" != "" ];then
+			terms=$( echo "$terms" | grep "$filterByUser" )
+		fi
+
+		if [ "$terms" = "" ];then
+			echo "Found no containers that had  : $stopTerm $filterByUser"
+			echo "Exiting."
+			exit 0			
+		fi
+		# make sure there is something to act on before continuing.
+		numToDelete=$( echo "$terms" | wc -l )
+		
+		# put a # after the container ID to turn the rest of the info in to a comment
+		# prepend the ID with 'docker stop' to create an executable command.
+		#echo "$terms" | sed -e 's/   / # /' | sed -e 's/^/docker stop /g' >> $STOP_SCRIPT
+
+		toDelete=$( echo "$terms" | sed -e 's/   / # /' | sed -e 's/^/docker stop /g' )
+
+		# just matching teh
+		# Create the stop script to be very explicit about what will happen
+		{
+			echo "#/bin/bash"
+			echo "# Created by $0 $INVOKED_WITH on $(date)"
+			echo "Will stop the following containers:" 
+			echo "            $header"
+			echo "$toDelete"
+
+			# Leave some evidence in the system log in case this was not what was intended.
+			echo "/usr/bin/logger \"due: $(whoami) stopped multiple containers.\""
+
+			# Clean up after ourselves 
+			echo "rm ./$STOP_SCRIPT"
+		} > $STOP_SCRIPT
+		
+		chmod a+x "$STOP_SCRIPT"		
+
+		echo " ________________________________________________________________________"
+		echo "|                                                                       "
+		echo "| Run [ ./$STOP_SCRIPT ]                                "
+		echo "|   to delete the [ $numToDelete ] containers that matched \"$stopTerm\"        "
+		echo "|________________________________________________________________________"
+		echo ""
+
+	fi
+
 }
