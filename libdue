@@ -44,7 +44,8 @@ KNOWN_IMAGES="
 # Max number of containers per user.
 # Sometimes people need a reminder to clean up.
 # The config file will override this, provided a read works.
-DUE_USER_CONTIANER_LIMIT=10
+
+DUE_USER_CONTAINER_LIMIT=10
 
 # expected directory for template patch files
 SPECIFIC_TEMPLATES_DIR="templates"
@@ -999,7 +1000,6 @@ function fxnDoLogin()
 
     # If we are starting a new container
     if [ "$1" = "start" ];then
-n
 		if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
 			usersContainers=$( docker ps | grep " ${USER_NAME}_" | wc -l )
 			# include this container they're starting
