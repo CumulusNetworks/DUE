@@ -1037,6 +1037,11 @@ function fxnDoLogin()
 				executeProgram=" $executeProgram --debug "
 			fi
 
+			# If running docker in the container, it has to match the host
+			# system's group ID
+			dockerGID=$( getent group 'docker' | awk -F ':' '{print$3}' )
+			executeProgram+=" --docker-group-id $dockerGID "
+			
 			# specify user and ID
 			executeProgram+=" --username $USER_NAME --userid $USER_ID --groupid $USER_GROUP_ID --groupname $USER_GROUP_NAME "
 		fi
@@ -1140,17 +1145,22 @@ function fxnDoLogin()
 
 		# Skip network configuration for now
         #                --network=\"host\" \
+		# Pass any arguments that were set to go directly to docker
+		# be  interactive, or not
 		# use --rm to delete the container on exit
-
-        runCMD="$doInteractive \
+		# Mount any additional host directories
+		# Specify the user to Docker
+		# Set container host name
+		# Specify the container
+		# Pass the command to execute
+        runCMD="$DOCKER_SPECIFIC_ARGS \
+				$doInteractive \
                 --rm \
                 $ADDITIONAL_MOUNTS \
 				$SET_DOCKER_USER_ARGS \
                 --name $imname \
                 $userNameArg \
                 ${HOSTNAME_ARGS} \
-                ${SET_CONTAINER_USER_ID} \
-                ${SET_CONTAINER_USER_MOUNT_DIR} \
                 ${SELECTED_CONTAINER_ID} \
 				 $executeProgram"
 
