@@ -113,6 +113,11 @@ DUE. This can be useful with image creation debug.
 	type: --run --build help to get the container's duebuild script's help
 	options directly.
 	
+--dockerarg [arg]
+:	Put [arg] in the docker run invocation. For multiple arguments, use
+    multiple invocations of --dockerarg. This allows for things like 
+	running containers with --privileged
+	
 --debug
 :	Sets defaults of --username root --userid 0 and the --any option to show
 images that were not created by DUE. Helpful for internal debug if image

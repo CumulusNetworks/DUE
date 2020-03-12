@@ -151,6 +151,13 @@ script's help options directly.
 .RS
 .RE
 .TP
+.B \[en]dockerarg [arg]
+Put [arg] in the docker run invocation.
+For multiple arguments, use multiple invocations of \[en]dockerarg.
+This allows for things like running containers with \[en]privileged
+.RS
+.RE
+.TP
 .B \[en]debug
 Sets defaults of \[en]username root \[en]userid 0 and the \[en]any
 option to show images that were not created by DUE.

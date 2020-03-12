@@ -1,6 +1,6 @@
 due (1.1.1) UNRELEASED; urgency=medium
 
-  * Version bump for ongoing development.
+  * Added --dockerarg to pass arguments directly to docker
 
  -- Alex Doyle <alexddoyle@gmail.com>  Sun, 01 Mar 2020 01:01:01 -0800
 
