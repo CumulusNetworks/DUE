@@ -555,7 +555,7 @@ function fxnMakeNewDockerImage()
 		#
 		# Merge any information from Dockerfile.config into the Dockerfile.create
 		# Put this right after DUE_INSERT_CONFIG
-		sed -i "/# DUE_INSERT_CONFIG/ r ${BUILD_MERGE_DIR}/${imageName}/Dockerfile.config" ${BUILD_MERGE_DIR}/"${imageName}"/Dockerfile.create
+		sed -i "/# DUE_INSERT_CONFIG/ r ${BUILD_MERGE_DIR}/${imageName}/Dockerfile.config" "${BUILD_MERGE_DIR}"/"${imageName}"/Dockerfile.create
 
 		fxnHeader "Created configuration directory [ $imageName ]"
 		echo ""
@@ -671,7 +671,6 @@ function fxnSelectContainer()
 
     local theContainers=""
     local entryLine=""
-    local containerID=""
 
     local doOperation="$1"
 	local imageName="$2"
@@ -777,8 +776,8 @@ function fxnSelectContainer()
         fi
     fi
 
-    echo "-------------------------------------------------------------------------------------------------------------------------"
-
+    echo " ----------------------------------------------------------------------------"
+    
     if [ "$theContainers" = "" ];then
         echo "  None."
         exit 0
@@ -788,30 +787,17 @@ function fxnSelectContainer()
 		# separate the head from the body to prevent it getting numbered
 		theHeader=$( echo "$theContainers" | head -n 1 )
 
-		#
-		# Default to not filtering by user for now...
-		#
-		# TODO: evaluate removing the else case
-		if [ "TRUE" = "TRUE" ];then
-			# set -n - clip first line
-			# cat -n - put a number at the start
-			theBody=$(  echo "$theContainers" \
-							| sed -n '1!p' \
-							| cat -n \
-							| sed -e 's/^    //g' -e 's/\t/  /g' )
-		else
-			# filter by user
-			theBody=$( echo "$theContainers" \
-						   | sed -n '1!p' \
-                           | grep "$userIs" \
-                           | cat -n \
-                           | sed -e 's/^    //g'  -e 's/\t/  /g' )
-			if [ "$theBody"  = "" ];then
-				echo ""
-				echo "  No containers found for user [ $userIs ]. Try --login-all ?"
-				echo ""
-				exit 0
-			fi
+		# set -n - clip first line
+		# cat -n - put a number at the start
+		theBody=$(  echo "$theContainers" \
+				| sed -n '1!p' \
+				| cat -n \
+				| sed -e 's/^    //g' -e 's/\t/  /g' )
+		if [ "$theBody"  = "" ];then
+		    echo ""
+		    echo "  No containers found for user [ $userIs ]. Try --login-all ?"
+		    echo ""
+		    exit 0
 		fi
 
 		# Filter by container type
@@ -906,8 +892,9 @@ function fxnDoLogin()
 
     local imname=""
     local doOperation="$1"
-	local useImage="$2"
-
+    local useImage="$2"
+    # If there is only 1 of something, set this to empty
+    local plural="s"
 	# Default to assuming it's a preconfigured due image they're trying to run.
 	local isDUEImage="TRUE"
 
@@ -973,15 +960,15 @@ function fxnDoLogin()
 		isDUEImage="FALSE"
 		# Default to sh login as container-create-user.sh probably doesn't exist
 		echo ""
-		echo "#########################################################"
-		echo "#                                                       #"
-		echo "# NOTE: This container does not have any DUE labels.    #"
-		echo "# You may have to run DUE again with:                   #"
-		echo "#   --login-shell to /bin/sh                            #"
-		echo "#   --username    to root                               #"
-		echo "#   --userid      to 0                                  #"
-		echo "#                                                       #"
-		echo "#########################################################"
+		echo "#############################################################################"
+		echo "#                                                                           #"
+		echo "#    NOTE: This container does not have any DUE labels.                     #"
+		echo "#    You may have to run DUE again with:                                    #"
+		echo "#      --login-shell to /bin/sh                                             #"
+		echo "#      --username    to root                                                #"
+		echo "#      --userid      to 0                                                   #"
+		echo "#                                                                           #"
+		echo "#############################################################################"		
 		echo ""
 		executeProgram="$LOGIN_SHELL"
 
@@ -1001,12 +988,17 @@ function fxnDoLogin()
     # If we are starting a new container
     if [ "$1" = "start" ];then
 		if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
-			usersContainers=$( docker ps | grep " ${USER_NAME}_" | wc -l )
+			usersContainers=$( docker ps | grep -c " ${USER_NAME}_"  )
 			# include this container they're starting
 			usersContainers=$(( usersContainers + 1 ))
+			if [ "$usersContainers" = 1 ];then
+			    # If there is only 1, don't reference it as multiple.
+			    # It's a small thing, but it always irritates me
+			    plural=""
+			fi
 			if [ $(( usersContainers > DUE_USER_CONTAINER_LIMIT )) = 1 ];then
 				echo ""
-				echo " Error: You have [ $usersContainers ] containers running, exceding the system limit of [ $DUE_USER_CONTAINER_LIMIT ] on $(hostname)"
+				echo " Error: You have [ $usersContainers ] DUE container${plural} running, exceding the system limit of [ $DUE_USER_CONTAINER_LIMIT ] on $(hostname)"
 				echo ""
 				echo " Stop some with:  $DUE_NAME --manage --stop"
 				echo ""
@@ -1171,7 +1163,8 @@ function fxnDoLogin()
 
 		#
 		# Let the user know what DUE is doing behind the scenes
-		#
+	#
+
         echo " ----------------------------------------------------------------------------"
         echo " ------ : start and log in to [ $SELECTED_CONTAINER_ID ] with this command:      -- "
         echo "   docker run $formatRunCMD"
@@ -1183,9 +1176,12 @@ function fxnDoLogin()
 		# Put this on two lines and delete the starting space newline..
 		echo "$ADDITIONAL_MOUNTS" | sed -e 's/--volume/\n -   --volume/g' | sed -e '/^ $/d'
 
-		echo " - "
-		echo " - You now have  [ $usersContainers ] containers running on $(hostname)."
-		echo " - User limit is [ $DUE_USER_CONTAINER_LIMIT ]" 
+		if [ "$usersContainers" != "" ];then
+		    # Only limit this for DUE containers.
+		    echo " - "
+		    echo " - You now have  [ $usersContainers ] DUE container${plural} running on $(hostname)."
+		    echo " - User limit is [ $DUE_USER_CONTAINER_LIMIT ]"
+		fi
         echo " -"
         echo " ----------------------------------------------------------------------------"
         echo " -------- Type 'exit' to leave.  Docker Container Output Follows ------------"
@@ -1360,7 +1356,8 @@ function fxnReadConfigFile()
 	# default set at the top of this file.
 	maxContainers=$(echo "$configVars" | grep DUE_USER_CONTAINER_LIMIT | tail -n 1 )
 	if [ "$maxContainers" != "" ];then
-		DUE_USER_CONTAINER_LIMIT="$maxContainers"
+	    # Trim everything before the = to leave the number
+	    DUE_USER_CONTAINER_LIMIT=${maxContainers##*=} 
 	fi
 	
 }

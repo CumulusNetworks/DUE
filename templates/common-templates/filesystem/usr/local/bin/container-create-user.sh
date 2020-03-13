@@ -316,7 +316,7 @@ if [ -e /usr/bin/docker ];then
 	if [ "$HOST_DOCKER_GID" != "" ];then
 		# Store the message for later
 		DOCKER_GID_MESSAGE="| config : Container docker group ID set to $HOST_DOCKER_GID"
-		fxnERR groupmod -g $HOST_DOCKER_GID docker || exit 1
+		fxnEC groupmod -g $HOST_DOCKER_GID docker || exit 1
 	fi
 fi
 
