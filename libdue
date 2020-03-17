@@ -440,10 +440,13 @@ function fxnMakeNewDockerImage()
 		exit 1
 	fi
 
-	#
-	# If the from location has : or / in it, that will trip up the Docker
-	# creation run, so strip them out here.
-	DOCKER_IMAGE_TAG="$( echo "$imageFrom" | tr ':' '-' | tr '/' '-' )"
+	# DOCKER_IMAGE_TAG will have been initialized to 'latest' by default,
+	# or will have been overridden by the user.
+	# Leaving this around in case there's a need to reference the base
+	# container it was created from.
+	# DOCKER_IMAGE_TAG="$( echo "$imageFrom" | tr ':' '-' | tr '/' '-' )"
+
+	# Name of image and corresponding tag
 	CONFIGURED_NAME_AND_TAG=due-${imageName}:${DOCKER_IMAGE_TAG}
 
 	if [ "$(which docker)" = "" ];then
@@ -566,7 +569,7 @@ function fxnMakeNewDockerImage()
 		if [ "$DO_CREATE_IMAGE_NOW" = "TRUE" ];then
 			# Create it all in one shot
 		    fxnHeader "Creating the new image with: $0 --create --build-dir ${BUILD_MERGE_DIR}/$imageName"			
-			$0 --create --build-dir "${BUILD_MERGE_DIR}/$imageName"
+			$0 --create --build-dir "${BUILD_MERGE_DIR}/$imageName" --tag "$DOCKER_IMAGE_TAG"
 		else
 		    fxnHeader " To create the new image, run: $0 --create --build-dir ${BUILD_MERGE_DIR}/$imageName"
 		fi
@@ -1036,6 +1039,10 @@ function fxnDoLogin()
 			
 			# specify user and ID
 			executeProgram+=" --username $USER_NAME --userid $USER_ID --groupid $USER_GROUP_ID --groupname $USER_GROUP_NAME "
+
+			# Set any CONTAINER_SPECIFIC_ARGS
+			fxnSetContainerSpecificArgs	"$DUEImageType"
+			
 		fi
 		# Generate a unique hostname
 		# Replace any / in name with - as Docker will complain.
@@ -1146,6 +1153,7 @@ function fxnDoLogin()
 		# Specify the container
 		# Pass the command to execute
         runCMD="$DOCKER_SPECIFIC_ARGS \
+				$CONTAINER_SPECIFIC_ARGS \
 				$doInteractive \
                 --rm \
                 $ADDITIONAL_MOUNTS \
@@ -1479,5 +1487,32 @@ function fxnDoContainerStop()
 		echo ""
 
 	fi
+
+}
+
+# Takes: String identifying the type of DUE container
+# Does:  Sets CONTIANER_SPECIFIC_ARGS, if needed.
+#
+# This sets any additional arguments to pass to Docker when starting a
+# container, such as --privileged or an additional mount point.
+#
+# This is left at the end of the file for easy merging, as local
+# branches may have deployment specific changes that do not apply
+# to upstream.
+function fxnSetContainerSpecificArgs()
+{
+	local imageType="$1"
+
+	# uses the value set by tye DUEImageType label from
+	# template directory's Dockerfile.config
+	case $imageType in
+		"no-op-image" )
+			# Example: Mount current directory under /build in the container.
+			# Useful if this is invoked by an automated build system
+			# that builds outside the home directory hierarchy
+			# CONTAINER_SPECIFIC_ARGS="  --volume $(dirname $(pwd)):/build "
+			;;
+
+	esac
 
 }
