@@ -73,12 +73,23 @@ to supply `--username root --userid 0` if the container wasn't created by DUE.
 
 ## On using `--privileged`. Do. Not. Recommend.
 The `--privileged` option gives a Docker container access to host device entries that would normally
-not be accessible. This can be useful for things like loopback mounting a filesystem to write to it.
-However this also allows the container to modify the host system, and presents a **security/stability** risk.
-By default DUE does not support this option. It absolutely has its place, but the risk is that because,
-generally speaking, anything done to a container is reset on exit, new users will have a false sense of
-security and may make changes to the host system itself.
-The best practice is to try and avoid running with `--privileged` whenever possible.
+not be accessible. This can be useful for things like loopback mounting a filesystem to write to it,
+or having a container that runs other containers.  
+**However** this also allows the container to modify the host system, and presents a **security/stability** risk,
+as users in the container may be able to affect the host system without realizing they are doing so.
+Within DUE it was a deliberate design choice to make things like this inconvenient so that the user has to be 
+acutely aware of what they are doing.
+
+## Using `--privileged`
+If you are indeed in a situation where this is necessary, `--privileged` can be passed to the command line
+invocation of Docker by using `due --run --dockerarg "--privileged"`. The `--dockerarg` option passes the
+following parameter through. It can be used multiple times for multiple arguments.
+If you need to have a container that has Docker installed in it to run other containers, and example
+invocation would be:
+`due --run --dockerarg "--privileged" --mount-dir "/dev:/dev" --mount-dir "/var/run/docker.sock:/var/run/docker.sock"`
+Note that this does mount two directories from the host system that can be modified by the container.
+**Use with caution.**
+
 
 # Debugging
 See `docs/Troubleshooting.md`

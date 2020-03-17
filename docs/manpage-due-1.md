@@ -113,6 +113,11 @@ DUE. This can be useful with image creation debug.
 	type: --run --build help to get the container's duebuild script's help
 	options directly.
 	
+--dockerarg [arg]
+:	Put [arg] in the docker run invocation. For multiple arguments, use
+    multiple invocations of --dockerarg. This allows for things like 
+	running containers with --privileged
+	
 --debug
 :	Sets defaults of --username root --userid 0 and the --any option to show
 images that were not created by DUE. Helpful for internal debug if image
@@ -236,7 +241,7 @@ Optional:
 :	  Delete the due-build-merge staging directories.
 
 
---mangage options
+--manage options
 -------
 These options are accessed after the --manage argument, and can
 make working with containers/images easier.
@@ -244,9 +249,13 @@ make working with containers/images easier.
 -l,  --list-images
 :	 List images created by DUE.
 
---stop
+--stop <pattern>
 :	 Use the menu interface to stop a running container. Works with
      --all to show containers not started by the user.
+	 If <pattern> is supplied, it will match all the user's containers
+	 to that pattern and produce a script that can be edited and run
+	 to delete the listed containers.
+	 NOTE: --all --stop <pattern> can be used to do some serious damage.
 	 NOTE: since all DUE containers are started with -rm, stopping
 	 a container deletes it and all the data in it from memory.
 
@@ -282,12 +291,21 @@ FILES
 *~/.conf/due/due.conf*
 
 :   Per-user default configuration file. Overrides the global one.
+    `due --manage --copy-config` will set that up for the user.
 
 
 
 ENVIRONMENT
 ===========
+The configuration file sets up the following variables:
 
+`DUE_ENV_DEFAULT_HOMEDIR` - evaled to define the user's home directory.
+This can be useful if there is a naming convention for work directories
+on shared systems.
+
+`DUE_USER_CONTAINER_LIMIT` - limit the number of containers a user
+is allowed to run. Handy on a shared system to remind people of 
+what they have running. This can easily be circumvented, though. 
 
 BUGS
 ====

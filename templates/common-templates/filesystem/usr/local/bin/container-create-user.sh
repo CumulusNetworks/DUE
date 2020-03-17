@@ -72,6 +72,12 @@ function fxnAddUserInContainer()
 
 	echo " ___________________________________________________________________________"
 	echo "|                                                                           |"
+
+	if [ "$DOCKER_GID_MESSAGE" != "" ];then
+		# If this container has docker, note that container docker's
+		# group id was set to match the host's
+		echo "$DOCKER_GID_MESSAGE"
+	fi
 	#Does the user name already exist?
 	# Anchor match to start of line and first : to prevent partial matches
 	containerUserName=$(grep  ^${USER_NAME}: /etc/passwd | sed -e 's/:.*//g' )
@@ -253,6 +259,8 @@ fi
 
 while [[ $# > 0 ]]
 do
+	# Ignore any unrecognized terms. Given this is invoked directly by
+	# the due script, they are more likely a future feature than user error	
     term="$1"
 	case $term in
 		-n|--username )
@@ -283,9 +291,35 @@ do
 			# parsing stops here
 			break
 			;;
+
+		--docker-group-id )
+			# If this container is configured to run other
+			# containers, its docker group ID has to match
+			# the host system's docker group ID.
+			HOST_DOCKER_GID="$2"
+			shift
+			;;
+
 	esac
 	shift		
 done
+
+# If this container is going to run other Docker containers,
+# it has to be invoked with --privileged, and mount the host's
+# /dev and /var/run/docker.sock directories, which does allow
+# the container to modify those directories.
+# The container's Group ID of it's install of Docker also has
+# to match the host's, so..
+if [ -e /usr/bin/docker ];then
+	# Oh, Docker is installed IN the container.
+	# Was a group ID passed? Otherwise don't mention it.
+	if [ "$HOST_DOCKER_GID" != "" ];then
+		# Store the message for later
+		DOCKER_GID_MESSAGE="| config : Container docker group ID set to $HOST_DOCKER_GID"
+		fxnEC groupmod -g $HOST_DOCKER_GID docker || exit 1
+	fi
+fi
+
 # at the user to the container
 fxnAddUserInContainer
 

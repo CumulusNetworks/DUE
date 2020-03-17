@@ -112,7 +112,7 @@ function fxnHelpManage()
 	echo "   --copy-config            Create a personal DUE configuration file in ~/.config/due/due.config"
 	echo "   --make-dev-dir <dir>     Populate a local directory for DUE container development."	
 	echo "   --list-templates         List available templates."
-	echo "   --stop                   Stop a running container"
+	echo "   --stop  <match>          Stop a running container. Optional pattern <match>"
     echo ""
 	echo "   --delete-matched [term]  Delete containers that contain this term. USE WITH CAUTION!"
 	echo "   --docker-clean           Run 'docker system prune ; docker image prune' to reclaim disk space."
@@ -141,8 +141,17 @@ function fxnHelpManageExamples()
 	echo "    $DUE_NAME --manage --delete-matched none "
 	echo "     Safety tip: don't put 'none' in your container names!"
 	echo ""
+	echo "   Stop containers you left running:"
+	echo "    $DUE_NAME --manage --stop "
+	echo ""
+	echo "   Stop all my package build containers with a script:"
+	echo "    $DUE_NAME --manage --stop pkg "
+	echo ""
 	echo "   Save the current state of a container as an image."
 	echo "    $DUE_NAME --manage --snapshot myNewImage "
+	echo ""
+	echo "  Clean the image build area "
+	echo "    $DUE_NAME --manage --clean"
 	echo ''
 }
 
@@ -278,6 +287,10 @@ function fxnHelpRun()
 	echo "        --build               Invoke container's /usr/local/bin/duebuild script"
 	echo "                              (if present in container) in current directory."
 	echo "        --container-name <n>  Change the name of the container to <n>"
+	echo ""
+	echo " Pass commands to Docker "
+	echo "        --dockerarg <arg>     <arg> will be applied directly to the Docker invocation."
+	echo "                               use multiple times for multiple args."
 	echo ""
 	echo " Host directories to mount in the container:"
 	echo "        --home-dir <host path> Absolute path on host system to mount as container user home directory"
@@ -666,6 +679,12 @@ function fxnParseRunArgs()
 				break
 				;;
 
+			--dockerarg )
+				# Tack additional arguments on to this
+				DOCKER_SPECIFIC_ARGS+=" $2 "
+				shift
+				;;
+			
 			--container-name )
 				# Change the default name of the running container
 				# Note if 'due' is not part of the name, it will be automatically filtered
@@ -850,7 +869,12 @@ function fxnParseManageArgs()
 			
 			--stop )
 				# Use the menu interface to stop a running container
+				# takes an optional pattern match
 				DO_STOP_CONTAINER="TRUE"
+				if [ "$2" != "" ];then					
+					STOP_TERM="$2"
+					shift
+				fi
 				;;
 			
 			--delete )
@@ -937,6 +961,7 @@ function fxnPrintArgs()
 	echo "|  Verbosity level          $VERBOSITY_LEVEL"
 	echo "|  Home directory:          $USE_HOMEDIR"
 	echo "|  Default home directory:  $DUE_ENV_DEFAULT_HOMEDIR"
+	echo "|  Max containers per user: $DUE_USER_CONTAINER_LIMIT"
 	echo "|  Config file:             $CONFIG_FILE_PATH"
 	if [ "$IGNORE_IMAGE_TYPE" = "TRUE" ];then
 		echo "|  Ignore image type:       $IGNORE_IMAGE_TYPE"
@@ -1191,7 +1216,7 @@ fi
 
 if [ "$DO_STOP_CONTAINER" = "TRUE" ];then
 	# Stop a running container. This will remove the container
-	fxnDoContainerStop "$USE_IMAGE_NAME"
+	fxnDoContainerStop "$STOP_TERM"
 	exit 
 fi
 

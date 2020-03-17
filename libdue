@@ -41,6 +41,12 @@ KNOWN_IMAGES="
  arm32v5/debian:buster
 "
 
+# Max number of containers per user.
+# Sometimes people need a reminder to clean up.
+# The config file will override this, provided a read works.
+
+DUE_USER_CONTAINER_LIMIT=10
+
 # expected directory for template patch files
 SPECIFIC_TEMPLATES_DIR="templates"
 
@@ -229,7 +235,7 @@ function fxnDeleteImage()
     echo " ________________________________________________________________________"
     echo "|                                                                       "
     echo "| Run [ ./$DELETE_SCRIPT ]                                "
-    echo "|   to delete the following containers that matched \"$DELETE_TERM\"                   "
+    echo "|   to delete the following images that matched \"$DELETE_TERM\"                   "
     echo "|________________________________________________________________________"
 
     echo ""
@@ -434,10 +440,13 @@ function fxnMakeNewDockerImage()
 		exit 1
 	fi
 
-	#
-	# If the from location has : or / in it, that will trip up the Docker
-	# creation run, so strip them out here.
-	DOCKER_IMAGE_TAG="$( echo "$imageFrom" | tr ':' '-' | tr '/' '-' )"
+	# DOCKER_IMAGE_TAG will have been initialized to 'latest' by default,
+	# or will have been overridden by the user.
+	# Leaving this around in case there's a need to reference the base
+	# container it was created from.
+	# DOCKER_IMAGE_TAG="$( echo "$imageFrom" | tr ':' '-' | tr '/' '-' )"
+
+	# Name of image and corresponding tag
 	CONFIGURED_NAME_AND_TAG=due-${imageName}:${DOCKER_IMAGE_TAG}
 
 	if [ "$(which docker)" = "" ];then
@@ -549,7 +558,7 @@ function fxnMakeNewDockerImage()
 		#
 		# Merge any information from Dockerfile.config into the Dockerfile.create
 		# Put this right after DUE_INSERT_CONFIG
-		sed -i "/# DUE_INSERT_CONFIG/ r ${BUILD_MERGE_DIR}/${imageName}/Dockerfile.config" ${BUILD_MERGE_DIR}/"${imageName}"/Dockerfile.create
+		sed -i "/# DUE_INSERT_CONFIG/ r ${BUILD_MERGE_DIR}/${imageName}/Dockerfile.config" "${BUILD_MERGE_DIR}"/"${imageName}"/Dockerfile.create
 
 		fxnHeader "Created configuration directory [ $imageName ]"
 		echo ""
@@ -560,7 +569,7 @@ function fxnMakeNewDockerImage()
 		if [ "$DO_CREATE_IMAGE_NOW" = "TRUE" ];then
 			# Create it all in one shot
 		    fxnHeader "Creating the new image with: $0 --create --build-dir ${BUILD_MERGE_DIR}/$imageName"			
-			$0 --create --build-dir "${BUILD_MERGE_DIR}/$imageName"
+			$0 --create --build-dir "${BUILD_MERGE_DIR}/$imageName" --tag "$DOCKER_IMAGE_TAG"
 		else
 		    fxnHeader " To create the new image, run: $0 --create --build-dir ${BUILD_MERGE_DIR}/$imageName"
 		fi
@@ -665,7 +674,6 @@ function fxnSelectContainer()
 
     local theContainers=""
     local entryLine=""
-    local containerID=""
 
     local doOperation="$1"
 	local imageName="$2"
@@ -771,8 +779,8 @@ function fxnSelectContainer()
         fi
     fi
 
-    echo "-------------------------------------------------------------------------------------------------------------------------"
-
+    echo " ----------------------------------------------------------------------------"
+    
     if [ "$theContainers" = "" ];then
         echo "  None."
         exit 0
@@ -782,30 +790,17 @@ function fxnSelectContainer()
 		# separate the head from the body to prevent it getting numbered
 		theHeader=$( echo "$theContainers" | head -n 1 )
 
-		#
-		# Default to not filtering by user for now...
-		#
-		# TODO: evaluate removing the else case
-		if [ "TRUE" = "TRUE" ];then
-			# set -n - clip first line
-			# cat -n - put a number at the start
-			theBody=$(  echo "$theContainers" \
-							| sed -n '1!p' \
-							| cat -n \
-							| sed -e 's/^    //g' -e 's/\t/  /g' )
-		else
-			# filter by user
-			theBody=$( echo "$theContainers" \
-						   | sed -n '1!p' \
-                           | grep "$userIs" \
-                           | cat -n \
-                           | sed -e 's/^    //g'  -e 's/\t/  /g' )
-			if [ "$theBody"  = "" ];then
-				echo ""
-				echo "  No containers found for user [ $userIs ]. Try --login-all ?"
-				echo ""
-				exit 0
-			fi
+		# set -n - clip first line
+		# cat -n - put a number at the start
+		theBody=$(  echo "$theContainers" \
+				| sed -n '1!p' \
+				| cat -n \
+				| sed -e 's/^    //g' -e 's/\t/  /g' )
+		if [ "$theBody"  = "" ];then
+		    echo ""
+		    echo "  No containers found for user [ $userIs ]. Try --login-all ?"
+		    echo ""
+		    exit 0
 		fi
 
 		# Filter by container type
@@ -900,8 +895,9 @@ function fxnDoLogin()
 
     local imname=""
     local doOperation="$1"
-	local useImage="$2"
-
+    local useImage="$2"
+    # If there is only 1 of something, set this to empty
+    local plural="s"
 	# Default to assuming it's a preconfigured due image they're trying to run.
 	local isDUEImage="TRUE"
 
@@ -910,6 +906,11 @@ function fxnDoLogin()
 
 	# Image name minus offending characters
 	local sanitizedContainerName=""
+
+	# Users may forget they have containers running.
+	# Remind them.
+	local usersContainers
+
 	
 	# Docker image label hinting where the mount point should be
 	# on an independently run command.
@@ -962,15 +963,15 @@ function fxnDoLogin()
 		isDUEImage="FALSE"
 		# Default to sh login as container-create-user.sh probably doesn't exist
 		echo ""
-		echo "#########################################################"
-		echo "#                                                       #"
-		echo "# NOTE: This container does not have any DUE labels.    #"
-		echo "# You may have to run DUE again with:                   #"
-		echo "#   --login-shell to /bin/sh                            #"
-		echo "#   --username    to root                               #"
-		echo "#   --userid      to 0                                  #"
-		echo "#                                                       #"
-		echo "#########################################################"
+		echo "#############################################################################"
+		echo "#                                                                           #"
+		echo "#    NOTE: This container does not have any DUE labels.                     #"
+		echo "#    You may have to run DUE again with:                                    #"
+		echo "#      --login-shell to /bin/sh                                             #"
+		echo "#      --username    to root                                                #"
+		echo "#      --userid      to 0                                                   #"
+		echo "#                                                                           #"
+		echo "#############################################################################"		
 		echo ""
 		executeProgram="$LOGIN_SHELL"
 
@@ -989,6 +990,25 @@ function fxnDoLogin()
 
     # If we are starting a new container
     if [ "$1" = "start" ];then
+		if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
+			usersContainers=$( docker ps | grep -c " ${USER_NAME}_"  )
+			# include this container they're starting
+			usersContainers=$(( usersContainers + 1 ))
+			if [ "$usersContainers" = 1 ];then
+			    # If there is only 1, don't reference it as multiple.
+			    # It's a small thing, but it always irritates me
+			    plural=""
+			fi
+			if [ $(( usersContainers > DUE_USER_CONTAINER_LIMIT )) = 1 ];then
+				echo ""
+				echo " Error: You have [ $usersContainers ] DUE container${plural} running, exceding the system limit of [ $DUE_USER_CONTAINER_LIMIT ] on $(hostname)"
+				echo ""
+				echo " Stop some with:  $DUE_NAME --manage --stop"
+				echo ""
+				exit 2
+			fi
+		fi
+
 		#
 		# Figure out the particulars of any directory mounts
 		#
@@ -1012,8 +1032,17 @@ function fxnDoLogin()
 				executeProgram=" $executeProgram --debug "
 			fi
 
+			# If running docker in the container, it has to match the host
+			# system's group ID
+			dockerGID=$( getent group 'docker' | awk -F ':' '{print$3}' )
+			executeProgram+=" --docker-group-id $dockerGID "
+			
 			# specify user and ID
 			executeProgram+=" --username $USER_NAME --userid $USER_ID --groupid $USER_GROUP_ID --groupname $USER_GROUP_NAME "
+
+			# Set any CONTAINER_SPECIFIC_ARGS
+			fxnSetContainerSpecificArgs	"$DUEImageType"
+			
 		fi
 		# Generate a unique hostname
 		# Replace any / in name with - as Docker will complain.
@@ -1115,17 +1144,23 @@ function fxnDoLogin()
 
 		# Skip network configuration for now
         #                --network=\"host\" \
+		# Pass any arguments that were set to go directly to docker
+		# be  interactive, or not
 		# use --rm to delete the container on exit
-
-        runCMD="$doInteractive \
+		# Mount any additional host directories
+		# Specify the user to Docker
+		# Set container host name
+		# Specify the container
+		# Pass the command to execute
+        runCMD="$DOCKER_SPECIFIC_ARGS \
+				$CONTAINER_SPECIFIC_ARGS \
+				$doInteractive \
                 --rm \
                 $ADDITIONAL_MOUNTS \
 				$SET_DOCKER_USER_ARGS \
                 --name $imname \
                 $userNameArg \
                 ${HOSTNAME_ARGS} \
-                ${SET_CONTAINER_USER_ID} \
-                ${SET_CONTAINER_USER_MOUNT_DIR} \
                 ${SELECTED_CONTAINER_ID} \
 				 $executeProgram"
 
@@ -1136,17 +1171,25 @@ function fxnDoLogin()
 
 		#
 		# Let the user know what DUE is doing behind the scenes
-		#
+	#
+
         echo " ----------------------------------------------------------------------------"
         echo " ------ : start and log in to [ $SELECTED_CONTAINER_ID ] with this command:      -- "
         echo "   docker run $formatRunCMD"
-
+		
         echo ""
         echo " ----------------------------------------------------------------------------"
         echo " ------ Host filesystems are mounted as follows: ----------------------------"
         echo " -"
 		# Put this on two lines and delete the starting space newline..
 		echo "$ADDITIONAL_MOUNTS" | sed -e 's/--volume/\n -   --volume/g' | sed -e '/^ $/d'
+
+		if [ "$usersContainers" != "" ];then
+		    # Only limit this for DUE containers.
+		    echo " - "
+		    echo " - You now have  [ $usersContainers ] DUE container${plural} running on $(hostname)."
+		    echo " - User limit is [ $DUE_USER_CONTAINER_LIMIT ]"
+		fi
         echo " -"
         echo " ----------------------------------------------------------------------------"
         echo " -------- Type 'exit' to leave.  Docker Container Output Follows ------------"
@@ -1300,7 +1343,8 @@ function fxnReadConfigFile()
 	# store variable name / value pairs
 	local configVars   
 	local homeDir
-
+	local maxContainers
+	
 	if [ -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then
 		# Unless the user has a local version...
 		CONFIG_FILE_PATH="$DUE_HOME_CONFIG_ABSOLUTE_PATH"
@@ -1316,6 +1360,14 @@ function fxnReadConfigFile()
 		eval "$( echo $homeDir )"			
 	fi
 
+	# Parse the DUE_USER_CONTAINER_LIMIT variable, and ovedrride the
+	# default set at the top of this file.
+	maxContainers=$(echo "$configVars" | grep DUE_USER_CONTAINER_LIMIT | tail -n 1 )
+	if [ "$maxContainers" != "" ];then
+	    # Trim everything before the = to leave the number
+	    DUE_USER_CONTAINER_LIMIT=${maxContainers##*=} 
+	fi
+	
 }
 
 # DUE embeds labels into the images it creates to get hints for how the containers should
@@ -1357,30 +1409,110 @@ function fxnPrintContainerLabels()
 # Stop a running container.
 # Note that if the container was started with DUE it will be removed, as
 # DUE containers clean up on exit.
-#
+# Takes: Optional pattern match as first argument
+
+STOP_SCRIPT="stop_these_docker_images.sh"
+
 function fxnDoContainerStop()
 {
 	local filterByUser
 	local containerInfo
+	local stopTerm="$1"	
 	local countDown=5
 	if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
 		filterByUser="${USER_NAME}"
 	fi
-	
-	fxnSelectContainer "running" "$filterByUser"
-	echo "Stopping container in 5 seconds. Use Ctrl-C to cancel."
-	containerInfo=$(docker ps | grep "$SELECTED_CONTAINER_ID")
-	echo "$containerInfo"
-	while [ $countDown -ne 0 ]
-	do
-		echo -n "${countDown}..."
-		((countDown--))
-		sleep 1
-	done
-	echo ""
-	echo "Stopping container."
-	fxnEC docker stop "$SELECTED_CONTAINER_ID" || exit 1
-	# Leave some evidence in the system log in case this was not what was intended.
-	/usr/bin/logger "due: $(whoami) stopped container [ $containerInfo ]"
-	echo "Stopped."
+
+	if [ "$stopTerm" = "" ];then
+		fxnSelectContainer "running" "$filterByUser"
+		echo "Stopping container in 5 seconds. Use Ctrl-C to cancel."
+		containerInfo=$(docker ps | grep "$SELECTED_CONTAINER_ID")
+		echo "$containerInfo"
+		while [ $countDown -ne 0 ]
+		do
+			echo -n "${countDown}..."
+			((countDown--))
+			sleep 1
+		done
+		echo ""
+		echo "Stopping container."
+		fxnEC docker stop "$SELECTED_CONTAINER_ID" || exit 1
+		# Leave some evidence in the system log in case this was not what was intended.
+		/usr/bin/logger "due: $(whoami) stopped container [ $containerInfo ]"
+		echo "Stopped."		
+	else
+		header=$( docker ps | head -n 1 )
+		terms=$( docker ps | grep "$stopTerm" )
+		if [ "$filterByUser" != "" ];then
+			terms=$( echo "$terms" | grep "$filterByUser" )
+		fi
+
+		if [ "$terms" = "" ];then
+			echo "Found no containers that had  : $stopTerm $filterByUser"
+			echo "Exiting."
+			exit 0			
+		fi
+		# make sure there is something to act on before continuing.
+		numToDelete=$( echo "$terms" | wc -l )
+		
+		# put a # after the container ID to turn the rest of the info in to a comment
+		# prepend the ID with 'docker stop' to create an executable command.
+		#echo "$terms" | sed -e 's/   / # /' | sed -e 's/^/docker stop /g' >> $STOP_SCRIPT
+
+		toDelete=$( echo "$terms" | sed -e 's/   / # /' | sed -e 's/^/docker stop /g' )
+
+		# just matching teh
+		# Create the stop script to be very explicit about what will happen
+		{
+			echo "#/bin/bash"
+			echo "# Created by $0 $INVOKED_WITH on $(date)"
+			echo "Will stop the following containers:" 
+			echo "            $header"
+			echo "$toDelete"
+
+			# Leave some evidence in the system log in case this was not what was intended.
+			echo "/usr/bin/logger \"due: $(whoami) stopped multiple containers.\""
+
+			# Clean up after ourselves 
+			echo "rm ./$STOP_SCRIPT"
+		} > $STOP_SCRIPT
+		
+		chmod a+x "$STOP_SCRIPT"		
+
+		echo " ________________________________________________________________________"
+		echo "|                                                                       "
+		echo "| Run [ ./$STOP_SCRIPT ]                                "
+		echo "|   to delete the [ $numToDelete ] containers that matched \"$stopTerm\"        "
+		echo "|________________________________________________________________________"
+		echo ""
+
+	fi
+
+}
+
+# Takes: String identifying the type of DUE container
+# Does:  Sets CONTIANER_SPECIFIC_ARGS, if needed.
+#
+# This sets any additional arguments to pass to Docker when starting a
+# container, such as --privileged or an additional mount point.
+#
+# This is left at the end of the file for easy merging, as local
+# branches may have deployment specific changes that do not apply
+# to upstream.
+function fxnSetContainerSpecificArgs()
+{
+	local imageType="$1"
+
+	# uses the value set by tye DUEImageType label from
+	# template directory's Dockerfile.config
+	case $imageType in
+		"no-op-image" )
+			# Example: Mount current directory under /build in the container.
+			# Useful if this is invoked by an automated build system
+			# that builds outside the home directory hierarchy
+			# CONTAINER_SPECIFIC_ARGS="  --volume $(dirname $(pwd)):/build "
+			;;
+
+	esac
+
 }
