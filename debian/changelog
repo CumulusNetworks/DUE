@@ -1,8 +1,10 @@
-due (1.1.1) UNRELEASED; urgency=medium
+due (1.2.0) RELEASED; urgency=medium
 
   * Added --dockerarg to pass arguments directly to docker
+  * Added docker run argument setting based on container type
+  * Fixed bug where container --tag option wasn't passed.
 
- -- Alex Doyle <alexddoyle@gmail.com>  Sun, 01 Mar 2020 01:01:01 -0800
+ -- Alex Doyle <alexddoyle@gmail.com>  Tue, 17 Mar 2020 01:02:00 -0800
 
 due (1.1.0) RELEASED; urgency=medium
 

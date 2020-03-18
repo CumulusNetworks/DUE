@@ -12,7 +12,7 @@
 # Enable extended pattern matching
 shopt -s extglob
 
-DUE_VERSION="1.1.0"
+DUE_VERSION="1.2.0"
 
 # Get enough information to add the current user account to a container
 USER_NAME=$(whoami)
