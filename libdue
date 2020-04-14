@@ -12,7 +12,13 @@
 # Enable extended pattern matching
 shopt -s extglob
 
-DUE_VERSION="1.2.0"
+DUE_VERSION="1.2.1"
+
+# Debian packages required for DUE to run
+REQUIRED_PACKAGES=" docker.io rsync bsdutils git"
+
+# Packages to support processor emulation (ARM builds, etc)
+RECOMMENDED_PACKAGES=" binfmt-support qemu qemu-user-static "
 
 # Get enough information to add the current user account to a container
 USER_NAME=$(whoami)
@@ -453,7 +459,12 @@ function fxnMakeNewDockerImage()
 		if [ -e /.dockerenv ];then
 			fxnERR "Docker not found, but you are already running in a container."
 		else
-			fxnERR "Docker not found! Try: sudo apt update ; sudo apt install docker. Exiting."
+			fxnERR "Docker not found! You should:"
+			echo "1 - Install with:                      sudo apt update ; sudo apt install $REQUIRED_PACKAGES "
+			echo "2 - Add yourself to the docker group:  sudo /usr/sbin/usermod -a -G docker $(whoami)"
+			echo "3 - Consider the recommended packages: sudo apt install $RECOMMENDED_PACKAGES "
+			echo "4 - Activate docker group membership:  log yourself out and log in again."
+			echo "Exiting."
 		fi
 		exit 1
 	fi
@@ -481,6 +492,10 @@ function fxnMakeNewDockerImage()
 		#
 		fxnHeader "Creating directory to be used for container build at: [ $imageName ]"
 		fxnPP "Copying non-template files from [ $USE_TEMPLATE_PATH ] to [ $imageName ]"
+		if [ ! -e /usr/bin/rsync ];then
+			fxnERR "rsync is not installed. Try: sudo apt update; sudo apt install rsync"
+			exit 1
+		fi
 		fxnEC rsync \
 			  --archive \
 			  --verbose \
@@ -1336,8 +1351,10 @@ function fxnCreateConfigFile()
 # Read any user set configuraton, and provide config file under ~/.config
 #
 
-# Save for later if printing --verbose . Default to using the system wide config file
-CONFIG_FILE_PATH="$DUE_CONFIG_FILE_PATH"
+# Save for later if printing --verbose.
+# Default to user's due.conf file
+CONFIG_FILE_PATH="$DUE_HOME_CONFIG_ABSOLUTE_PATH"
+
 function fxnReadConfigFile()
 {
 	# store variable name / value pairs
@@ -1345,29 +1362,37 @@ function fxnReadConfigFile()
 	local homeDir
 	local maxContainers
 	
-	if [ -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then
-		# Unless the user has a local version...
-		CONFIG_FILE_PATH="$DUE_HOME_CONFIG_ABSOLUTE_PATH"
+	# If the user's local DUE config does not exist
+	if [ ! -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then		
+		if [ -e "$CONFIG_FILE_PATH" ];then
+			# Use the system wide file if it exists ( via Debian package install)
+			CONFIG_FILE_PATH="$DUE_HOME_CONFIG_ABSOLUTE_PATH"
+		else
+			# Create a local config to use.
+			fxnPP "Creating DUE configuraton file at $CONFIG_FILE_PATH" 
+			fxnEC fxnCreateConfigFile || exit 1
+		fi
 	fi
 
-	# Read the file, filter out comments (#) and empty lines (\S)
-	configVars=$( grep -v "#" "$CONFIG_FILE_PATH" | grep "\S" )
+	if [ -e "$CONFIG_FILE_PATH" ];then
+		# Read the file, filter out comments (#) and empty lines (\S)
+		configVars=$( grep -v "#" "$CONFIG_FILE_PATH" | grep "\S" )
 
-	# Parse the DUE_ENV_DEFAULT_HOMEDIR variable.
-	homeDir=$(echo "$configVars" | grep DUE_ENV_DEFAULT_HOMEDIR | tail -n 1 )
-	if [ "$homeDir" != "" ];then
-		# This will set DUE_ENV_DEFAULT_HOMEDIR
-		eval "$( echo $homeDir )"			
-	fi
+		# Parse the DUE_ENV_DEFAULT_HOMEDIR variable.
+		homeDir=$(echo "$configVars" | grep DUE_ENV_DEFAULT_HOMEDIR | tail -n 1 )
+		if [ "$homeDir" != "" ];then
+			# This will set DUE_ENV_DEFAULT_HOMEDIR
+			eval "$( echo $homeDir )"			
+		fi
 
-	# Parse the DUE_USER_CONTAINER_LIMIT variable, and ovedrride the
-	# default set at the top of this file.
-	maxContainers=$(echo "$configVars" | grep DUE_USER_CONTAINER_LIMIT | tail -n 1 )
-	if [ "$maxContainers" != "" ];then
-	    # Trim everything before the = to leave the number
-	    DUE_USER_CONTAINER_LIMIT=${maxContainers##*=} 
+		# Parse the DUE_USER_CONTAINER_LIMIT variable, and ovedrride the
+		# default set at the top of this file.
+		maxContainers=$(echo "$configVars" | grep DUE_USER_CONTAINER_LIMIT | tail -n 1 )
+		if [ "$maxContainers" != "" ];then
+			# Trim everything before the = to leave the number
+			DUE_USER_CONTAINER_LIMIT=${maxContainers##*=} 
+		fi
 	fi
-	
 }
 
 # DUE embeds labels into the images it creates to get hints for how the containers should

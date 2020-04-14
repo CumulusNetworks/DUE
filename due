@@ -1083,6 +1083,22 @@ if [ "$DO_DEBUG" = "TRUE" ];then
 	set -x
 fi
 
+
+#
+# Check for user Docker group membership before any actions. 
+# They have to be a member for anything beyond this point
+# to work.
+#
+groups | grep -q "docker"
+if [ $? != 0 ];then
+	fxnWarn "You are not an active member of the Docker group."
+	echo " You can fix this by doing the following:"
+	echo "  1 - run: sudo /usr/sbin/usermod -a -G docker $(whoami)"
+	echo "  2 - log out and back in again for the addition to take effect."
+	echo ""
+	exit 1				
+fi
+
 #
 # if logging in to a running container
 #

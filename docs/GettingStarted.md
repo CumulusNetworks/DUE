@@ -17,7 +17,7 @@ packages:
 If this is a Debian based Linux, like Ubuntu `sudo apt-get update; sudo apt-get install git docker.io` will handle this.  
 Once Docker is installed, add yourself to the docker group with:
 
-`sudo usermod -a -G docker $(whoami)`
+`sudo /usr/sbin/usermod -a -G docker $(whoami)`
 
 You will probably have to log out and back in for your new membership to take effect
 
