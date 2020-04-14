@@ -5,7 +5,7 @@ Priority: optional
 Build-Depends: debhelper (>= 9),
 	       git
 Standards-Version: 3.9.8
-Homepage: https://github.com/ehdoyle/DUE
+Homepage: https://github.com/CumulusNetworks/DUE
 
 Package: due
 Architecture: all
