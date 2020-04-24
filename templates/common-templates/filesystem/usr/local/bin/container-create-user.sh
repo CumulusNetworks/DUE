@@ -234,6 +234,8 @@ function fxnRunAsUser()
 		echo "| Done   [ $COMMAND_LIST ]"
 		echo "| Status [ $result ]"
         echo "|___________________________________________________________________________|"
+		# Make sure the result of the command is returned
+		return $result
     else
         echo "|                                                                           |"		
         echo "| Container log in text follows:                                            |"
