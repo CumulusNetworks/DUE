@@ -234,7 +234,7 @@ function fxnDeleteImage()
 
     docker images \
         | grep "$DELETE_TERM" \
-        | awk '{printf "# Delete: %s Tag: %s Imaage ID %s, Created %s %s %s, Size %s \n docker rmi --force %s \n", $1, $2, $3, $4, $5, $6, $7, $3}' \
+        | awk '{printf "# Delete: %s Tag: %s Image ID %s, Created %s %s %s, Size %s \n docker rmi --force %s \n", $1, $2, $3, $4, $5, $6, $7, $3}' \
               >> "$DELETE_SCRIPT"
 
 
