@@ -74,6 +74,10 @@ directory above the one where the build is being run.
 
 **Example:** due --run --build --default
 
+#### Build a Debian package from source using a .dsc file
+Given a compressed tar file and a Debian Source Code (dsc) file, DUE will configure the source directories and attempt to build.
+**Example:** due --run --build --build-dsc foo.dsc
+
 #### Using `--build --cbuild`
 **Purpose:** The `--cbuild` option runs any default `duebuild` configuration (ex: dependency resolution ) and then passes subsequent arguments to dpkg-buildpackage 
 **Example:** build just the source package: due --run --build --cbuild -us -uc --build=source

@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 # SCRIPT_PURPOSE: Low-rent version of sbuild. Resolve dependencies. Build a debian package, and mabye more
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 
@@ -91,7 +91,7 @@ function fxnHelp()
     echo "  Build targets:"
     echo "   -c|--cbuild <args>          <args> takes the rest of the command line and passes it"
     echo "                               to dpkg-buildpackage. Must be the last argument on the line."
-    echo "      --build-from-deb-source  Build from .dsc and tar.gz, if that's all you've got."
+    echo "      --build-dsc <.dsc file>  Build from debian source control file .dsc and associated tar.gz"
     echo "      --default                Try to build with default settings."
     echo ""
     echo "  Build options:"
@@ -188,7 +188,7 @@ function fxnPrintConfig()
     echo "| Invoked with:      $INVOKED_WITH"
     if [ "$DO_DEFAULT" != "" ];then
         echo "| Building with default settings"
-    fi	
+    fi
     echo "| dpkg command:      $DPKG_BUILDENV dpkg-buildpackage  $ADDITIONAL_BUILD_ARGS "
     echo "|"
     echo "| Build dir            [ $(pwd) ]"
@@ -205,8 +205,8 @@ function fxnPrintConfig()
         echo "| Build type 'all'     [ $DO_BUILD_TYPE_ALL ]"
     fi
 
-    if [ "$DO_BUILD_SOURCE" != "" ];then
-        echo "| Build source pkg     [ $DO_BUILD_SOURCE ]"
+    if [ "$BUILD_SOURCE_DSC_FILE" != "" ];then
+        echo "| Build source pkg     [ $BUILD_SOURCE_DSC_FILE ]"
     fi
     if [ "$USE_JESSIE_DPKG" != "" ];then
         echo "| Older dpkg-build     [ $USE_JESSIE_DPKG ]"
@@ -655,34 +655,50 @@ do
         -c | --cbuild )
             # Default to build everything in container context
             DO_BUILD="TRUE"
-	    if [ "$2" != "" ];then
-		# More arguements? 
-		# skip over --cbuild	
-		shift
-		# The rest of the arguments passed should be given verbatim to
-		# whatever the build command is.
-		ADDITIONAL_BUILD_ARGS="$*"
-	    fi
-	    break
+            if [ "$2" != "" ];then
+                # More arguements?
+                # skip over --cbuild
+                shift
+                # The rest of the arguments passed should be given verbatim to
+                # whatever the build command is.
+                ADDITIONAL_BUILD_ARGS="$*"
+            fi
+            break
             ;;
 
-		--default )
-			DO_DEFAULT="TRUE"
-			# --default is an exported hook that can be be called by DUE 
-			# when this container is run. The intent is to do a very 
-			# basic build operation to demonstrate functionality
-			# and hopefully cover common cases.
-			# For Debian packge build, the --cbuild option conveniently 
-			# does all this, so use it.
-			DO_BUILD="TRUE"
-			;;
-		
-        --build-from-deb-source )
+        --default )
+            DO_DEFAULT="TRUE"
+            # --default is an exported hook that can be be called by DUE
+            # when this container is run. The intent is to do a very
+            # basic build operation to demonstrate functionality
+            # and hopefully cover common cases.
+            # For Debian packge build, the --cbuild option conveniently
+            # does all this, so use it.
+            DO_BUILD="TRUE"
+            ;;
+
+        --build-dsc )
             # Build based off a debian source package .dsc, tar.gz
             # Default to build everything
             DO_BUILD="TRUE"
-            # flag this is coming from .dsc & tar.gz, not .git
-            BUILD_FROM_DEBIAN_SOURCE="TRUE"
+            BUILD_SOURCE_DSC_FILE="$2"
+            # Stop things here if the file does not exist.
+            if [ ! -e "$BUILD_SOURCE_DSC_FILE" ];then
+                fxnERR " --build-from-deb-source file [ $BUILD_SOURCE_DSC_FILE ] was not found in current directory."
+                echo "Possible files in [ $PWD ]:"
+                ls -l *.dsc
+                echo ""
+                exit 1
+            fi
+            # Some more sanity checking
+            if [[ "$BUILD_SOURCE_DSC_FILE" != *".dsc" ]];then
+                fxnERR " --build-from-deb-source file [ $BUILD_SOURCE_DSC_FILE ] does not end in .dsc. Exiting."
+                exit 1
+            fi
+
+            shift
+
+
             ;;
 
         -j* )
@@ -819,7 +835,7 @@ if [ "$DO_BUILD" = "TRUE" ];then
 
     if [ "$ADDITIONAL_BUILD_ARGS" != "" ];then
         # User is overriding defaults to dpkg-buildpackage, so
-		# take it literally with no defaults.
+        # take it literally with no defaults.
         BUILD_ARGS="$ADDITIONAL_BUILD_ARGS"
     fi
 
@@ -836,7 +852,7 @@ fi
 
 # Add parallel build
 if [ "$BUILD_JOBS" != "" ];then
-   BUILD_ARGS+=" -j${BUILD_JOBS} "
+    BUILD_ARGS+=" -j${BUILD_JOBS} "
 fi
 
 if [ "$ADD_SOURCES_LIST" != "" ];then
@@ -923,136 +939,125 @@ fi
 
 if [ "$DO_BUILD" = "TRUE" ];then
 
-    if [ ! -e debian/control ];then
-        # Debian build directories don't seem to be here.
-        # Is this a build from Debian source?
-        if  ls ./*.tar.gz 1> /dev/null 2>&1 ;then
-            fxnPP "No debian/control but did find .tar.gz. Attempting build from Debian source."
-            BUILD_FROM_DEBIAN_SOURCE="TRUE"
-        else
-            fxnERR "Failed to find debian/control directory or .tar.gz file to build from Debian source."
-            echo "Current directory: [ $(pwd) ]"
-            echo "Contents:"
-            ls -l
-            echo "Exiting."
-            exit 1
-        fi
-    fi
-
     # if this is building a debian source package and not a
     # git checkout, there should be only one each of .dsc and .tar.gz file
     # Extract the code so there's a debian/control file and proceed.
 
-    if [ "$BUILD_FROM_DEBIAN_SOURCE" = "TRUE" ];then
-        # Use find, rather than ls, per shellcheck
-        if [ "$(find . -maxdepth 1 -name '*.tar.gz' | wc -l)" != 1 ];then
-            
-            fxnERR "Not building from source. Multiple tar.gz files found. Put target in its own directory."
-            ls -l ./*tar.gz
-            exit 1
-        fi
 
-        if [ "$DEV_PACKAGE_VERSION" != "" ];then
-            # Without a clean way to revert this (as is the case with git packages that take --revert )
-            # The package version strings will keep appending in the changelog, creating a mess.
-            # User can manually edit it if desired.
-            fxnWARN "Not adding [ $DEV_PACKAGE_VERSION ] to packages built from .dsc. Edit debian/changelog manually."
-            DEV_PACKAGE_VERSION=""
-        fi
-
-        dscFile=$( ls -- *.dsc )
-        fxnPP "Extracting source with dpkg-source -x $dscFile"
-        dpkg-source -x "$dscFile"
-        retCode=$?
-
-        case $retCode in
-            255 )
-                fxnWARN "Directory already exists. Continuing."
-                ;;
-            0 )
-                fxnPP "Extraction successful. Continuing."
-                ;;
-            * )
-                fxnERR "Got dpkg-source -x return code [ $retCode ]. Exiting."
-                exit 1
-                ;;
-        esac
-
-        # Time to guess the name of the package build directory, as these things are
-        # occasionally inconsistent
-        # Hope it's the name of the orig.tar.gz file, with:
-        #  the _ changed to -
-        #  and the orig.tar.gz gone
-        # The above dpkg-source -x should have generated this directory.
-        # If not, we've no idea where to go, and are done.
-        buildDir=$( find . -maxdepth 1 -name '*.orig.tar.gz' | tr '_' '-' | sed -e 's/.orig.tar.gz//g' )
-
-        if [ ! -e "$buildDir" ];then
-            fxnERR "Failed to find expected source directory [ $buildDir ] in [ $(pwd) ]. Exiting."
-            exit 1
-        fi
-        # hop in the build directory and let it go from there
-        fxnPP "Setting current working directory to [ $buildDir ]"
-        fxnEC cd "$buildDir" || exit 1
+    if [ "$DEV_PACKAGE_VERSION" != "" ];then
+        # Without a clean way to revert this (as is the case with git packages that take --revert )
+        # The package version strings will keep appending in the changelog, creating a mess.
+        # So warn about that.
+        fxnWARN "Adding new [ $DEV_PACKAGE_VERSION ] to debian/changelog. These additions are cumulative."
     fi
-    #
-    # Figure out what sbuild parameters were passed and translate
-    # them to a dpkg-buildpackage command line
-    #
 
-    PACKAGE_DIR_NAME="$(basename "$(dirname "$(pwd)")")"
-    BUILD_LOG_FILE="$(dirname "$(pwd)")/${PACKAGE_DIR_NAME}_$(date +%s)_${TARGET_ARCHITECTURE}.build"
+    fxnPP "Extracting source with dpkg-source -x $BUILD_SOURCE_DSC_FILE"
+    dpkg-source -x "$BUILD_SOURCE_DSC_FILE"
+    retCode=$?
 
-    fxnMSG "Logging to [ $BUILD_LOG_FILE ]"
+    case $retCode in
+        255 )
+            fxnWARN "Directory already exists. Continuing."
+            ;;
+        0 )
+            fxnPP "Extraction successful. Continuing."
+            ;;
+        * )
+            fxnERR "Got dpkg-source -x return code [ $retCode ]. Exiting."
+            exit 1
+            ;;
+    esac
+
+    # Time to guess the name of the package build directory, as these things are
+    # occasionally inconsistent
+    # Hope it's the name of the orig.tar.gz file, with:
+    #  the _ changed to -
+    #  and the orig.tar.gz gone
+    # The above dpkg-source -x should have generated this directory.
+    # If not, we've no idea where to go, and are done.
+
+    # list most recent directory
+    buildDir=$( ls -1rd -- */ | tail -n 1)
+
+    fxnPP "Using most recently created directory [ $buildDir ]"
+
+    if [ ! -e "$buildDir" ];then
+        fxnERR "Failed to find expected source directory [ $buildDir ] in [ $(pwd) ]. Exiting."
+        exit 1
+    fi
+    # hop in the build directory and let it go from there
+    fxnPP "Setting current working directory to [ $buildDir ]"
+    fxnEC cd "$buildDir" || exit 1
+fi # BUILD_SOURCE_DSC
+
+if [ ! -e debian/control ];then
+    # Debian build directories don't seem to be here.
+    fxnERR "Failed to find debian/control directory in [ $(pwd) ]. Use --build-dsc if using a .dsc and tar file."
+    echo "Current directory: [ $(pwd) ]"
+    echo "Contents:"
+    ls -l
+    echo "Exiting."
+    exit 1
+fi
+
+#
+# Figure out what sbuild parameters were passed and translate
+# them to a dpkg-buildpackage command line
+#
+
+PACKAGE_DIR_NAME="$(basename "$(dirname "$(pwd)")")"
+BUILD_LOG_FILE="$(dirname "$(pwd)")/${PACKAGE_DIR_NAME}_$(date +%s)_${TARGET_ARCHITECTURE}.build"
+
+fxnMSG "Logging to [ $BUILD_LOG_FILE ]"
 
 
+if [ "$INSTALL_DEBS_DIR" != "" ];then
+    # If we're building dependent packages, toast all debs in the directory above
+    # so we don't have multiple versions of the same deb to try and install.
+    # otherwise just leave them
+    fxnWARN "Deleting ../*deb files for a clean copy to [ $INSTALL_DEBS_DIR ]"
+    rm ../*deb
+fi
+
+#
+# actually do the build
+#
+
+if [ "$DEV_PACKAGE_VERSION" = "" ];then
+    # This is the default, don't have to advertise.
+    #fxnPP "Building without a dev version string."
+    # --nolog - print everything to stdout
+    fxnDoDebianBuild --nolog  | tee -a "$BUILD_LOG_FILE"
+else
+    fxnPP "Building with dev version $DEV_PACKAGE_VERSION"
+    fxnDoDevBuild  2>&1 | tee -a  "$BUILD_LOG_FILE"
+fi
+
+# Preserve exit code through exit trap
+RETURN_CODE=${PIPESTATUS[0]}
+
+# step out of debian
+cd ..
+
+
+if [ "$RETURN_CODE" = "0" ];then
     if [ "$INSTALL_DEBS_DIR" != "" ];then
-        # If we're building dependent packages, toast all debs in the directory above
-        # so we don't have multiple versions of the same deb to try and install.
-        # otherwise just leave them
-        fxnWARN "Deleting ../*deb files for a clean copy to [ $INSTALL_DEBS_DIR ]"
-        rm ../*deb
+        fxnPP "Copying built .debs into [ $INSTALL_DEBS_DIR ] for future dependency builds."
+        echo "Debs to copy in [ $(pwd) ]:"
+        ls -l
+        echo "To [ $INSTALL_DEBS_DIR ]"
+        ls -l "$INSTALL_DEBS_DIR"
+        # *deb should get udebs as well
+        fxnEC cp -- *.deb "$INSTALL_DEBS_DIR" || exit 1
+        echo "Contents of $INSTALL_DEBS_DIR:"
+        ls -lrt "$INSTALL_DEBS_DIR"
+
+        fxnPP "Build finished at [ $(date) ]"
     fi
+else
+    fxnERR "Build FAILED with return code [ $RETURN_CODE ] at [ $(date) ]"
+fi
 
-    #
-    # actually do the build
-    #
-
-    if [ "$DEV_PACKAGE_VERSION" = "" ];then
-        # This is the default, don't have to advertise.
-        #fxnPP "Building without a dev version string."
-        # --nolog - print everything to stdout
-        fxnDoDebianBuild --nolog  | tee -a "$BUILD_LOG_FILE"
-    else
-        fxnPP "Building with dev version $DEV_PACKAGE_VERSION"
-        fxnDoDevBuild  2>&1 | tee -a  "$BUILD_LOG_FILE"
-    fi
-
-    # Preserve exit code through exit trap
-    RETURN_CODE=${PIPESTATUS[0]}
-
-    # step out of debian
-    cd ..
-
-
-    if [ "$RETURN_CODE" = "0" ];then
-        if [ "$INSTALL_DEBS_DIR" != "" ];then
-            fxnPP "Copying built .debs into [ $INSTALL_DEBS_DIR ] for future dependency builds."
-            echo "Debs to copy in [ $(pwd) ]:"
-            ls -l
-            echo "To [ $INSTALL_DEBS_DIR ]"
-            ls -l "$INSTALL_DEBS_DIR"
-            # *deb should get udebs as well
-            fxnEC cp -- *.deb "$INSTALL_DEBS_DIR" || exit 1
-            echo "Contents of $INSTALL_DEBS_DIR:"
-            ls -lrt "$INSTALL_DEBS_DIR"
-
-            fxnPP "Build finished at [ $(date) ]"
-        fi
-    else
-        fxnERR "Build FAILED with return code [ $RETURN_CODE ] at [ $(date) ]"
-    fi
-
-    exit "$RETURN_CODE"
+exit "$RETURN_CODE"
 
 fi
