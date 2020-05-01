@@ -686,7 +686,7 @@ do
             if [ ! -e "$BUILD_SOURCE_DSC_FILE" ];then
                 fxnERR " --build-from-deb-source file [ $BUILD_SOURCE_DSC_FILE ] was not found in current directory."
                 echo "Possible files in [ $PWD ]:"
-                ls -l *.dsc
+                ls -l -- *.dsc
                 echo ""
                 exit 1
             fi
@@ -976,8 +976,11 @@ if [ "$DO_BUILD" = "TRUE" ];then
     # The above dpkg-source -x should have generated this directory.
     # If not, we've no idea where to go, and are done.
 
+    packageName=${BUILD_SOURCE_DSC_FILE%%_*}
+
+
     # list most recent directory
-    buildDir=$( ls -1rd -- */ | tail -n 1)
+    buildDir=$( ls -1rd -- */ | grep "$packageName" | tail -n 1)
 
     fxnPP "Using most recently created directory [ $buildDir ]"
 
@@ -1060,4 +1063,3 @@ fi
 
 exit "$RETURN_CODE"
 
-fi
