@@ -1,8 +1,10 @@
-due (1.2.2~1)  UNRELEASED; urgency=medium
+due (1.3.0) RELEASED; urgency=medium
 
-  * Non interactive commands now return a return code
+  * Non interactive commands now return a return code.
+  * debian-package duebuild has better .dsc build support.
+  * Label support to auto-mount host directories with DUEMountHostDirectories.
 
- -- Alex Doyle <alexddoyle@gmail.com>  Fri, 24 Apr 2020 09:37:59 -0700
+ -- Alex Doyle <alexddoyle@gmail.com>  Tue, 12 May 2020 17:46:51 -0700
 
 due (1.2.1) RELEASED; urgency=medium
 

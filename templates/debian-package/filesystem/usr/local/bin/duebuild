@@ -951,47 +951,49 @@ if [ "$DO_BUILD" = "TRUE" ];then
         fxnWARN "Adding new [ $DEV_PACKAGE_VERSION ] to debian/changelog. These additions are cumulative."
     fi
 
-    fxnPP "Extracting source with dpkg-source -x $BUILD_SOURCE_DSC_FILE"
-    dpkg-source -x "$BUILD_SOURCE_DSC_FILE"
-    retCode=$?
+    if [ "$BUILD_SOURCE_DSC_FILE" != "" ];then
+        fxnPP "Extracting source with dpkg-source -x $BUILD_SOURCE_DSC_FILE"
+        dpkg-source -x "$BUILD_SOURCE_DSC_FILE"
+        retCode=$?
 
-    case $retCode in
-        255 )
-            fxnWARN "Directory already exists. Continuing."
-            ;;
-        0 )
-            fxnPP "Extraction successful. Continuing."
-            ;;
-        * )
-            fxnERR "Got dpkg-source -x return code [ $retCode ]. Exiting."
+        case $retCode in
+            255 )
+                fxnWARN "Directory already exists. Continuing."
+                ;;
+            0 )
+                fxnPP "Extraction successful. Continuing."
+                ;;
+            * )
+                fxnERR "Got dpkg-source -x return code [ $retCode ]. Exiting."
+                exit 1
+                ;;
+        esac
+
+        # Time to guess the name of the package build directory, as these things are
+        # occasionally inconsistent
+        # Hope it's the name of the orig.tar.gz file, with:
+        #  the _ changed to -
+        #  and the orig.tar.gz gone
+        # The above dpkg-source -x should have generated this directory.
+        # If not, we've no idea where to go, and are done.
+
+        packageName=${BUILD_SOURCE_DSC_FILE%%_*}
+
+
+        # list most recent directory
+        buildDir=$( ls -1rd -- */ | grep "$packageName" | tail -n 1)
+
+        fxnPP "Using most recently created directory [ $buildDir ]"
+
+        if [ ! -e "$buildDir" ];then
+            fxnERR "Failed to find expected source directory [ $buildDir ] in [ $(pwd) ]. Exiting."
             exit 1
-            ;;
-    esac
-
-    # Time to guess the name of the package build directory, as these things are
-    # occasionally inconsistent
-    # Hope it's the name of the orig.tar.gz file, with:
-    #  the _ changed to -
-    #  and the orig.tar.gz gone
-    # The above dpkg-source -x should have generated this directory.
-    # If not, we've no idea where to go, and are done.
-
-    packageName=${BUILD_SOURCE_DSC_FILE%%_*}
-
-
-    # list most recent directory
-    buildDir=$( ls -1rd -- */ | grep "$packageName" | tail -n 1)
-
-    fxnPP "Using most recently created directory [ $buildDir ]"
-
-    if [ ! -e "$buildDir" ];then
-        fxnERR "Failed to find expected source directory [ $buildDir ] in [ $(pwd) ]. Exiting."
-        exit 1
-    fi
-    # hop in the build directory and let it go from there
-    fxnPP "Setting current working directory to [ $buildDir ]"
-    fxnEC cd "$buildDir" || exit 1
-fi # BUILD_SOURCE_DSC
+        fi
+        # hop in the build directory and let it go from there
+        fxnPP "Setting current working directory to [ $buildDir ]"
+        fxnEC cd "$buildDir" || exit 1
+    fi # BUILD_SOURCE_DSC
+fi # if DO_BUILD
 
 if [ ! -e debian/control ];then
     # Debian build directories don't seem to be here.

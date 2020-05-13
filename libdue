@@ -1095,12 +1095,36 @@ function fxnDoLogin()
 			COMMAND_LIST=" cd $CURRENT_WORKING_DIRECTORY ; $COMMAND_LIST"
         fi
 
-        if [ "$DO_MOUNT_SHARED_DIRECTORY" = "TRUE" ];then
-			# If the container has additional host directories to mount in
-			# the container, take the host:container points here
-			ADDITIONAL_MOUNTS+=" --volume $MOUNT_SHARE_DIR:$CONTAINER_MOUNT_SHARE_DIR "
-        fi
+		#
+		# Does the container specify any host directories it would like to mount?
+		# This is handy for sharing host installed tools or libraries without
+		# bloating the container, and every instance of it.
+		# The container's Dockerfile.config would have a:
+		#   LABEL DUEMountHostDirectories=/path1,/path2,/path3, etc to mount
+		#
+		
+		MountHostDirectories=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirectories}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
+		if [ "$MountHostDirectories" != "" ];then
+			# Save the current field separator (probably return)
+			saveIFS=$IFS
+			# Because it is now a ','
+			IFS=,
+			# use a 'here string' to parse the string like a file
+			read -ra theDirs <<< "$MountHostDirectories"
 
+			for dir in "${theDirs[@]}"; do
+				if [ -d "$dir" ];then
+					fxnPP "Mounting host directory [ $dir ] in container, as suggested by container."
+					ADDITIONAL_MOUNTS+=" --volume $dir:$dir "
+				else
+					# host system doesn't have a directory the container wants to
+					# mount. Warn and proceed. 
+					fxnWarn "Host system does not have directory [ $dir ] requested by contiainer. Continuing..."
+				fi
+			done
+			# restore the field separator to what it was.
+			IFS=$saveIFS
+		fi
         if [ "$CONTAINER_MOUNT_DIR" = "" ];then
             # Specify where the host directory is mounted in the container
             CONTAINER_MOUNT_DIR="$DEFAULT_CONTAINER_MOUNT_BUILD_DIR"
@@ -1160,6 +1184,7 @@ function fxnDoLogin()
 		# Skip network configuration for now
         #                --network=\"host\" \
 		# Pass any arguments that were set to go directly to docker
+		# Pass any arguments that may be container specific
 		# be  interactive, or not
 		# use --rm to delete the container on exit
 		# Mount any additional host directories
@@ -1409,23 +1434,27 @@ function fxnPrintContainerLabels()
 	local DUEMountHostDirsUP
 	local DUEContainerVersion
 	local DUECreationVersion
-	
+
+	# How does the container identify itself?
 	DUEImageType=$( docker inspect -f '{{.ContainerConfig.Labels.DUEImageType}}' "${containerName}":"${containerTag}" )
 
 	# Mount host filesystem this many directories up from current working directory
 	DUEMountHostDirsUP=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirsUp}}' "${containerName}":"${containerTag}" )
-	#
+	# Revision of container
 	DUEContainerVersion=$( docker inspect -f '{{.ContainerConfig.Labels.DUEContainerVersion}}' "${containerName}":"${containerTag}" )
+	# DUE revision that created it
     DUECreationVersion=$( docker inspect -f '{{.ContainerConfig.Labels.DUECreationVersion}}' "${containerName}":"${containerTag}" )
-	
+	# Host directories to try and mount in the container (for shared libraries, etc)
+	DUEMountHostDirectories=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirectories}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
 
 	echo " -----------------------------------------------------------------------"
 	echo "| DUE Labels for:      ${containerName}:${containerTag}"
 	echo "|"
-	echo "| DUEImageType         $DUEImageType"
-	echo "| DUEMountHostDirsUP   $DUEMountHostDirsUP"
-	echo "| DUEContainerVersion  $DUEContainerVersion"
-	echo "| DUECreationVersion   $DUECreationVersion"
+	echo "| DUEImageType            $DUEImageType"
+	echo "| DUEContainerVersion     $DUEContainerVersion"
+	echo "| DUECreationVersion      $DUECreationVersion"	
+	echo "| DUEMountHostDirsUP      $DUEMountHostDirsUP"
+	echo "| DUEMountHostDirectories $DUEMountHostDirectories"
 	echo "|"
 
 }
