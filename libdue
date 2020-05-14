@@ -1462,10 +1462,11 @@ function fxnPrintContainerLabels()
 #
 # Stop a running container.
 # Note that if the container was started with DUE it will be removed, as
-# DUE containers clean up on exit.
+# DUE containers are invoked with --rm and clean up on exit.
 # Takes: Optional pattern match as first argument
+# Note: if --all was part of the invocation, containers for all users will be shown.
 
-STOP_SCRIPT="stop_these_docker_images.sh"
+STOP_SCRIPT="stop_these_docker_containers.sh"
 
 function fxnDoContainerStop()
 {
