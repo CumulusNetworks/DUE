@@ -304,6 +304,7 @@ function fxnPrintMissingBuildDependencies()
 #
 function fxnIsolatePackageDependencies()
 {
+    local errorCode
     echo ""
     echo " # Installing packages one at a time to try to isolate failures."
     echo " #  ----------------------------------------------------------------------------------"
@@ -317,6 +318,10 @@ function fxnIsolatePackageDependencies()
                           | sed -e 's/^(.*//g' -e 's/.*)//g' \
                           | tr '\n' ' ')
 
+    if [ "$missingDepends" = "" ];then
+	echo "   Looks like all dependencies are present. Proably a local leftover depends package triggering this."
+	return 0
+    fi
     # Ignore shellcheck warning to "" missingDepends
     for pkg in ${missingDepends[@]}
     do
@@ -331,13 +336,15 @@ function fxnIsolatePackageDependencies()
             # Run a loud install to hilight the failure
             fxnPP "Failed  [ $pkg ]. Retrying the install to get the errors."
             sudo apt-get install --assume-yes --no-install-recommends "$pkg"
+	    # Flag that an error happened
+	    errorCode=1
         fi
     done
 
     # At this point, this list should be all install failures.
     fxnPrintMissingBuildDependencies
 
-    return "$errorCode"
+    return $errorCode
 }
 
 
@@ -397,11 +404,10 @@ function fxnDoDebianBuild()
 
         fxnIsolatePackageDependencies
 
-        # Things should be as fixed as possible by this point, so run it again to highlight the errors.
-        fxnIsolatePackageDependencies
-
-        exit $?
-
+        # Things should be as fixed as possible by this point, so run it again to highlight the errors,
+		# or accept success
+        fxnIsolatePackageDependencies || exit 1
+	
     fi
     echo ""
 
