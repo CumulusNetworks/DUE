@@ -598,6 +598,7 @@ function fxnParseCreateArgs()
 
 function fxnParseRunArgs()
 {
+
 	while [[ $# -gt 0 ]]
 	do
 		term="$1"
@@ -653,6 +654,13 @@ function fxnParseRunArgs()
 				# Take the rest of the line as the command, so any arguments
 				# passed to the build should follow this.
 				if [ "$2" != "" ];then
+					# Seems the run help would be useful here.
+					case $2 in
+						-h | --help | help )
+							fxnHelpRun
+							exit
+							;;
+					esac
 					# skip over --build
 					shift
 					COMMAND_LIST="$*"
