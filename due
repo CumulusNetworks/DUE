@@ -452,7 +452,7 @@ function fxnParseCreateArgs()
 				fi
 				;;
 
-			--clean )
+			--clean | clean )
 				# remove the build directory
 				DO_CREATE_CLEAN="TRUE"
 				# nothing else to parse after this
