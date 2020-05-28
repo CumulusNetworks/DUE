@@ -863,7 +863,10 @@ fi
 
 if [ "$ADD_SOURCES_LIST" != "" ];then
     fxnPP "Copying $ADD_SOURCES_LIST to /etc/apt/sources.list.d"
-    sudo cp "$ADD_SOURCES_LIST" /etc/apt/sources.list.d
+    fxnEC sudo cp "$ADD_SOURCES_LIST" /etc/apt/sources.list.d  || exit 1
+	# If the added sources.list is bad, fail immediately.
+	fxnEC sudo apt-get update || exit 1
+	
 fi
 
 
