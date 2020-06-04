@@ -286,17 +286,29 @@ function fxnDebianSourceOne()
 }
 
 # Print missing build dependencies
+# Return: 0 if all dependencies are present
+#         -1 otherwise
 function fxnPrintMissingBuildDependencies()
 {
     missingDepends=$( dpkg-checkbuilddeps 2>&1  | sed -e 's/^.*dependencies://g' )
-    echo ""
-    echo " # At least one of these build dependencies (via  dpkg-checkbuilddeps ) is missing"
-    echo " #  ----------------------------------------------------------------------------------"
-    echo " #"
-    echo " #  $missingDepends"
-    echo " #"
-    echo " #   ------------------------- End list of missing dependencies ------------------------"
-    echo ""
+    if [ "$missingDepends" = "" ];then
+        echo " #  ----------------------------------------------------------------------------------"
+        echo " #"
+        echo " # All dependencies are accounted for."
+        echo " #"
+        echo " #  ----------------------------------------------------------------------------------"
+        return 0
+    else
+        echo ""
+        echo " # At least one of these build dependencies (via  dpkg-checkbuilddeps ) is missing"
+        echo " #  ----------------------------------------------------------------------------------"
+        echo " #"
+        echo " #  $missingDepends"
+        echo " #"
+        echo " #   ------------------------- End list of missing dependencies ------------------------"
+        echo ""
+        return -1
+    fi
 }
 
 #
@@ -304,7 +316,6 @@ function fxnPrintMissingBuildDependencies()
 #
 function fxnIsolatePackageDependencies()
 {
-    local errorCode
     echo ""
     echo " # Installing packages one at a time to try to isolate failures."
     echo " #  ----------------------------------------------------------------------------------"
@@ -336,15 +347,12 @@ function fxnIsolatePackageDependencies()
             # Run a loud install to hilight the failure
             fxnPP "Failed  [ $pkg ]. Retrying the install to get the errors."
             sudo apt-get install --assume-yes --no-install-recommends "$pkg"
-	    # Flag that an error happened
-	    errorCode=1
         fi
     done
 
     # At this point, this list should be all install failures.
     fxnPrintMissingBuildDependencies
-
-    return $errorCode
+    return $?
 }
 
 
@@ -386,6 +394,9 @@ function fxnDoDebianBuild()
         #note that an error was hit in case it's not a lack of dependencies.
         fxnERR "Hit error [ $errorCode ] in : sudo mk-build-deps --install ./debian/control --tool apt-get -y"
 
+        # Sometimes this gets thrown by prior <pkg>-build-deps*deb files,
+        # so try it clean.
+
         # Print what was trying to be installed
         fxnPrintMissingBuildDependencies
 
@@ -400,9 +411,8 @@ function fxnDoDebianBuild()
         fxnIsolatePackageDependencies
 
         # Things should be as fixed as possible by this point, so run it again to highlight the errors,
-		# or accept success
+        # or continue if everything fixed itself
         fxnIsolatePackageDependencies || exit 1
-	
     fi
     echo ""
 
