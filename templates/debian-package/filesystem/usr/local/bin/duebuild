@@ -358,30 +358,25 @@ function fxnDoDebianBuild()
     fxnMSG "Resolving build dependencies."
     echo ""
 
-    # Build containers may not have run apt get update yet
-    # So if there are no files in this directory, run apt get update.
-    # Note: if a dpkg -i has been done, as would be the case of local debs
-    # being installed, a 'partial' file exists under /var/lib/apt/lists.
-    # Don't let 'partial' prevent an apt-get update.
-    aptFilesPresent=$( ls /var/lib/apt/lists | grep -v "partial" | wc -l  )
-    if [ "$aptFilesPresent" = "0" ];then
-        fxnPP "Running apt-get update, as no index files were found in /var/lib/apt/lists."
-        fxnEC sudo apt-get update || return 1
-    fi
-
-    # Make sure the environment has the tools to configure the environment.
-    if [ ! -e /usr/bin/mk-build-deps ];then
-        fxnPP "Failed to find mk-build-deps. Installing devscripts and equivs."
-        fxnEC sudo apt-get update || exit 1
-        fxnEC sudo apt-get install --assume-yes equivs devscripts || exit 1
-    fi
-
     # Possibly a failed source extraction, or the fallout of a bad day.
     # Either way, this has nowhere to go now.
     if [ ! -e ./debian/control ];then
         fxnERR "Failed to find ./debian/control in [ $(pwd) ]. Exiting."
         exit 1
+    fi	
+
+	# Always apt-get update
+    fxnPP "Running apt-get update."
+    sudo apt-get update || fxnWarn "apt-get update failed. Continuing with local index."
+
+
+    # Make sure the environment has the tools to configure the environment.
+    if [ ! -e /usr/bin/mk-build-deps ];then
+        fxnPP "Failed to find mk-build-deps. Installing devscripts and equivs."
+        fxnEC sudo apt-get install --assume-yes equivs devscripts || exit 1
     fi
+
+
     # Create package with all needed build dependencies
     # install it
     # remove the .deb after to keep git from FREAKING OUT!
