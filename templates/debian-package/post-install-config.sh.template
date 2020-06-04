@@ -59,6 +59,7 @@ DEBIAN_FRONTEND=noninteractive \
 				$KERNEL_BUILD_PACKAGES \
 				$LINTIAN_PACKAGES \
 				$EDITORS \
+				apt-utils \
 				dpkg-dev  || exit 1
 
 echo "Done $0"
