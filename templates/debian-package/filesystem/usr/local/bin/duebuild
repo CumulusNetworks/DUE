@@ -197,7 +197,13 @@ function fxnPrintConfig()
     echo "| dpkg command:      $DPKG_BUILDENV dpkg-buildpackage  $ADDITIONAL_BUILD_ARGS "
     echo "|"
     echo "| Build dir            [ $(pwd) ]"
+	echo "| Local .deb repo      [ $LOCAL_REPO_NAME ]"
+	echo "| Non-repo debs        [ $INSTALL_DEBS_DIR ]"
+	echo "| Extra sources.list   [ $ADD_SOURCES_LIST ]"
+	echo "|"	
     echo "| Reproducible stamp   [ $(date -d @"$SOURCE_DATE_EPOCH") ]"
+
+	
     if [ "$DO_BUILD_ARCH_SPECIFIC" != "" ];then
         echo "| Build arch specific  [ $DO_BUILD_ARCH_SPECIFIC ]"
     fi
@@ -312,7 +318,7 @@ function fxnPrintMissingBuildDependencies()
         echo " #"
         echo " #   ------------------------- End list of missing dependencies ------------------------"
         echo ""
-        return -1
+        return 1
     fi
 }
 
@@ -437,13 +443,13 @@ function fxnUseLocalPackageRepository()
 	fxnEC cp -f "$addContentsDir"/*.deb "$poolDir" || exit 1
 	curDir=$(pwd)
 
-	cd "$LOCAL_PACKAGE_REPOSITORY_ROOT"
+	cd "$LOCAL_PACKAGE_REPOSITORY_ROOT" || exit 1
 
 	fxnPP "Updating local repository at $LOCAL_PACKAGE_REPOSITORY_PATH"
 	#	fxnEC apt-ftparchive --arch $useArchitecture  packages pool | 
 	fxnEC apt-ftparchive packages pool | \
-	    tee ${repositoryBinDir}/Packages | \
-	    gzip > ${repositoryBinDir}/Packages.gz  || exit 1
+	    tee "${repositoryBinDir}"/Packages | \
+	    gzip > "${repositoryBinDir}"/Packages.gz  || exit 1
 
 	# Options to supply to the release file
 	optionList=" -o APT::FTPArchive::Release::Origin=DUE-duebuild \
@@ -457,15 +463,16 @@ function fxnUseLocalPackageRepository()
 
 	# release under dists/local-due-repo/main/binary-amd64
 	fxnPP "Creating Release file under ${repositoryBinDir}"
-	apt-ftparchive release ${repositoryBinDir} > \
-				   ${repositoryBinDir}/Release
+	apt-ftparchive release "${repositoryBinDir}" > \
+				   "${repositoryBinDir}"/Release
 	
 	# Top level release file under dists/local-due-repo
 	fxnPP "Creating Release file under ${LOCAL_PACKAGE_REPOSITORY_ROOT}/dists/${repositoryDistribution}"
-	apt-ftparchive $optionList release ${LOCAL_PACKAGE_REPOSITORY_ROOT}/dists/${repositoryDistribution}/ > \
-				   ${LOCAL_PACKAGE_REPOSITORY_ROOT}/dists/${repositoryDistribution}/Release
+	apt-ftparchive $optionList release "${LOCAL_PACKAGE_REPOSITORY_ROOT}/dists/${repositoryDistribution}/" > \
+		       "${LOCAL_PACKAGE_REPOSITORY_ROOT}/dists/${repositoryDistribution}/Release"
 
-	cd "$curDir"
+	cd "$curDir" || exit 1
+	 
     fi # if contents to add
 
     # Update the sources.list file
@@ -473,11 +480,10 @@ function fxnUseLocalPackageRepository()
     if [ ! -e /etc/apt/sources.list.d/${sourcesListFile} ];then
 		fxnPP "Creating sources.list file for local repository as: [ $localRepoSourcesList ]"
 
-		echo "# Created by $(whoami) using $0 building from $(pwd) on $(date)" > $localRepoSourcesList
-		echo "deb [arch=$useArchitecture trusted=yes] copy:${LOCAL_PACKAGE_REPOSITORY_ROOT}/ $repositoryDistribution $repositoryComponent" >> $localRepoSourcesList    
-
+		echo "# Created by $(whoami) using $0 building from $(pwd) on $(date)" > "$localRepoSourcesList"
+		echo "deb [arch=$useArchitecture trusted=yes] copy:${LOCAL_PACKAGE_REPOSITORY_ROOT}/ $repositoryDistribution $repositoryComponent" >> "$localRepoSourcesList"
 		fxnPP "Adding local repository sources.list to local /etc/apt/sources.list.d"
-		fxnEC sudo cp $localRepoSourcesList /etc/apt/sources.list.d/ || exit 1
+		fxnEC sudo cp "$localRepoSourcesList" /etc/apt/sources.list.d/ || exit 1
     else
 		fxnPP "Local sources.list exists at /etc/apt/sources.list.d/${sourcesListFile}"
     fi # If no local sources list file
@@ -511,7 +517,6 @@ EOF
 # Function to replace sbuild
 function fxnDoDebianBuild()
 {
-    local aptFilesPresent=""
     local missingDepends=""
     local errorCode=""
 
@@ -831,6 +836,10 @@ do
 	    # them for subsequent builds.
 	    # Useful when building packages that depend on previously
 	    # built packages.
+		if [ "$2" = "" ];then
+			fxnERR "Failed to specify repository with --use-local-repo! Exiting."
+			exit 1
+		fi
 	    LOCAL_REPO_NAME="$2"
 	    shift
 	    ;;
