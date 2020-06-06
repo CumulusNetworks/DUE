@@ -3,7 +3,7 @@ Upstream-Name: due
 Upstream-Contact: Alex Doyle <alexddoyle@gmail.com>
 Source: https://github.com/ehdoyle/DUE
 
-Copyright (c) 2019 Cumulus Networks, Inc.
+Copyright (c) 2019,2020 Cumulus Networks, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,5 +24,5 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 Files: *
-Copyright: 2019 Cumulus Networks, Inc.
+Copyright: 2019,2020 Cumulus Networks, Inc.
 License: MIT

@@ -1,3 +1,13 @@
+due (1.4.0) RELEASED; urgency=medium
+
+  * Copyright updates to 2020
+  * Debian package build: add local package repository feature.
+  * Debian package build: improved package dependency install error handling.
+  * Debian package build: container apt upgrades before build.
+  * Debian package build: update documentation with package build examples.
+
+ -- Alex Doyle <adoyle@cumulusnetworks.com>  Sat, 06 Jun 2020 10:21:05 -0700
+
 due (1.3.1) RELEASED; urgency=medium
 
   * Update version number
