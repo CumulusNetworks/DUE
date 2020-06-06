@@ -532,7 +532,9 @@ function fxnDoDebianBuild()
 	fi
     sudo apt-get update || fxnWARN "apt-get update failed. Continuing with local index."
 
-
+	fxnPP "Upgrading local packages so that any already installed build dependencies are up to date."
+    sudo apt-get upgrade --assume-yes || fxnWARN "apt-get upgrade failed. Continuing with local index."
+	
     # Make sure the environment has the tools to configure the environment.
     if [ ! -e /usr/bin/mk-build-deps ];then
         fxnPP "Failed to find mk-build-deps. Installing devscripts and equivs."
