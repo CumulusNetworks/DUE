@@ -91,13 +91,45 @@ It's just another way of arriving at the final makefile invocation, however.
 **Example:** Edit the debian/changelog to set a development version string for the package:
   due --run --build --dev-version ~123 --cbuild
 
+### Building a package that depends on previously built packages  
+**Purpose** use a local package repository to store and serve built packages.  
+**Example** ``due --run --build --use-local-repo myRepo``  
+Or:  
+**Example** ``due --run --image due-package-debian-10 --build --use-local-repo myRepo``  
+
+The ``--use-local-repo`` option will create a local Debian package repository in the
+directory above the build directory, and the DUE contianer will use packages from 
+it at the start of build, and add all built packages to it at the end of build.  
+    
+This is incredibly helpful when building packages that depend on other packages to have already been built.  
+    
+For Example - if package B depends on files supplied by package A  
+
+`cd package-A`  
+
+Now use a previously built Debian 10 image by default, and name the repository myRepo.  
+`due --run --build --image due-package-debian-10 --build --use-local-repo myRepo`  
+
+The duebuild script in the container  looks for `myRepo`, fails to find it, creates it, and then accesses it,
+resulting in a few warnings because the repository isn't popluated.  
+
+The build completes and the *.debs are put in `myRepo`  
+
+`cd package-B`  
+
+`due --run --build --image due-package-debian-10 --build --use-local-repo myRepo`  
+The duebuild script adds `myRepo` as a high priority repository and creates a
+sources.list entry for it.  
+The build proceeds, with the package-A *.debs being accessed.  
+The build completes, and package-B debs are added to `myRepo`
+
+*Caveats*: There is some overlap here with the `--install-debs-dir` option.  
+Also this has only been tested with .debs of a single architecture. Using source tarfiles
+and multiple architectures may not work.
+
 ## Debugging
 Or, a descriptive collection of ways things have failed. Expect this list to grow.  
 
 
 #  Additional notes:
 None.
-
-
-
-

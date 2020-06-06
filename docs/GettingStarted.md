@@ -56,7 +56,8 @@ or just testing the mechanics of DUE image creation.
     `-----------------------------------------------------------------------------------------`  
     `1  due-example-debian-10          debian-10             114MB               b45c5e64d1a3`  
     `2  due-package-debian-10          debian-10             732MB               6053b1f43bcd`  
-    `3  due-onie-build                 debian-9              823MB               70cb5b66aa87`    
+    `3  due-onie-build                 debian-9              823MB               70cb5b66aa87`  
+    `4  due-pkg-u-18.04                pkg-ubuntu-18.04      598MB               aae462a75630`  
 
 4. For reference, the Docker command used to start the container will scroll by, as well as the output
 from the DUE scripts that dynamically create your user account in the container, and any other additional
@@ -75,7 +76,21 @@ and note the `Create it with` commands after the `Image type` listings.
 These are parsed out of the `templates/<type>/README.md` files that suggest how to build the type of image.
 
 The rest of this document will get in to using specific types of containers, and how you can create and debug your own.
- 
+
+## A Practical Example.
+DUE can be used to build itself as a Debian package.  
+First, create a Debian package build container, using an example from `due --create help`. If you are using Ubuntu, this might look like:  
+`./due --create --from ubuntu:18.04 --description "Package Build for Ubuntu 18.04" --name pkg-u-18.04 --prompt PKGU1804 --tag pkg-ubuntu-18.04 --use-template debian-package  
+  
+Once the Docker image has built, DUE can use it to build itself with:  
+  
+`due --build`  <- Will let you choose your container, if there is more than one.  
+Or:  
+`due --run --image due-pkg-u-18.04:pkg-ubuntu-18.04 --build` <- build using `due-pkg-u-18.04` image with tag `pkg-ubuntu-18.04`  
+  
+Once the build completes, there should be a due*.deb in the directory above where you just built.
+
+
 ###The Details:
 
 Let's take a deeper dive in to what was happening behind the scenes with the example container.
