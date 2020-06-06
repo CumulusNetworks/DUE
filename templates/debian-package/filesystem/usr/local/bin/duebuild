@@ -2,7 +2,7 @@
 # SCRIPT_PURPOSE: Low-rent version of sbuild. Resolve dependencies. Build a debian package, and mabye more
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 
-# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+# Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
 
