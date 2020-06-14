@@ -54,6 +54,10 @@ OR
 
 Use `due --run --image <name>`  Due uses `<name>` as a `*name*` wildcard match, and if there is only one match,
  runs that image. Otherwise you'll get the menu.
+ 
+## How do I know what arguments a container's duebuild script will take?
+
+Run `due --duebuild --help` and you can select a container to run `duebuild --help` in.  
 
 ## Can I log in to a running container?
 Yes, use `due --login`, which will show all running DUE created containers, and should log you in as yourself.

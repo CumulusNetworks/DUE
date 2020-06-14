@@ -194,7 +194,7 @@ function fxnPrintConfig()
     if [ "$DO_DEFAULT" != "" ];then
         echo "| Building with default settings"
     fi
-    echo "| dpkg command:      $DPKG_BUILDENV dpkg-buildpackage  $ADDITIONAL_BUILD_ARGS "
+    echo "| dpkg command:      $DPKG_BUILDENV dpkg-buildpackage  $BUILD_ARGS "
     echo "|"
     echo "| Build dir            [ $(pwd) ]"
 	echo "| Local .deb repo      [ $LOCAL_REPO_NAME ]"
@@ -775,6 +775,10 @@ if [ "$#" = "0" ];then
     exit 0
 fi
 
+# Track this. --jobs and -j* by themselves don't count as a non-default
+#  build command.
+TOTAL_COMMAND_LINE_ARGS="$#"
+
 #
 # Gather arguments and set action flags for processing after
 # all parsing is done. The only functions that should get called
@@ -893,6 +897,11 @@ do
         -j* )
             # number of build job threads
             BUILD_JOBS="${term#-j}"
+			# If only jobs were specified, do default build
+			if [ $TOTAL_COMMAND_LINE_ARGS = 1 ];then
+			    DO_DEFAULT="TRUE"
+			    DO_BUILD="TRUE"
+			fi
             ;;
 
         --jobs )
@@ -902,6 +911,11 @@ do
                 fxnERR "--jobs requires a #"
                 exit 1
             fi
+			# If only jobs were specified, do default build			
+			if [ $TOTAL_COMMAND_LINE_ARGS = 2 ];then
+			    DO_DEFAULT="TRUE"
+			    DO_BUILD="TRUE"
+			fi
             shift
             ;;
 

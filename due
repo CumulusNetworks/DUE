@@ -74,7 +74,8 @@ function fxnHelp ()
 	echo ""
 	echo "   -c | --create             Build a container using configuration from DIR"
 	echo "   -r | --run                Select image to run from a menu."
-	echo "        --build              shortcut for --run --build. For more, type: $0 --run help."
+	echo "        --build              Shortcut to run the container's duebuild script."
+	echo "        --duebuild           Same as --build but takes --help to print a container's duebuild help."
 	echo "   -m | --manage             Manage existing images and containers."
 	echo "   -v | --verbose            Print extra information when running."
 	echo "        --version            Print version of DUE."
@@ -285,7 +286,9 @@ function fxnHelpRun()
 	echo "                              NOTE2:  Quote \"\" your arguments if using multiple commands!"
 	echo "                              NOTE3:  \ any ; so everything after the ; goes to DUE"
 	echo "        --build               Invoke container's /usr/local/bin/duebuild script"
-	echo "                              (if present in container) in current directory."
+	echo "                              (if present in container) in current directory."	
+	echo "        --duebuild            Same as --build, but appending --help will run"
+	echo "                               duebuild --help in a container you select."
 	echo "        --container-name <n>  Change the name of the container to <n>"
 	echo ""
 	echo " Pass commands to Docker "
@@ -356,11 +359,14 @@ function fxnHelpRunExamples()
 	echo "  passed to a shell in the container."
 	echo "    $DUE_NAME --run --command ls -l /"
 	echo ""
+	echo " Get help for the duebuild script in a container you will choose."
+	echo "  $DUE_NAME --duebuild --help" 
+	echo ""
 	echo " Run Debian package build program, dpkg-plus, and..."
 	echo "  Mount build directory /home/username/mypackage in the container at /build."
 	echo "  Set a development version string of ~789 in the version."
 	echo "  ..and build source packages too."
-	echo "   $DUE_NAME --run --command /usr/local/bin/dpkg-plus \\"
+	echo "   $DUE_NAME --run --command duebuild \\"
 	echo "       --use-directory /home/username/mypackage/ \\"
 	echo "       --build --dev-version ~789 --source"
 	echo ""
@@ -649,10 +655,19 @@ function fxnParseRunArgs()
 				FILTER_SHOW_ONLY_DUE="FALSE"
 
 				;;
-			-b | --build )
+			-b | --build | --duebuild )
 				# execute /usr/local/bin/duebuild
+				if [ "$term" = "--duebuild" ];then
+					# if the request is specifically due --help --duebuild, run
+					# the container to get duebuild --help in it.
+					if [ "$2" = "--help" ];then
+						fxnPP "Select a container to run 'duebuild --help' in:"
+						due --run --command duebuild --help
+						exit 0
+					fi
+				fi
 				# Take the rest of the line as the command, so any arguments
-				# passed to the build should follow this.
+				# passed to the build should follow this.				
 				if [ "$2" != "" ];then
 					# Seems the run help would be useful here.
 					case $2 in
@@ -1018,7 +1033,7 @@ do
 
 		# all of these commands can drop
 		# straight into getting a container
-		-r | -l | --run | --run-image | --login | --build )
+		-r | -l | --run | --run-image | --login | --build | --duebuild )
 			fxnParseRunArgs "$@"
 			break
 			;;

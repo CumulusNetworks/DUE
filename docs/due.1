@@ -57,7 +57,7 @@ Start new containers.
 .RS
 .RE
 .TP
-.B \[en]build
+.B \[en]build, \[en]duebuild
 Execute container's /usr/local/bin/duebuild script in current directory.
 See the \[en]run section for more.
 .RS
@@ -139,15 +139,24 @@ Example: look at /proc and the password file in a container: ./due
 \[en]run \[en]command \[lq]ls \-lrt /proc\[rq] ; \[lq]cat
 /etc/passwd\[rq]
 .TP
-.B \[en]build
+.B \[en]build | \[en]duebuild
 If there is a /usr/local/bin/duebuild script in the container, this
 option will run it with a default configuration, or take additional
 passed arguments if present.
 Those arguments will vary depending on the nature of the target being
 built by the container's duebuild script.
 For more information, check the template/README.md for the image type,
-or type: \[en]run \[en]build help to get the container's duebuild
-script's help options directly.
+or use: due \[en]duebuild \[en]help to select a container and get its
+duebuild script's help nnoptions directly.
+.RS
+.RE
+.TP
+.B \[en]duebuild
+Same behavior as \[en]build, but a bit clearer that it is working with
+the selected container's duebuild script.
+One noteable difference is that due \[en]duebuild \[en]help will select
+a container and execute duebuild \[en]help to see the options provided
+by that particular script.
 .RS
 .RE
 .TP

@@ -1,3 +1,9 @@
+due (1.4.1~0) UNRELEASED; urgency=medium
+
+  * Debian package build: --jobs now applies with default build
+
+ -- Alex Doyle <alexddoyle@gmail.com>  Sun, 14 Jun 2020 09:35:04 -0700
+
 due (1.4.0) RELEASED; urgency=medium
 
   * Copyright updates to 2020

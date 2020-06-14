@@ -44,7 +44,7 @@ Each of these options has context specific help and sub commands
 
 :   Start new containers.
 
---build
+--build, --duebuild
 
 :   Execute container's /usr/local/bin/duebuild script in current directory.
     See the --run section for more.
@@ -104,15 +104,21 @@ DUE. This can be useful with image creation debug.
  Example: look at /proc and the password file in a container:
           ./due --run --command "ls -lrt /proc"  \; "cat /etc/passwd"
 
---build
+--build | --duebuild
 :	If there is a /usr/local/bin/duebuild script in the container, this option
     will run it with a default configuration, or take additional passed
 	arguments if present. Those arguments will vary depending on the nature of
 	the target being built by the container's duebuild script.
 	For more information, check the template/README.md for the image type, or
-	type: --run --build help to get the container's duebuild script's help
-	options directly.
-	
+	use: due --duebuild --help to select a container and get its duebuild script's 
+	help nnoptions directly.
+
+--duebuild
+:	Same behavior as --build, but a bit clearer that it is working with the
+    selected container's duebuild script. One noteable difference
+    is that due --duebuild --help will select a container and execute
+	duebuild --help to see the options provided by that particular script.
+
 --dockerarg [arg]
 :	Put [arg] in the docker run invocation. For multiple arguments, use
     multiple invocations of --dockerarg. This allows for things like 
