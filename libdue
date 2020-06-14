@@ -1104,7 +1104,7 @@ function fxnDoLogin()
 		#
 		
 		MountHostDirectories=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirectories}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
-		if [ "$MountHostDirectories" != "" ];then
+		if [ "$MountHostDirectories" != "<no value>" ];then
 			# Save the current field separator (probably return)
 			saveIFS=$IFS
 			# Because it is now a ','

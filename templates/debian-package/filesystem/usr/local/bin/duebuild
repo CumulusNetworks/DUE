@@ -97,6 +97,7 @@ function fxnHelp()
     echo "  Build options:"
     echo "   -j|--jobs <#>               Number of parallel builds to use."
     echo "   --skip-tests                define DEB_BUILD_OPTIONS=nocheck before build."
+    echo "   --deb-build-option <opt>    Add 'opt' to DEB_BUILD_OPTIONS. Use once per option."
     echo "   --build-attempts <times>    Try to build this many times. Default is [ $BUILD_ATTEMPTS ]"
     echo "   --dev-version <vers>        Insert string into changelog package version for pre-release builds."
     echo "                                Note: you need to supply the leading ~ or +"
@@ -156,11 +157,23 @@ function fxnHelpExamples()
     echo ""
     echo "  Insert a string into the version"
     echo "   $0 --cbuild --dev-version ~1234"
-	echo ""
-	echo "  Store build products in a repository for future builds"
-	echo "  (i.e. building things that need other things built to build...)"
-	echo "   $0 --cbuild --use-local-repo myLocalRepo "
     echo ""
+	echo "  Set DEB_BUILD_OPTIONS values:"
+	echo "   $0 --cbuild --deb-build-option debug --deb-build-option nostrip "
+	echo ""
+    echo "  Store build products in a repository for future builds"
+    echo "  (i.e. building things that need other things built to build...)"
+    echo "   $0 --cbuild --use-local-repo myLocalRepo "
+    echo ""
+	echo "  Examples from DUE:"
+	echo "   Build package with 'nostrip' and 'debug' options, "
+	echo "   unsigned source, unsinged changes file, build binary, 5 jobs,"
+	echo "   and reference local package repository 'myLocalRepo'"
+	echo "     due --build --jobs 5 --deb-build-option nostrip "
+	echo "     --deb-build-option debug --use-local-repo myLocalRepo "
+	echo "     --cbuild -us -uc -b"
+	echo ""
+	
 }
 
 # Set an exit trap to log completion.
@@ -197,10 +210,14 @@ function fxnPrintConfig()
     echo "| dpkg command:      $DPKG_BUILDENV dpkg-buildpackage  $BUILD_ARGS "
     echo "|"
     echo "| Build dir            [ $(pwd) ]"
-	echo "| Local .deb repo      [ $LOCAL_REPO_NAME ]"
-	echo "| Non-repo debs        [ $INSTALL_DEBS_DIR ]"
-	echo "| Extra sources.list   [ $ADD_SOURCES_LIST ]"
-	echo "|"	
+    echo "| Local .deb repo      [ $LOCAL_REPO_NAME ]"
+if [ "$INSTALL_DEBS_DIR" != "" ];then
+    echo "| Non-repo debs        [ $INSTALL_DEBS_DIR ]"
+fi
+if [ "$ADD_SOURCES_LIST" != "" ];then
+    echo "| Extra sources.list   [ $ADD_SOURCES_LIST ]"
+fi
+    echo "|"
     echo "| Reproducible stamp   [ $(date -d @"$SOURCE_DATE_EPOCH") ]"
 
 	
@@ -341,8 +358,8 @@ function fxnIsolatePackageDependencies()
                           | tr '\n' ' ')
 
     if [ "$missingDepends" = "" ];then
-	echo "   Looks like all dependencies are present. Proably a local leftover depends package triggering this."
-	return 0
+        echo "   Looks like all dependencies are present. Proably a local leftover depends package triggering this."
+        return 0
     fi
     # Ignore shellcheck warning to "" missingDepends
     for pkg in ${missingDepends[@]}
@@ -375,9 +392,9 @@ function fxnIsolatePackageDependencies()
 #        and adds it to the build.
 function fxnUseLocalPackageRepository()
 {
-  local repoName="$1"
+    local repoName="$1"
     local useArchitecture="$2"
-    local addContentsDir="$3"  
+    local addContentsDir="$3"
 
     local repositoryDistribution="local-due-repo"
     local repositoryComponent="main"
@@ -386,11 +403,11 @@ function fxnUseLocalPackageRepository()
     local poolDir
     local debsDir
 
-	if [ "$useArchitecture" = "default" ];then
-		# Use target arch as that represents the end build product.
-		useArchitecture=$( dpkg-architecture --query DEB_TARGET_ARCH )
-	fi
-       
+    if [ "$useArchitecture" = "default" ];then
+        # Use target arch as that represents the end build product.
+        useArchitecture=$( dpkg-architecture --query DEB_TARGET_ARCH )
+    fi
+
     LOCAL_PACKAGE_REPOSITORY_PATH=$( realpath "${BUILD_DIR}/.." )
     echo "Using path $LOCAL_PACKAGE_REPOSITORY_PATH"
 
@@ -400,59 +417,59 @@ function fxnUseLocalPackageRepository()
 
     poolDir="${LOCAL_PACKAGE_REPOSITORY_ROOT}/pool"
     debsDir="${LOCAL_PACKAGE_REPOSITORY_ROOT}/debs"
-    
+
     # Location of binary specific section within the local repo
     repositoryBinDir=${LOCAL_PACKAGE_REPOSITORY_ROOT}/dists/${repositoryDistribution}/${repositoryComponent}/binary-${useArchitecture}
-    
-    
+
+
     if [ ! -e "$LOCAL_PACKAGE_REPOSITORY_ROOT" ];then
-	fxnPP "Creating directories for local Debian package repository at: $LOCAL_PACKAGE_REPOSITORY_PATH"	
-	fxnEC mkdir "$LOCAL_PACKAGE_REPOSITORY_ROOT" || exit 1
-	fxnPP "Creating $debsDir"
-	fxnEC mkdir "$debsDir" || exit 1
-	fxnPP "Creating $poolDir"	
-	fxnEC mkdir "$poolDir" || exit 1
-	fxnPP "Creating $repositoryBinDir"	
-	fxnEC mkdir -p "$repositoryBinDir" || exit 1
+        fxnPP "Creating directories for local Debian package repository at: $LOCAL_PACKAGE_REPOSITORY_PATH"
+        fxnEC mkdir "$LOCAL_PACKAGE_REPOSITORY_ROOT" || exit 1
+        fxnPP "Creating $debsDir"
+        fxnEC mkdir "$debsDir" || exit 1
+        fxnPP "Creating $poolDir"
+        fxnEC mkdir "$poolDir" || exit 1
+        fxnPP "Creating $repositoryBinDir"
+        fxnEC mkdir -p "$repositoryBinDir" || exit 1
     else
-	# add contents may be empty in the case of the repository getting created,
-		# or if this call was to just update the sources.list
-		if [ "$addContentsDir" != "" ];then
-			# only update if there is stuff to update.
-			if [ ! -e "$addContentsDir" ];then
-				fxnERR "Failed to find directory of debs to add at [ $addContentsDir ]. NOT modifiying local repository."
-				exit 1
-			fi
-			
-			fxnPP "Local package repository already exists at: $LOCAL_PACKAGE_REPOSITORY_PATH"
-			# If this is an initialization, Packages won't exist as the repository is empty	    
-			if [ -e "${repositoryBinDir}/Packages" ];then
-				# Otherwise clean them out to get updated
-				fxnPP "Removing Package index files before update."
-				fxnEC rm "${repositoryBinDir}/Packages"    || exit 1
-				fxnEC rm "${repositoryBinDir}/Packages.gz" || exit 1
-			fi
-		fi
+        # add contents may be empty in the case of the repository getting created,
+        # or if this call was to just update the sources.list
+        if [ "$addContentsDir" != "" ];then
+            # only update if there is stuff to update.
+            if [ ! -e "$addContentsDir" ];then
+                fxnERR "Failed to find directory of debs to add at [ $addContentsDir ]. NOT modifiying local repository."
+                exit 1
+            fi
+
+            fxnPP "Local package repository already exists at: $LOCAL_PACKAGE_REPOSITORY_PATH"
+            # If this is an initialization, Packages won't exist as the repository is empty
+            if [ -e "${repositoryBinDir}/Packages" ];then
+                # Otherwise clean them out to get updated
+                fxnPP "Removing Package index files before update."
+                fxnEC rm "${repositoryBinDir}/Packages"    || exit 1
+                fxnEC rm "${repositoryBinDir}/Packages.gz" || exit 1
+            fi
+        fi
     fi
 
     # if there are any *.debs in this directory, add them.
     # TODO: add source
 
-    if [ "$addContentsDir" != "" ];then    
-	fxnPP "Copying *.deb from $addContentsDir to $poolDir"
-	fxnEC cp -f "$addContentsDir"/*.deb "$poolDir" || exit 1
-	curDir=$(pwd)
+    if [ "$addContentsDir" != "" ];then
+        fxnPP "Copying *.deb from $addContentsDir to $poolDir"
+        fxnEC cp -f "$addContentsDir"/*.deb "$poolDir" || exit 1
+        curDir=$(pwd)
 
-	cd "$LOCAL_PACKAGE_REPOSITORY_ROOT" || exit 1
+        cd "$LOCAL_PACKAGE_REPOSITORY_ROOT" || exit 1
 
-	fxnPP "Updating local repository at $LOCAL_PACKAGE_REPOSITORY_PATH"
-	#	fxnEC apt-ftparchive --arch $useArchitecture  packages pool | 
-	fxnEC apt-ftparchive packages pool | \
-	    tee "${repositoryBinDir}"/Packages | \
-	    gzip > "${repositoryBinDir}"/Packages.gz  || exit 1
+        fxnPP "Updating local repository at $LOCAL_PACKAGE_REPOSITORY_PATH"
+        #   fxnEC apt-ftparchive --arch $useArchitecture  packages pool |
+        fxnEC apt-ftparchive packages pool | \
+            tee "${repositoryBinDir}"/Packages | \
+            gzip > "${repositoryBinDir}"/Packages.gz  || exit 1
 
-	# Options to supply to the release file
-	optionList=" -o APT::FTPArchive::Release::Origin=DUE-duebuild \
+        # Options to supply to the release file
+        optionList=" -o APT::FTPArchive::Release::Origin=DUE-duebuild \
 -o APT::FTPArchive::Release::Label=localPackageRepository \
 -o APT::FTPArchive::Release::Suite=local-repo \
 -o APT::FTPArchive::Release::Version=1.0 \
@@ -461,52 +478,52 @@ function fxnUseLocalPackageRepository()
 -o APT::FTPArchive::Release::Description=LocalPackageRepository \
 -o APT::FTPArchive::Release::Components=main"
 
-	# release under dists/local-due-repo/main/binary-amd64
-	fxnPP "Creating Release file under ${repositoryBinDir}"
-	apt-ftparchive release "${repositoryBinDir}" > \
-				   "${repositoryBinDir}"/Release
-	
-	# Top level release file under dists/local-due-repo
-	fxnPP "Creating Release file under ${LOCAL_PACKAGE_REPOSITORY_ROOT}/dists/${repositoryDistribution}"
-	apt-ftparchive $optionList release "${LOCAL_PACKAGE_REPOSITORY_ROOT}/dists/${repositoryDistribution}/" > \
-		       "${LOCAL_PACKAGE_REPOSITORY_ROOT}/dists/${repositoryDistribution}/Release"
+        # release under dists/local-due-repo/main/binary-amd64
+        fxnPP "Creating Release file under ${repositoryBinDir}"
+        apt-ftparchive release "${repositoryBinDir}" > \
+                       "${repositoryBinDir}"/Release
 
-	cd "$curDir" || exit 1
-	 
+        # Top level release file under dists/local-due-repo
+        fxnPP "Creating Release file under ${LOCAL_PACKAGE_REPOSITORY_ROOT}/dists/${repositoryDistribution}"
+        apt-ftparchive $optionList release "${LOCAL_PACKAGE_REPOSITORY_ROOT}/dists/${repositoryDistribution}/" > \
+                       "${LOCAL_PACKAGE_REPOSITORY_ROOT}/dists/${repositoryDistribution}/Release"
+
+        cd "$curDir" || exit 1
+
     fi # if contents to add
 
     # Update the sources.list file
     localRepoSourcesList="${LOCAL_PACKAGE_REPOSITORY_ROOT}/${sourcesListFile}"
     if [ ! -e /etc/apt/sources.list.d/${sourcesListFile} ];then
-		fxnPP "Creating sources.list file for local repository as: [ $localRepoSourcesList ]"
+        fxnPP "Creating sources.list file for local repository as: [ $localRepoSourcesList ]"
 
-		echo "# Created by $(whoami) using $0 building from $(pwd) on $(date)" > "$localRepoSourcesList"
-		echo "deb [arch=$useArchitecture trusted=yes] copy:${LOCAL_PACKAGE_REPOSITORY_ROOT}/ $repositoryDistribution $repositoryComponent" >> "$localRepoSourcesList"
-		fxnPP "Adding local repository sources.list to local /etc/apt/sources.list.d"
-		fxnEC sudo cp "$localRepoSourcesList" /etc/apt/sources.list.d/ || exit 1
+        echo "# Created by $(whoami) using $0 building from $(pwd) on $(date)" > "$localRepoSourcesList"
+        echo "deb [arch=$useArchitecture trusted=yes] copy:${LOCAL_PACKAGE_REPOSITORY_ROOT}/ $repositoryDistribution $repositoryComponent" >> "$localRepoSourcesList"
+        fxnPP "Adding local repository sources.list to local /etc/apt/sources.list.d"
+        fxnEC sudo cp "$localRepoSourcesList" /etc/apt/sources.list.d/ || exit 1
     else
-		fxnPP "Local sources.list exists at /etc/apt/sources.list.d/${sourcesListFile}"
+        fxnPP "Local sources.list exists at /etc/apt/sources.list.d/${sourcesListFile}"
     fi # If no local sources list file
 
-    
+
     # Pin the local packages to a higher than normal priority
-	# View with: apt-cache policy
-	# If making changes, force a refresh as follows:
-	#   remove the entry under /etc/apt/sources.list.d/
-	#   apt-get update
-	#   restore the entry under /etc/apt/sources.list.d/
+    # View with: apt-cache policy
+    # If making changes, force a refresh as follows:
+    #   remove the entry under /etc/apt/sources.list.d/
+    #   apt-get update
+    #   restore the entry under /etc/apt/sources.list.d/
     if [ ! -e "$aptPreferencesFile" ];then
-		fxnPP "Setting local repository priority high with: $aptPreferencesFile"
-		# Note that this only works if there is a Release file in the repo
-cat <<EOF > /tmp/apt-pref 
+        fxnPP "Setting local repository priority high with: $aptPreferencesFile"
+        # Note that this only works if there is a Release file in the repo
+        cat <<EOF > /tmp/apt-pref
 # Created by $(whoami) using $0 building from $(pwd) on $(date)
 Package: *
 Pin: release n=local-due-repo
-Pin-Priority: 990  > 
+Pin-Priority: 990  >
 EOF
-	fxnEC sudo mv /tmp/apt-pref "$aptPreferencesFile" || exit 1
+        fxnEC sudo mv /tmp/apt-pref "$aptPreferencesFile" || exit 1
     else
-	fxnPP "Local repository has high priority with add of $aptPreferencesFile"
+        fxnPP "Local repository has high priority with add of $aptPreferencesFile"
     fi
 
     fxnPP "Updating..."
@@ -528,18 +545,18 @@ function fxnDoDebianBuild()
     if [ ! -e ./debian/control ];then
         fxnERR "Failed to find ./debian/control in [ $(pwd) ]. Exiting."
         exit 1
-    fi	
+    fi
 
-	# Always apt-get update
+    # Always apt-get update
     fxnPP "Running apt-get update."
-	if [ "$LOCAL_REPO_NAME" != "" ];then
-		echo "Ignore 'Failed to stat' errors if there are no packages in local repository $LOCAL_REPO_NAME"
-	fi
+    if [ "$LOCAL_REPO_NAME" != "" ];then
+        echo "Ignore 'Failed to stat' errors if there are no packages in local repository $LOCAL_REPO_NAME"
+    fi
     sudo apt-get update || fxnWARN "apt-get update failed. Continuing with local index."
 
-	fxnPP "Upgrading local packages so that any already installed build dependencies are up to date."
+    fxnPP "Upgrading local packages so that any already installed build dependencies are up to date."
     sudo apt-get upgrade --assume-yes || fxnWARN "apt-get upgrade failed. Continuing with local index."
-	
+
     # Make sure the environment has the tools to configure the environment.
     if [ ! -e /usr/bin/mk-build-deps ];then
         fxnPP "Failed to find mk-build-deps. Installing devscripts and equivs."
@@ -578,6 +595,7 @@ function fxnDoDebianBuild()
     fi
     echo ""
 
+
     #
     # If setting source to 1.0 for universal rebuild
     #
@@ -594,7 +612,9 @@ function fxnDoDebianBuild()
 
         # And ADDITIONAL_BUILD_ARGS was set
         echo "bash -c  $DPKG_BUILDENV dpkg-buildpackage $BUILD_ARGS "
+        set -x
         bash -c " $DPKG_BUILDENV dpkg-buildpackage $BUILD_ARGS "
+
         result="$?"
 
         if [ "$result" != "0" ];then
@@ -630,8 +650,8 @@ function fxnDoDebianBuild()
 
     # if packages are being stored in a local repository
     if [ "$LOCAL_REPO_NAME" != "" ];then
-	fxnPP "Adding built debs to local repository [ $LOCAL_REPO_NAME ]"
-	fxnUseLocalPackageRepository "$LOCAL_REPO_NAME" "default" "$(realpath ../)"
+        fxnPP "Adding debs from $(realpath ../) to local repository [ $LOCAL_REPO_NAME ]"
+        fxnUseLocalPackageRepository "$LOCAL_REPO_NAME" "default" "$(realpath ../)"
     fi
     echo ""
 }
@@ -834,19 +854,20 @@ do
             shift
             ;;
 
-	--use-local-repo )
-	    # Use (or create if it does not exist) a local Debian
-	    # package repository to hold build products, and serve
-	    # them for subsequent builds.
-	    # Useful when building packages that depend on previously
-	    # built packages.
-		if [ "$2" = "" ];then
-			fxnERR "Failed to specify repository with --use-local-repo! Exiting."
-			exit 1
-		fi
-	    LOCAL_REPO_NAME="$2"
-	    shift
-	    ;;
+        --use-local-repo )
+            # Use (or create if it does not exist) a local Debian
+            # package repository to hold build products, and serve
+            # them for subsequent builds.
+            # Useful when building packages that depend on previously
+            # built packages.
+            if [ "$2" = "" ];then
+                fxnERR "Failed to specify repository with --use-local-repo! Exiting."
+                exit 1
+            fi
+            LOCAL_REPO_NAME="$2"
+            shift
+            ;;
+
 		
         -c | --cbuild )
             # Default to build everything in container context
@@ -897,11 +918,11 @@ do
         -j* )
             # number of build job threads
             BUILD_JOBS="${term#-j}"
-			# If only jobs were specified, do default build
-			if [ $TOTAL_COMMAND_LINE_ARGS = 1 ];then
-			    DO_DEFAULT="TRUE"
-			    DO_BUILD="TRUE"
-			fi
+            # If only jobs were specified, do default build
+            if [ $TOTAL_COMMAND_LINE_ARGS = 1 ];then
+                DO_DEFAULT="TRUE"
+                DO_BUILD="TRUE"
+            fi
             ;;
 
         --jobs )
@@ -911,11 +932,11 @@ do
                 fxnERR "--jobs requires a #"
                 exit 1
             fi
-			# If only jobs were specified, do default build			
-			if [ $TOTAL_COMMAND_LINE_ARGS = 2 ];then
-			    DO_DEFAULT="TRUE"
-			    DO_BUILD="TRUE"
-			fi
+            # If only jobs were specified, do default build
+            if [ $TOTAL_COMMAND_LINE_ARGS = 2 ];then
+                DO_DEFAULT="TRUE"
+                DO_BUILD="TRUE"
+            fi
             shift
             ;;
 
@@ -937,6 +958,12 @@ do
         --skip-tests )
             # Disable running of package tests
             DPKG_BUILDENV+=" DEB_BUILD_OPTIONS=nocheck "
+            ;;
+
+        --deb-build-option )
+	    # add term to a list that will follow DEB_BUILD_OPTIONS
+	    DEB_OPTION_LIST+=" $2 "
+            shift
             ;;
 
         --source-date-epoch )
@@ -1062,17 +1089,17 @@ fi
 # Process this before adding sources list, as this repository
 # will be searched as well.
 if [ "$LOCAL_REPO_NAME" != "" ];then
-	# Leave last parameter out as there are no packages, but
-	# the repository references should be added.
-	fxnUseLocalPackageRepository "$LOCAL_REPO_NAME" "default"
+    # Leave last parameter out as there are no packages, but
+    # the repository references should be added.
+    fxnUseLocalPackageRepository "$LOCAL_REPO_NAME" "default"
 fi
 
 if [ "$ADD_SOURCES_LIST" != "" ];then
     fxnPP "Copying $ADD_SOURCES_LIST to /etc/apt/sources.list.d"
     fxnEC sudo cp "$ADD_SOURCES_LIST" /etc/apt/sources.list.d  || exit 1
-	# If the added sources.list is bad, fail immediately.
-	fxnEC sudo apt-get update || exit 1
-	
+    # If the added sources.list is bad, fail immediately.
+    fxnEC sudo apt-get update || exit 1
+
 fi
 
 
@@ -1105,6 +1132,13 @@ if [ "$SOURCE_DATE_EPOCH" = "" ];then
     # default to the curent time if not set
     SOURCE_DATE_EPOCH=$(date +%s)
     export SOURCE_DATE_EPOCH
+fi
+
+
+if [ "$DEB_OPTION_LIST" != "" ];then
+    # If there were deb options set, create the string to apply them here.
+    fxnPP "Using passed DEB_BUILD_OPTIONS [ $DEB_OPTION_LIST ]"
+    DPKG_BUILDENV="DEB_BUILD_OPTIONS='$DEB_OPTION_LIST'"
 fi
 
 #
@@ -1279,4 +1313,3 @@ else
 fi
 
 exit "$RETURN_CODE"
-

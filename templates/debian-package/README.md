@@ -24,6 +24,29 @@ Create default Ubuntu 18.04 Debian package build environment with: ./due --creat
 ## Additional configuration
 Apart from the expectedly unique `duebuild` and install scripts, there is no additional configuration.
 
+
+# Architecture  
+
+## /usr/local/bin/duebuild
+Every container built by DUE should come with its own `/usr/local/bin/duebuild` script.
+This script contains utility functions to simplify common build tasks within the context of the container.  
+While the functionality will vary by container purpose, there are some standard interfaces:  
+
+  * due --build (or --duebuild) <- invoke a default build case that should build something to prove it works.  
+  * due --duebuild --help <- print the command line help of the container's duebuild script.  
+  * due --build --cbuild  <- takes everything after this as a literal string to pass to the build.  
+  
+Where this comes in handy is in reducing typing and performing default operations.  
+In the case of the debian-package duebuild script, `due --build` will:
+  * apt-get update the container
+  * apt-get upgrade the container
+  * apt-get install all package dependencies read from the local debian/control
+  * run `dpkg-buildpackage -us -uc` with 4 jobs (unless a different -jX has been passed)
+  
+Additional options include things like supporting filesystem-local Debian package repository 
+( --use-local-repo ) to provide .debs that are not in another repoistory.
+
+
 # Use
 
 ## Build as yourself
@@ -90,6 +113,15 @@ It's just another way of arriving at the final makefile invocation, however.
 
 **Example:** Edit the debian/changelog to set a development version string for the package:
   due --run --build --dev-version ~123 --cbuild
+
+### Adding `DEB_BUILD_OPTIONS`
+**Purpose** Passing options that change the build, like `debug` or `nostrip`  
+**Example** `due --build --deb-build-option debug --deb-build-option nostrip`__
+
+Specify one argument per `--deb-build-option` to have the duebuild script 
+set the `DEB_BUILD_OPTIONS=` prior to running dpkg-buildpackage. You can confirm what 
+was set by checking the build log output for the header that describes how 
+dpkg-buildpackage was run.
 
 ### Building a package that depends on previously built packages  
 **Purpose** use a local package repository to store and serve built packages.  
