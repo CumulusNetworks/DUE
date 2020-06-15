@@ -83,11 +83,38 @@ function fxnHelp ()
 	echo "   -h | --help               Top level help (this message)."
 	echo "                              Also provides context specific help when used"
 	echo "                              with the arguments above."
+	echo "   --help-examples           Specific examples of use when used with the arguments above."
 	echo "   --help-topics             Summary of all help sections, with access instructions."
 	echo "   --help-about              A description of what DUE can do."
 	echo "   --help-env-vars           Bash environment variables DUE will use."
 	echo "   --help-all                Print ALL THE HELP!"
 	echo ""
+
+}
+
+#
+# A top level help examples to go with top level help.
+#
+function fxnHelpExamples()
+{
+	echo "############################################################################"
+	echo "#"
+	echo "# DUE examples:"
+	echo "#"
+	echo "############################################################################"
+	echo""
+	echo "Build from a source directory:"
+	echo "  $0 --build"
+	echo ""
+	echo " Log into a running container:"
+	echo "  $0 --login"
+	echo ""
+	echo " Run a command using a container: "
+	echo "  $0 --run --command ls -l /proc"
+	echo ""
+	
+	echo "See topic specific help for topic specific examples."
+	echo " Ex: $0 --help-examples --build"
 
 }
 
@@ -362,11 +389,13 @@ function fxnHelpRunExamples()
 	echo " Get help for the duebuild script in a container you will choose."
 	echo "  $DUE_NAME --duebuild --help" 
 	echo ""
-	echo " Run Debian package build program, dpkg-plus, and..."
-	echo "  Mount build directory /home/username/mypackage in the container at /build."
-	echo "  Set a development version string of ~789 in the version."
-	echo "  ..and build source packages too."
-	echo "   $DUE_NAME --run --command duebuild \\"
+	echo " Run the following without logging in to the container:"
+	echo "  - Image due-package-debian-10:latest. "
+	echo "  - Debian package build program duebuild."
+	echo "  - Mount build directory /home/username/mypackage in the container at /build."
+	echo "  - Set a development version string of ~789 in the version."
+	echo "  - ...and build source packages too."
+	echo "   $DUE_NAME --run --run-image due-package-debian-10:latest --command duebuild \\"
 	echo "       --use-directory /home/username/mypackage/ \\"
 	echo "       --build --dev-version ~789 --source"
 	echo ""
@@ -446,6 +475,18 @@ function fxnParseCreateArgs()
 	do
 		term="$1"
 		case $term in
+			# Parse any help requests first, as they'll result in exit
+			--help-examples | help-examples)
+				# Command use to create containers
+				fxnHelpCreateExamples
+				exit
+				;;
+
+			--help | -h | help )
+				fxnHelpCreate
+				exit
+				;;
+			
 			-c | --create )
 				# If the local directory has been created, just build it.
 
@@ -571,16 +612,6 @@ function fxnParseCreateArgs()
 				;;
 
 
-			--help-examples | help-examples)
-				# Command use to create containers
-				fxnHelpCreateExamples
-				exit
-				;;
-
-			--help | -h | help )
-				fxnHelpCreate
-				exit
-				;;
 
 			* )
 				fxnHelpCreate
@@ -602,6 +633,16 @@ function fxnParseCreateArgs()
 # Runtime commands
 #
 
+#
+# Run the help command for the duebuild script in a container that the
+# user will select.
+function fxnDueBuildHelp()
+{
+	theHelp="$1"
+	fxnPP "Select a container to run 'duebuild --help' in:"
+	due --run --command duebuild $theHelp
+}
+
 function fxnParseRunArgs()
 {
 
@@ -609,6 +650,27 @@ function fxnParseRunArgs()
 	do
 		term="$1"
 		case $term in
+			# Parse any help requests first, as they'll result in exit			
+			-h | --help | help )
+				if [ "$2" = "--duebuild" ];then
+					# looking for a contianer's duebuild script help
+					fxnDueBuildHelp "--help"
+				else
+					fxnHelpRun
+				fi
+				exit
+				;;
+
+			--help-examples | help-examples )				
+				if [ "$2" = "--duebuild" ];then
+					# looking for a contianer's duebuild script help					
+					fxnDueBuildHelp "--help-examples"
+				else
+					fxnHelpRunExamples
+				fi
+				exit
+				;;
+			
 			-r | --run )
 				# run an image that has already been configured.
 				# select via a menu
@@ -661,8 +723,7 @@ function fxnParseRunArgs()
 					# if the request is specifically due --help --duebuild, run
 					# the container to get duebuild --help in it.
 					if [ "$2" = "--help" ];then
-						fxnPP "Select a container to run 'duebuild --help' in:"
-						due --run --command duebuild --help
+						fxnDueBuildHelp
 						exit 0
 					fi
 				fi
@@ -791,16 +852,6 @@ function fxnParseRunArgs()
 				IGNORE_IMAGE_TYPE="TRUE"
 				;;
 			
-			-h | --help | help )
-				fxnHelpRun
-				exit
-				;;
-
-			--help-examples | help-examples )
-				fxnHelpRunExamples
-				exit
-				;;
-
 
 			* )
 				fxnHelpRun
@@ -824,6 +875,17 @@ function fxnParseManageArgs()
 	do
 		term="$1"
 		case $term in
+			# Parse any help requests first, as they'll result in exit
+			--help-examples | help-examples )
+				# examples of management commands
+				fxnHelpManageExamples
+				exit
+				;;
+
+			-h | --help | help )
+				fxnHelpManage
+				exit
+				;;
 
 			-m | --manage )
 				# access the manage sub commands
@@ -945,16 +1007,6 @@ function fxnParseManageArgs()
 				exit
 				;;
 			
-			--help-examples | help-examples )
-				# examples of management commands
-				fxnHelpManageExamples
-				exit
-				;;
-
-			-h | --help | help )
-				fxnHelpManage
-				exit
-				;;
 
 			* )
 				fxnHelpManage
@@ -1014,11 +1066,10 @@ fi
 while [[ $# -gt 0 ]]
 do
     term="$1"
+	# if set, use HELP_ARGS to pass help requests for specific arguments
 	case $term in
-
-
 		-c | --create )
-			fxnParseCreateArgs "$@"
+			fxnParseCreateArgs $HELP_ARGS "$@"
 			break
 			;;
 
@@ -1027,14 +1078,14 @@ do
 		#
 
 		-m | --manage )
-			fxnParseManageArgs "$@"
+			fxnParseManageArgs $HELP_ARGS "$@"
 			break
 			;;
 
 		# all of these commands can drop
 		# straight into getting a container
 		-r | -l | --run | --run-image | --login | --build | --duebuild )
-			fxnParseRunArgs "$@"
+			fxnParseRunArgs $HELP_ARGS "$@"
 			break
 			;;
 		
@@ -1082,9 +1133,26 @@ do
 			exit
 			;;
 
+		--help-examples | help-examples)
+			# Just help - do top level
+			if [ $# = 1 ];then
+				fxnHelpExamples
+				exit
+			else
+				# Pass this help request on to the next command
+				HELP_ARGS+=" --help-examples "				
+			fi			
+			;;
+		
 		-h | --help | help )
-			fxnHelp
-			exit
+			# Just help - do top level
+			if [ $# = 1 ];then
+				fxnHelp
+				exit
+			else
+				# Pass this help request on to the next command				
+				HELP_ARGS+=" --help "				
+			fi
 			;;
 
 

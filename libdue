@@ -12,7 +12,7 @@
 # Enable extended pattern matching
 shopt -s extglob
 
-DUE_VERSION="1.4.0"
+DUE_VERSION="1.4.1"
 
 # Debian packages required for DUE to run
 REQUIRED_PACKAGES=" docker.io rsync bsdutils git"
