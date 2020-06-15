@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 # SCRIPT_PURPOSE: A function library for Dedicated User Environment (due)
 
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
@@ -12,7 +12,7 @@
 # Enable extended pattern matching
 shopt -s extglob
 
-DUE_VERSION="1.4.1"
+DUE_VERSION="1.5.0"
 
 # Debian packages required for DUE to run
 REQUIRED_PACKAGES=" docker.io rsync bsdutils git"
@@ -66,10 +66,10 @@ SYSTEM_TEMPLATE_INSTALL_DIR="/usr/share/due"
 
 
 if [ "$TOP_LEVEL_DIR" = "" ];then
-	TEMPLATE_INSTALL_PATH="$SYSTEM_TEMPLATE_INSTALL_DIR"
+    TEMPLATE_INSTALL_PATH="$SYSTEM_TEMPLATE_INSTALL_DIR"
 else
-	# Look to cwd for these files
-	TEMPLATE_INSTALL_PATH="$TOP_LEVEL_DIR"
+    # Look to cwd for these files
+    TEMPLATE_INSTALL_PATH="$TOP_LEVEL_DIR"
 fi
 COMMON_TEMPLATE_PATH=${TEMPLATE_INSTALL_PATH}/$COMMON_TEMPLATE_DIR
 
@@ -93,8 +93,8 @@ BUILD_MERGE_DIR="$(pwd)/due-build-merge"
 # a stream of text going by.
 function fxnListDirContents()
 {
-	fxnPP "Contents of: $1"
-	ls -l "$1" | sed -e 's/^/      /g'
+    fxnPP "Contents of: $1"
+    ls -l "$1" | sed -e 's/^/      /g'
 }
 
 
@@ -102,48 +102,48 @@ function fxnListDirContents()
 # If $1 = "JustDirs" then don't print example commands
 function fxnListContainersForCreation()
 {
-	local foundImages
+    local foundImages
 
-	if [ "$1" != "JustDirs" ];then
-		echo "Example build environments:"
-		echo "Image type             Create it with:"
-		echo "----------------------+---------------------------------------------------------"
+    if [ "$1" != "JustDirs" ];then
+        echo "Example build environments:"
+        echo "Image type             Create it with:"
+        echo "----------------------+---------------------------------------------------------"
 
-		# To simplify parsing, this counts on the example line in the README.md files being formatted
-		# in exactly the same way for all, with everything up to the 'with:' getting deleted,
-		# and the last field being --use-template, as that gets prepended to the example string
-		# via awk to speicify the type of container being created.
-		find "${SPECIFIC_TEMPLATE_PATH}" \
-			 -name README.md \
-			 -exec grep "^Create" {} \; \
-			| grep -- --from \
-			| sed -e 's/^.*with://g' \
-			| awk '{printf "%-20s %s\n", $NF, $0}' | sort
+        # To simplify parsing, this counts on the example line in the README.md files being formatted
+        # in exactly the same way for all, with everything up to the 'with:' getting deleted,
+        # and the last field being --use-template, as that gets prepended to the example string
+        # via awk to speicify the type of container being created.
+        find "${SPECIFIC_TEMPLATE_PATH}" \
+             -name README.md \
+             -exec grep "^Create" {} \; \
+            | grep -- --from \
+            | sed -e 's/^.*with://g' \
+            | awk '{printf "%-20s %s\n", $NF, $0}' | sort
 
 
-		echo ""
-		
-		echo "Available image templates from: $SPECIFIC_TEMPLATE_PATH"
-		fxnEC cd "${SPECIFIC_TEMPLATE_PATH}" || exit 1
-		ls -d */
+        echo ""
 
-	fi
-	# filter any template directories
-	# Directories should always have this lib file, so
-	# it shouldn't confuse with anything else.	
-	echo ""
-	echo "Configured directories to build from."
-	echo "Use $0 --create --build-dir <path>"
-	echo "--------------------------------------------------------------------------------"	
-	foundImages=$( find "$BUILD_MERGE_DIR" \
-						-maxdepth 2  \
-						-name install-config-common.lib 2>/dev/null \
-					   | sed -e 's#\/install-config-common.lib##g' )
+        echo "Available image templates from: $SPECIFIC_TEMPLATE_PATH"
+        fxnEC cd "${SPECIFIC_TEMPLATE_PATH}" || exit 1
+        ls -d */
 
-	if [ "$foundImages" = "" ];then
-		foundImages="No locally built images found in $BUILD_MERGE_DIR"
-	fi
-	echo "$foundImages"
+    fi
+    # filter any template directories
+    # Directories should always have this lib file, so
+    # it shouldn't confuse with anything else.
+    echo ""
+    echo "Configured directories to build from."
+    echo "Use $0 --create --build-dir <path>"
+    echo "--------------------------------------------------------------------------------"
+    foundImages=$( find "$BUILD_MERGE_DIR" \
+                        -maxdepth 2  \
+                        -name install-config-common.lib 2>/dev/null \
+                       | sed -e 's#\/install-config-common.lib##g' )
+
+    if [ "$foundImages" = "" ];then
+        foundImages="No locally built images found in $BUILD_MERGE_DIR"
+    fi
+    echo "$foundImages"
 }
 
 # Print progress
@@ -165,7 +165,7 @@ function fxnEC ()
     status=$?
     # Print calling chain (BASH_SOURCE) and lines called from (BASH_LINENO) for better debug
     if [ $status -ne 0 ];then
-		echo "ERROR [ $status ] in ${BASH_SOURCE[1]##*/}, line #${BASH_LINENO[0]}, calls [ ${BASH_LINENO[*]} ] command: \"$*\"" 1>&2
+        echo "ERROR [ $status ] in ${BASH_SOURCE[1]##*/}, line #${BASH_LINENO[0]}, calls [ ${BASH_LINENO[*]} ] command: \"$*\"" 1>&2
     fi
 
     return $status
@@ -185,20 +185,20 @@ function fxnERR
 # print a header to make information stand out
 function fxnHeader
 {
-	echo ""
-	echo " __________________________________________________________________________ "
-	echo "|"
-	echo "| $1"
-	echo "|__________________________________________________________________________ "
-	echo ""
+    echo ""
+    echo " __________________________________________________________________________ "
+    echo "|"
+    echo "| $1"
+    echo "|__________________________________________________________________________ "
+    echo ""
 
 }
 
 # Print a standard warning message
 function fxnWarn()
 {
-	echo ""
-	echo "Warning: $1"
+    echo ""
+    echo "Warning: $1"
     echo ""
 }
 ######################################################################
@@ -246,18 +246,18 @@ function fxnDeleteImage()
 
     echo ""
     grep "Delete" "$DELETE_SCRIPT" | sed -e 's/# Delete:/   /g'
-	
-	# echo all the text in one pass
-	{
-		echo ""
-		# show what's left when the script is run
-		echo "docker images"
-		echo ""
-		# clean up after ourselves
-		echo "rm ./$DELETE_SCRIPT" 
 
-		echo ""
-	} >> "$DELETE_SCRIPT"
+    # echo all the text in one pass
+    {
+        echo ""
+        # show what's left when the script is run
+        echo "docker images"
+        echo ""
+        # clean up after ourselves
+        echo "rm ./$DELETE_SCRIPT"
+
+        echo ""
+    } >> "$DELETE_SCRIPT"
     if [ "$DO_DELETE_NOW" = "TRUE" ];then
         ./"$DELETE_SCRIPT"
     fi
@@ -273,28 +273,28 @@ function fxnDeleteImage()
 # Does:  Generates a Dockerfile.create file in the container creation directory.
 function fxnPreProcessDockerFile()
 {
-	local destDir="$1"
-	local useQEMU="$2"
-	# If there is an existing copy, do not overwrite.
-	# user may have custom modifications.
+    local destDir="$1"
+    local useQEMU="$2"
+    # If there is an existing copy, do not overwrite.
+    # user may have custom modifications.
 
-	if [ -e  "$destDir"/Dockerfile.create ];then
-		fxnPP "Not creating $destDir/Dockerfile.create as it exists"
-	else
-		fxnPP "Creating $destDir/Dockerfile.create from [ $USE_TEMPLATE_PATH ]"
-		cp "${USE_TEMPLATE_PATH}"/Dockerfile.template "$destDir"/Dockerfile.create
+    if [ -e  "$destDir"/Dockerfile.create ];then
+        fxnPP "Not creating $destDir/Dockerfile.create as it exists"
+    else
+        fxnPP "Creating $destDir/Dockerfile.create from [ $USE_TEMPLATE_PATH ]"
+        cp "${USE_TEMPLATE_PATH}"/Dockerfile.template "$destDir"/Dockerfile.create
 
-		# now edit the copy
-		if [ "$FROM_IMAGE_TYPE" != "" ];then
-			sed -i "s#REPLACE_IMAGE_FROM\$#$FROM_IMAGE_TYPE#g" "$destDir"/Dockerfile.create
-			sed -i "s#REPLACE_DUE_IMAGE_TYPE_LABEL\$#$DUE_IMAGE_TYPE_LABEL#g" "$destDir"/Dockerfile.create
-			# If qemu is to be installed, uncomment the copy of it
-			if [ "$useQEMU" != "" ];then
-				fxnPP "Configuring Dockerfile to copy in qemu as the first step."
-				sed -i "s/#REPLACE_DUE_INSTALL_QEMU//#g" "$destDir"/Dockerfile.create
-			fi
-		fi
-	fi
+        # now edit the copy
+        if [ "$FROM_IMAGE_TYPE" != "" ];then
+            sed -i "s#REPLACE_IMAGE_FROM\$#$FROM_IMAGE_TYPE#g" "$destDir"/Dockerfile.create
+            sed -i "s#REPLACE_DUE_IMAGE_TYPE_LABEL\$#$DUE_IMAGE_TYPE_LABEL#g" "$destDir"/Dockerfile.create
+            # If qemu is to be installed, uncomment the copy of it
+            if [ "$useQEMU" != "" ];then
+                fxnPP "Configuring Dockerfile to copy in qemu as the first step."
+                sed -i "s/#REPLACE_DUE_INSTALL_QEMU//#g" "$destDir"/Dockerfile.create
+            fi
+        fi
+    fi
 }
 
 # Takes: Path to where the file will be written out
@@ -310,26 +310,26 @@ function fxnPreProcessDockerFile()
 # source it manually.
 function fxnPreProcessDueBashrc()
 {
-	local destDir="$1"
+    local destDir="$1"
 
-	# If there is an existing copy, do not overwrite.
-	# user may have custom modifications.
-	if [ -e  "$destDir"/etc/due-bashrc ];then
-		fxnPP "Not creating $destDir/etc/due-bashrc as it exists"
-	else
-		fxnPP "Creating $destDir/etc/due-bashrc from [ $USE_TEMPLATE_PATH ]"
-		fxnEC cp "${USE_TEMPLATE_PATH}"/filesystem/etc/due-bashrc.template "$destDir"/due-bashrc || exit 1
-		# Default the sourcing of the /etc/due-bashrc file
-		USE_DUE_BASHRC="TRUE"
-		if [ "$USE_DUE_BASHRC" = "TRUE" ];then
-			# if enabling the bashrc to run
-			sed -i "s/REPLACE_ENABLE_DUE_BASHRC/TRUE/g" "$destDir"/due-bashrc
-		fi
+    # If there is an existing copy, do not overwrite.
+    # user may have custom modifications.
+    if [ -e  "$destDir"/etc/due-bashrc ];then
+        fxnPP "Not creating $destDir/etc/due-bashrc as it exists"
+    else
+        fxnPP "Creating $destDir/etc/due-bashrc from [ $USE_TEMPLATE_PATH ]"
+        fxnEC cp "${USE_TEMPLATE_PATH}"/filesystem/etc/due-bashrc.template "$destDir"/due-bashrc || exit 1
+        # Default the sourcing of the /etc/due-bashrc file
+        USE_DUE_BASHRC="TRUE"
+        if [ "$USE_DUE_BASHRC" = "TRUE" ];then
+            # if enabling the bashrc to run
+            sed -i "s/REPLACE_ENABLE_DUE_BASHRC/TRUE/g" "$destDir"/due-bashrc
+        fi
 
-		# If NEW_PROMPT is set, put it in here, otherwise leave empty
-		sed -i "s/DUE_REPLACE_PROMPT/$NEW_PROMPT/g" "$destDir"/due-bashrc
+        # If NEW_PROMPT is set, put it in here, otherwise leave empty
+        sed -i "s/DUE_REPLACE_PROMPT/$NEW_PROMPT/g" "$destDir"/due-bashrc
 
-	fi
+    fi
 
 }
 
@@ -337,43 +337,43 @@ function fxnPreProcessDueBashrc()
 # Takes: Path to where the file will be written out
 function fxnPreProcessDockerLoginMessage()
 {
-	local destDir="$1"
+    local destDir="$1"
 
-	# If there is an existing copy, do not overwrite.
-	# user may have custom modifications.
-	if [ -e  "$destDir"/etc/DockerLoginMessage ];then
-		fxnPP "Not creating $destDir/etc/DockerLoginMessage as it exists"
-	else
-		fxnPP "Creating $destDir/etc/DockerLoginMessage from [ $USE_TEMPLATE_PATH ]"
-		fxnEC cp "${USE_TEMPLATE_PATH}"/filesystem/etc/DockerLoginMessage.template "$destDir"/DockerLoginMessage || exit 1
+    # If there is an existing copy, do not overwrite.
+    # user may have custom modifications.
+    if [ -e  "$destDir"/etc/DockerLoginMessage ];then
+        fxnPP "Not creating $destDir/etc/DockerLoginMessage as it exists"
+    else
+        fxnPP "Creating $destDir/etc/DockerLoginMessage from [ $USE_TEMPLATE_PATH ]"
+        fxnEC cp "${USE_TEMPLATE_PATH}"/filesystem/etc/DockerLoginMessage.template "$destDir"/DockerLoginMessage || exit 1
 
-		# now edit the copy (/s may be in the string. Deliniate sed with #s)
-		if [ "$IMAGE_DESCRIPTION" != "" ];then
-			sed -i "s#REPLACE_IMAGE_DESCRIPTION#$IMAGE_DESCRIPTION#g" "$destDir"/DockerLoginMessage
-		fi
-	fi
+        # now edit the copy (/s may be in the string. Deliniate sed with #s)
+        if [ "$IMAGE_DESCRIPTION" != "" ];then
+            sed -i "s#REPLACE_IMAGE_DESCRIPTION#$IMAGE_DESCRIPTION#g" "$destDir"/DockerLoginMessage
+        fi
+    fi
 }
 
 # Set up the script to be run BEFORE configuration
 # Takes: Path to where the file will be written out
 function fxnPreProcessPreInstallConfig()
 {
-	local destDir="$1"
+    local destDir="$1"
 
-	# If there is an existing copy, do not overwrite.
-	# user may have custom modifications.
-	if [ -e  "$destDir"/pre-install-config.sh ];then
-		fxnPP "Not creating $destDir/pre-install-config.sh as it exists"
-	else
-		fxnPP "Creating $destDir/pre-install-config.sh from [ $USE_TEMPLATE_PATH ]"
-		cp "${USE_TEMPLATE_PATH}"/pre-install-config.sh.template "$destDir"/pre-install-config.sh
+    # If there is an existing copy, do not overwrite.
+    # user may have custom modifications.
+    if [ -e  "$destDir"/pre-install-config.sh ];then
+        fxnPP "Not creating $destDir/pre-install-config.sh as it exists"
+    else
+        fxnPP "Creating $destDir/pre-install-config.sh from [ $USE_TEMPLATE_PATH ]"
+        cp "${USE_TEMPLATE_PATH}"/pre-install-config.sh.template "$destDir"/pre-install-config.sh
 
-		# now edit the copy
+        # now edit the copy
 
-		if [ "$IMAGE_DESCRIPTION" != "" ];then
-			sed -i "s/REPLACE_IMAGE_NAME/$NEW_IMAGE_NAME/g" "$destDir"/pre-install-config.sh
-		fi
-	fi
+        if [ "$IMAGE_DESCRIPTION" != "" ];then
+            sed -i "s/REPLACE_IMAGE_NAME/$NEW_IMAGE_NAME/g" "$destDir"/pre-install-config.sh
+        fi
+    fi
 }
 
 
@@ -381,43 +381,43 @@ function fxnPreProcessPreInstallConfig()
 # Takes: Path to where the file will be written out
 function fxnPreProcessPostInstallConfig()
 {
-	local destDir="$1"
+    local destDir="$1"
 
-	# If there is an existing copy, do not overwrite.
-	# user may have custom modifications.
-	if [ -e  "$destDir"/post-install-config.sh ];then
-		fxnPP "Not creating $destDir/post-install-config.sh as it exists"
-	else
-		# the script just invokes a function defined in install-config-common.lib, so there's nothing
-		# to replace at the moment, but if there was, it would be here
-		fxnPP "Creating $destDir/post-install-config.sh from [ $USE_TEMPLATE_PATH ]"
+    # If there is an existing copy, do not overwrite.
+    # user may have custom modifications.
+    if [ -e  "$destDir"/post-install-config.sh ];then
+        fxnPP "Not creating $destDir/post-install-config.sh as it exists"
+    else
+        # the script just invokes a function defined in install-config-common.lib, so there's nothing
+        # to replace at the moment, but if there was, it would be here
+        fxnPP "Creating $destDir/post-install-config.sh from [ $USE_TEMPLATE_PATH ]"
 
-		cp "${USE_TEMPLATE_PATH}"/post-install-config.sh.template "$destDir"/post-install-config.sh
+        cp "${USE_TEMPLATE_PATH}"/post-install-config.sh.template "$destDir"/post-install-config.sh
 
-		#
-		# Any variable replacement via sed would happen here
-		#
-	fi
+        #
+        # Any variable replacement via sed would happen here
+        #
+    fi
 }
 
 # Set up any of the common script utilities
 # Takes: Path to where the file will be written out
 function fxnPreProcessInstallConfigLib()
 {
-	local destDir="$1"
+    local destDir="$1"
 
-	# If there is an existing copy, do not overwrite.
-	# user may have custom modifications.
-	if [ -e  "$destDir"/install-config-common.lib ];then
-		fxnPP "Not creating $destDir/install-config-common.lib as it exists"
-	else
-		fxnPP "Creating $destDir/install-config-common-lib from [ $USE_TEMPLATE_PATH ]"
-		fxnEC cp "${USE_TEMPLATE_PATH}"/install-config-common-lib.template "$destDir"/install-config-common.lib || exit 1
+    # If there is an existing copy, do not overwrite.
+    # user may have custom modifications.
+    if [ -e  "$destDir"/install-config-common.lib ];then
+        fxnPP "Not creating $destDir/install-config-common.lib as it exists"
+    else
+        fxnPP "Creating $destDir/install-config-common-lib from [ $USE_TEMPLATE_PATH ]"
+        fxnEC cp "${USE_TEMPLATE_PATH}"/install-config-common-lib.template "$destDir"/install-config-common.lib || exit 1
 
-		if [ "$IMAGE_DESCRIPTION" != "" ];then
-			sed -i "s/REPLACE_IMAGE_NAME/$NEW_IMAGE_NAME/g" "$destDir"/install-config-common.lib
-		fi
-	fi
+        if [ "$IMAGE_DESCRIPTION" != "" ];then
+            sed -i "s/REPLACE_IMAGE_NAME/$NEW_IMAGE_NAME/g" "$destDir"/install-config-common.lib
+        fi
+    fi
 }
 
 
@@ -428,213 +428,213 @@ function fxnPreProcessInstallConfigLib()
 #        NEW_IMAGE_NAME     - Local name for image (my-stretch-build, for example)
 function fxnMakeNewDockerImage()
 {
-	local imageFrom="$1"
-	local imageName="$2"
+    local imageFrom="$1"
+    local imageName="$2"
 
-	if [ "$2" = "" ];then
-		# 3rd argument is optional
-		fxnERR "Failed to pass enough arguments to fxnMakeNewDockerImage(). Exiting."
-		exit 1
-	fi
+    if [ "$2" = "" ];then
+        # 3rd argument is optional
+        fxnERR "Failed to pass enough arguments to fxnMakeNewDockerImage(). Exiting."
+        exit 1
+    fi
 
-	if [ "$imageFrom" = "" ];then
-		echo "ERROR: Must specify source image to use."
-		# List all target directories as a hint.
-		# common-template isn't a target directory
-		#fxnListContainersForCreation
-		echo "$KNOWN_IMAGES"
-		exit 1
-	fi
+    if [ "$imageFrom" = "" ];then
+        echo "ERROR: Must specify source image to use."
+        # List all target directories as a hint.
+        # common-template isn't a target directory
+        #fxnListContainersForCreation
+        echo "$KNOWN_IMAGES"
+        exit 1
+    fi
 
-	# DOCKER_IMAGE_TAG will have been initialized to 'latest' by default,
-	# or will have been overridden by the user.
-	# Leaving this around in case there's a need to reference the base
-	# container it was created from.
-	# DOCKER_IMAGE_TAG="$( echo "$imageFrom" | tr ':' '-' | tr '/' '-' )"
+    # DOCKER_IMAGE_TAG will have been initialized to 'latest' by default,
+    # or will have been overridden by the user.
+    # Leaving this around in case there's a need to reference the base
+    # container it was created from.
+    # DOCKER_IMAGE_TAG="$( echo "$imageFrom" | tr ':' '-' | tr '/' '-' )"
 
-	# Name of image and corresponding tag
-	CONFIGURED_NAME_AND_TAG=due-${imageName}:${DOCKER_IMAGE_TAG}
+    # Name of image and corresponding tag
+    CONFIGURED_NAME_AND_TAG=due-${imageName}:${DOCKER_IMAGE_TAG}
 
-	if [ "$(which docker)" = "" ];then
-		if [ -e /.dockerenv ];then
-			fxnERR "Docker not found, but you are already running in a container."
-		else
-			fxnERR "Docker not found! You should:"
-			echo "1 - Install with:                      sudo apt update ; sudo apt install $REQUIRED_PACKAGES "
-			echo "2 - Add yourself to the docker group:  sudo /usr/sbin/usermod -a -G docker $(whoami)"
-			echo "3 - Consider the recommended packages: sudo apt install $RECOMMENDED_PACKAGES "
-			echo "4 - Activate docker group membership:  log yourself out and log in again."
-			echo "Exiting."
-		fi
-		exit 1
-	fi
+    if [ "$(which docker)" = "" ];then
+        if [ -e /.dockerenv ];then
+            fxnERR "Docker not found, but you are already running in a container."
+        else
+            fxnERR "Docker not found! You should:"
+            echo "1 - Install with:                      sudo apt update ; sudo apt install $REQUIRED_PACKAGES "
+            echo "2 - Add yourself to the docker group:  sudo /usr/sbin/usermod -a -G docker $(whoami)"
+            echo "3 - Consider the recommended packages: sudo apt install $RECOMMENDED_PACKAGES "
+            echo "4 - Activate docker group membership:  log yourself out and log in again."
+            echo "Exiting."
+        fi
+        exit 1
+    fi
 
-	#
-	# Create a directory that will have a all the files that go into
-	# the container, if it hasn't already been created.
-	#
-	if [ ! -e "${BUILD_MERGE_DIR}"/"${imageName}" ];then
-		if [ "$MERGE_IN_TEMPLATE_PATH" != "" ];then
-			# User has specified a template directory to pull in
-			# This sets USE_TEMPLATE_PATH
-			fxnGenerateTemplate "$MERGE_IN_TEMPLATE_PATH"
-		fi
+    #
+    # Create a directory that will have a all the files that go into
+    # the container, if it hasn't already been created.
+    #
+    if [ ! -e "${BUILD_MERGE_DIR}"/"${imageName}" ];then
+        if [ "$MERGE_IN_TEMPLATE_PATH" != "" ];then
+            # User has specified a template directory to pull in
+            # This sets USE_TEMPLATE_PATH
+            fxnGenerateTemplate "$MERGE_IN_TEMPLATE_PATH"
+        fi
 
-		#
-		# Copy everything that isn't a template file from the template directory
-		# to here. This allows the transport of user included files without
-		# having to specifically handle them.
-		# Template files, by their nature, will have to be dealt with on an
-		# individual basis.
-		#
-		# --archive - recursively preserve everything
-		# --verbose - show copy
-		#
-		fxnHeader "Creating directory to be used for container build at: [ $imageName ]"
-		fxnPP "Copying non-template files from [ $USE_TEMPLATE_PATH ] to [ $imageName ]"
-		if [ ! -e /usr/bin/rsync ];then
-			fxnERR "rsync is not installed. Try: sudo apt update; sudo apt install rsync"
-			exit 1
-		fi
-		fxnEC rsync \
-			  --archive \
-			  --verbose \
-			  --exclude=*.template \
-			  "${USE_TEMPLATE_PATH}"/ "${BUILD_MERGE_DIR}"/"${imageName}" || exit 1
+        #
+        # Copy everything that isn't a template file from the template directory
+        # to here. This allows the transport of user included files without
+        # having to specifically handle them.
+        # Template files, by their nature, will have to be dealt with on an
+        # individual basis.
+        #
+        # --archive - recursively preserve everything
+        # --verbose - show copy
+        #
+        fxnHeader "Creating directory to be used for container build at: [ $imageName ]"
+        fxnPP "Copying non-template files from [ $USE_TEMPLATE_PATH ] to [ $imageName ]"
+        if [ ! -e /usr/bin/rsync ];then
+            fxnERR "rsync is not installed. Try: sudo apt update; sudo apt install rsync"
+            exit 1
+        fi
+        fxnEC rsync \
+              --archive \
+              --verbose \
+              --exclude=*.template \
+              "${USE_TEMPLATE_PATH}"/ "${BUILD_MERGE_DIR}"/"${imageName}" || exit 1
 
-		fxnListDirContents "${BUILD_MERGE_DIR}/${imageName}"
-		
-		#
-		# Check for cross architecture containers
-		# These can be run in emulation if they have QEMU as part of the container
-		# Currently only supporting armel, but more can be added.
+        fxnListDirContents "${BUILD_MERGE_DIR}/${imageName}"
 
-		HOST_ARCH=$( uname -m )
-		# TODO: make this support other architectures, beyond the armel hardcode here.
-		if [ "$HOST_ARCH" = "x86_64" ];then
-			# If this is an x86 system, building an armel container...
-			if [[ "$imageFrom" = *arm32v5* ]];then
-				fxnPP "Image architecture does not match host's [ $HOST_ARCH ]. Copying qemu-arm-static in for emulation."
-				
-				# Have qemu-arm-static in there so it can run
-				fxnPP "Adding qemu-arm-static to $imageName/filesystem/usr/bin/qemu-arm-static."
-				if [ ! -e /usr/bin/qemu-arm-static ];then
-					fxnERR "Host system must have qemu-arm-static to run an armel container. sudo apt install qemu-user-static."
-					exit 1
-				fi
+        #
+        # Check for cross architecture containers
+        # These can be run in emulation if they have QEMU as part of the container
+        # Currently only supporting armel, but more can be added.
 
-				# Copy the host system's QEMU for ARM to a location where it will be
-				# installed in the container.
-				if [ ! -e "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin ];then
-					mkdir -p "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin
-				fi
-				fxnEC cp -a /usr/bin/qemu-arm-static "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin/qemu-arm-static || exit 1
-				# Set this to pass to Dockerfile configuration so that qemu-static
-				# will be present in the image _before_ Docker executes any commands in the image.
-				QEMU_STATIC="qemu-arm-static"
-			fi
-		fi
+        HOST_ARCH=$( uname -m )
+        # TODO: make this support other architectures, beyond the armel hardcode here.
+        if [ "$HOST_ARCH" = "x86_64" ];then
+            # If this is an x86 system, building an armel container...
+            if [[ "$imageFrom" = *arm32v5* ]];then
+                fxnPP "Image architecture does not match host's [ $HOST_ARCH ]. Copying qemu-arm-static in for emulation."
 
-		#
-		# Run preprocessing on all templates and put them in the
-		# appropriate directory locations to configure the image
-		fxnHeader "Replacing REPLACE strings in template files with supplied values."
-		# Supply directory destination for output of processed template
-		fxnPreProcessDockerLoginMessage "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/etc
+                # Have qemu-arm-static in there so it can run
+                fxnPP "Adding qemu-arm-static to $imageName/filesystem/usr/bin/qemu-arm-static."
+                if [ ! -e /usr/bin/qemu-arm-static ];then
+                    fxnERR "Host system must have qemu-arm-static to run an armel container. sudo apt install qemu-user-static."
+                    exit 1
+                fi
 
-		# Changes to the bashrc
-		fxnPreProcessDueBashrc          "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/etc
+                # Copy the host system's QEMU for ARM to a location where it will be
+                # installed in the container.
+                if [ ! -e "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin ];then
+                    mkdir -p "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin
+                fi
+                fxnEC cp -a /usr/bin/qemu-arm-static "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin/qemu-arm-static || exit 1
+                # Set this to pass to Dockerfile configuration so that qemu-static
+                # will be present in the image _before_ Docker executes any commands in the image.
+                QEMU_STATIC="qemu-arm-static"
+            fi
+        fi
 
-		# Common functions used by pre/post install
-		fxnPreProcessInstallConfigLib   "${BUILD_MERGE_DIR}"/"$imageName"
+        #
+        # Run preprocessing on all templates and put them in the
+        # appropriate directory locations to configure the image
+        fxnHeader "Replacing REPLACE strings in template files with supplied values."
+        # Supply directory destination for output of processed template
+        fxnPreProcessDockerLoginMessage "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/etc
 
-		# First script to run
-		fxnPreProcessPreInstallConfig   "${BUILD_MERGE_DIR}"/"$imageName"
+        # Changes to the bashrc
+        fxnPreProcessDueBashrc          "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/etc
 
-		# Last script to run
-		fxnPreProcessPostInstallConfig  "${BUILD_MERGE_DIR}"/"$imageName"
+        # Common functions used by pre/post install
+        fxnPreProcessInstallConfigLib   "${BUILD_MERGE_DIR}"/"$imageName"
 
-		# Set parameters in the generated Docker file
-		# If qemu needs to be installed, QEMU_STATIC will not be empty
-		fxnPreProcessDockerFile         "${BUILD_MERGE_DIR}"/"$imageName" $QEMU_STATIC
+        # First script to run
+        fxnPreProcessPreInstallConfig   "${BUILD_MERGE_DIR}"/"$imageName"
 
-		#
-		# Put the current verison of DUE in the incoming Dockerfile.config for
-		# any future compatibility determinations
-		#
-		fxnPP "Embedding current version of DUE into the new image."
-		{
-			echo ""
-			echo "#Version of DUE this was created with, for future compatibility" 
-			echo "LABEL DUECreationVersion=$DUE_VERSION" 
-			echo ""  
-		} >> "${BUILD_MERGE_DIR}"/"${imageName}"/Dockerfile.config
-		
-		#
-		# Merge any information from Dockerfile.config into the Dockerfile.create
-		# Put this right after DUE_INSERT_CONFIG
-		sed -i "/# DUE_INSERT_CONFIG/ r ${BUILD_MERGE_DIR}/${imageName}/Dockerfile.config" "${BUILD_MERGE_DIR}"/"${imageName}"/Dockerfile.create
+        # Last script to run
+        fxnPreProcessPostInstallConfig  "${BUILD_MERGE_DIR}"/"$imageName"
 
-		fxnHeader "Created configuration directory [ $imageName ]"
-		echo ""
-		fxnPP "For additional configuration, modify the files in $imageName"
-		echo ""
+        # Set parameters in the generated Docker file
+        # If qemu needs to be installed, QEMU_STATIC will not be empty
+        fxnPreProcessDockerFile         "${BUILD_MERGE_DIR}"/"$imageName" $QEMU_STATIC
 
-		DO_CREATE_IMAGE_NOW="TRUE"
-		if [ "$DO_CREATE_IMAGE_NOW" = "TRUE" ];then
-			# Create it all in one shot
-		    fxnHeader "Creating the new image with: $0 --create --build-dir ${BUILD_MERGE_DIR}/$imageName"			
-			$0 --create --build-dir "${BUILD_MERGE_DIR}/$imageName" --tag "$DOCKER_IMAGE_TAG"
-		else
-		    fxnHeader " To create the new image, run: $0 --create --build-dir ${BUILD_MERGE_DIR}/$imageName"
-		fi
+        #
+        # Put the current verison of DUE in the incoming Dockerfile.config for
+        # any future compatibility determinations
+        #
+        fxnPP "Embedding current version of DUE into the new image."
+        {
+            echo ""
+            echo "#Version of DUE this was created with, for future compatibility"
+            echo "LABEL DUECreationVersion=$DUE_VERSION"
+            echo ""
+        } >> "${BUILD_MERGE_DIR}"/"${imageName}"/Dockerfile.config
 
-	else
-		# Directory was already there. Not overwriting it in case the user had
-		# modifications.
-		echo ""
-		fxnPP "Confirmed directory $imageName exists."
-		echo ""
-		fxnPP "If there were changes in the /templates directory, delete this particular build with: "
-		echo "      rm -r ${BUILD_MERGE_DIR}/$imageName"
-		echo ""
-		echo " Or delete all of ${BUILD_MERGE_DIR} with:"
-		echo "     $0 --create --clean "
-		echo ""
-		fxnPP "To create the new image, run: $0 --create --build-dir ${BUILD_MERGE_DIR}/$imageName"
-		echo ""
-	fi
+        #
+        # Merge any information from Dockerfile.config into the Dockerfile.create
+        # Put this right after DUE_INSERT_CONFIG
+        sed -i "/# DUE_INSERT_CONFIG/ r ${BUILD_MERGE_DIR}/${imageName}/Dockerfile.config" "${BUILD_MERGE_DIR}"/"${imageName}"/Dockerfile.create
 
-	#
-	# Use the directory of files that was generated above to create the
-	# new Docker image.
-	#
-	if [ "$DO_CREATE_NEW_IMAGE" = "TRUE" ];then
+        fxnHeader "Created configuration directory [ $imageName ]"
+        echo ""
+        fxnPP "For additional configuration, modify the files in $imageName"
+        echo ""
 
-		# if this doesn't exist at this point, things have gone very wrong.
-	    fxnEC cd "${BUILD_MERGE_DIR}/$imageName" || exit 1
-	    
-	    if [ ! -e /var/run/docker.sock ];then
-			fxnERR "Communication error with Docker!"
-			result=$( dpkg -l | grep docker )
-			if [ "$result" != ""  ];then
-				echo "Looks like docker is installed:"
-				echo "[ $result ]"
-				fxnERR "Is it running?"
-				exit 1
-			else
-				fxnERR "Has Docker been installed?"
-				exit 1
-			fi
-	    fi
-		#
-		# Create the image based off the contents of ./$imageName
-		# This allows the user to test incremental changes without starting from scratch.
-		fxnEC docker build --no-cache=true --tag "${CONFIGURED_NAME_AND_TAG}" --file=./Dockerfile.create . || exit 1
-	fi
+        DO_CREATE_IMAGE_NOW="TRUE"
+        if [ "$DO_CREATE_IMAGE_NOW" = "TRUE" ];then
+            # Create it all in one shot
+            fxnHeader "Creating the new image with: $0 --create --build-dir ${BUILD_MERGE_DIR}/$imageName"
+            $0 --create --build-dir "${BUILD_MERGE_DIR}/$imageName" --tag "$DOCKER_IMAGE_TAG"
+        else
+            fxnHeader " To create the new image, run: $0 --create --build-dir ${BUILD_MERGE_DIR}/$imageName"
+        fi
 
-	# Done.
-	exit
+    else
+        # Directory was already there. Not overwriting it in case the user had
+        # modifications.
+        echo ""
+        fxnPP "Confirmed directory $imageName exists."
+        echo ""
+        fxnPP "If there were changes in the /templates directory, delete this particular build with: "
+        echo "      rm -r ${BUILD_MERGE_DIR}/$imageName"
+        echo ""
+        echo " Or delete all of ${BUILD_MERGE_DIR} with:"
+        echo "     $0 --create --clean "
+        echo ""
+        fxnPP "To create the new image, run: $0 --create --build-dir ${BUILD_MERGE_DIR}/$imageName"
+        echo ""
+    fi
+
+    #
+    # Use the directory of files that was generated above to create the
+    # new Docker image.
+    #
+    if [ "$DO_CREATE_NEW_IMAGE" = "TRUE" ];then
+
+        # if this doesn't exist at this point, things have gone very wrong.
+        fxnEC cd "${BUILD_MERGE_DIR}/$imageName" || exit 1
+
+        if [ ! -e /var/run/docker.sock ];then
+            fxnERR "Communication error with Docker!"
+            result=$( dpkg -l | grep docker )
+            if [ "$result" != ""  ];then
+                echo "Looks like docker is installed:"
+                echo "[ $result ]"
+                fxnERR "Is it running?"
+                exit 1
+            else
+                fxnERR "Has Docker been installed?"
+                exit 1
+            fi
+        fi
+        #
+        # Create the image based off the contents of ./$imageName
+        # This allows the user to test incremental changes without starting from scratch.
+        fxnEC docker build --no-cache=true --tag "${CONFIGURED_NAME_AND_TAG}" --file=./Dockerfile.create . || exit 1
+    fi
+
+    # Done.
+    exit
 
 } #fxnMakeNewDockerImage
 
@@ -646,26 +646,26 @@ function fxnMakeNewDockerImage()
 #                             This should have been set on the command line
 function fxnDoSnapshot()
 {
-	local snapshotImageName
+    local snapshotImageName
 
-	# choose from running containers
-	fxnSelectContainer "running"
+    # choose from running containers
+    fxnSelectContainer "running"
 
-	# Keep the username to ID on multi user systems
-	# use due to filter
-	snapshotImageName=$(whoami)_due-${SNAPSHOT_IMAGE_NAME}
+    # Keep the username to ID on multi user systems
+    # use due to filter
+    snapshotImageName=$(whoami)_due-${SNAPSHOT_IMAGE_NAME}
 
-	fxnPP "Saving selected image as [ $snapshotImageName ]"
+    fxnPP "Saving selected image as [ $snapshotImageName ]"
 
-	# Run docker export -> import to save it
-	docker export "$SELECTED_CONTAINER_ID" | docker import - "$snapshotImageName"
-	if [ $? != 0 ];then
-		fxnERR "Failed to create snapshot $snapshotImageName. Exiting."
-		exit 1
-	fi
+    # Run docker export -> import to save it
+    docker export "$SELECTED_CONTAINER_ID" | docker import - "$snapshotImageName"
+    if [ $? != 0 ];then
+        fxnERR "Failed to create snapshot $snapshotImageName. Exiting."
+        exit 1
+    fi
 
-	# Show the user the result
-	docker images | grep "$snapshotImageName"
+    # Show the user the result
+    docker images | grep "$snapshotImageName"
 
 }
 
@@ -691,25 +691,25 @@ function fxnSelectContainer()
     local entryLine=""
 
     local doOperation="$1"
-	local imageName="$2"
+    local imageName="$2"
     local filterByType
-	local filterByTag
+    local filterByTag
 
-	# If the image name has a :tag at the end
-	# Ex: myImage:myTag
-	if [[ "$imageName"  == *:* ]];then
-		# Split this up on the : so that  filtering matches type, then tag
-		# Delete characters after :
-		filterByType=${imageName%%:*}
-		# Delete characters before :
-		filterByTag=${imageName##*:}
-	else
-		filterByType="$imageName"
-	fi
+    # If the image name has a :tag at the end
+    # Ex: myImage:myTag
+    if [[ "$imageName"  == *:* ]];then
+        # Split this up on the : so that  filtering matches type, then tag
+        # Delete characters after :
+        filterByType=${imageName%%:*}
+        # Delete characters before :
+        filterByTag=${imageName##*:}
+    else
+        filterByType="$imageName"
+    fi
     local userIs="${USER_NAME}"
 
-	# Default to having the user choose the image/container
-	local enableRunChoice="TRUE"
+    # Default to having the user choose the image/container
+    local enableRunChoice="TRUE"
     echo "-"
 
     if [ "$doOperation" = "" ];then
@@ -717,60 +717,60 @@ function fxnSelectContainer()
         exit 1
     fi
 
-	# if the image to use was passed on the command line, then don't bother with this
-	if [ "$SELECTED_CONTAINER_ID" != "" ];then
-		echo " - Not selecting images as IMAGE ID [ $SELECTED_CONTAINER_ID ] was specified."
-		return 0
-	fi
+    # if the image to use was passed on the command line, then don't bother with this
+    if [ "$SELECTED_CONTAINER_ID" != "" ];then
+        echo " - Not selecting images as IMAGE ID [ $SELECTED_CONTAINER_ID ] was specified."
+        return 0
+    fi
 
-	#
-	# Starting a new container. The selection process will be from existing images.
-	#
+    #
+    # Starting a new container. The selection process will be from existing images.
+    #
     if [ "$doOperation" = "start" ];then
         #
         # Run a container
-        # 
-        theContainers=$( docker images --format 'table  {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.ID}}') 
-		if [ $? != 0 ];then
-			# As this is frequently the first access of the system's Docker daemon,
-			# Fail gracefully if it's not installed.
-			echo ""
-			echo "Error: the Docker daemon not seem to be running. Is docker.io installed?  Exiting DUE."
-			echo ""
-			exit 1
-		fi
+        #
+        theContainers=$( docker images --format 'table  {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.ID}}')
+        if [ $? != 0 ];then
+            # As this is frequently the first access of the system's Docker daemon,
+            # Fail gracefully if it's not installed.
+            echo ""
+            echo "Error: the Docker daemon not seem to be running. Is docker.io installed?  Exiting DUE."
+            echo ""
+            exit 1
+        fi
 
-		#
-		# filter out containers the user isn't interested in
-		#
-		if [ "$filterByType" != "" ];then
-			# Pass filter type and REPOSITORY header.
-			# Match string against start of line, and leave a space at the end to
-			# terminate it in case it would match a longer string.
-			theContainers=$( echo "$theContainers" | grep "^$filterByType \|REPOSITORY" )
-			# If a tag is present, filter the results using that, too.
-			if [ "$filterByTag" != "" ];then
-				theContainers=$( echo "$theContainers" | grep " $filterByTag \|REPOSITORY")
-			fi
-		fi
+        #
+        # filter out containers the user isn't interested in
+        #
+        if [ "$filterByType" != "" ];then
+            # Pass filter type and REPOSITORY header.
+            # Match string against start of line, and leave a space at the end to
+            # terminate it in case it would match a longer string.
+            theContainers=$( echo "$theContainers" | grep "^$filterByType \|REPOSITORY" )
+            # If a tag is present, filter the results using that, too.
+            if [ "$filterByTag" != "" ];then
+                theContainers=$( echo "$theContainers" | grep " $filterByTag \|REPOSITORY")
+            fi
+        fi
 
-		if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
-			theContainers=$( echo "$theContainers" | grep "due\|REPOSITORY" )
-		fi
+        if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
+            theContainers=$( echo "$theContainers" | grep "due\|REPOSITORY" )
+        fi
 
-		#
-		# if there's only one entry after all this, run it by default.
-		#
-		if [ "$( echo "$theContainers" |  wc -l  )" = 2 ];then
-			enableRunChoice="FALSE"
-		else
-			echo "- Select one of the following containers to run:"
-		fi
+        #
+        # if there's only one entry after all this, run it by default.
+        #
+        if [ "$( echo "$theContainers" |  wc -l  )" = 2 ];then
+            enableRunChoice="FALSE"
+        else
+            echo "- Select one of the following containers to run:"
+        fi
     fi
 
-	#
-	# Logging in to a running container.
-	#
+    #
+    # Logging in to a running container.
+    #
     if [ "$doOperation" = "running" ];then
         #
         # select existing container
@@ -782,10 +782,10 @@ function fxnSelectContainer()
             theContainers=$(     docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.ID}}\t{{.Command}}')
         fi
 
-		if [ "$filterByType" != "" ];then
-			# pass filter type and REPOSITORY header
-			theContainers=$( echo "$theContainers" | grep "$filterByType\|CONTAINER\ ID" )
-		fi
+        if [ "$filterByType" != "" ];then
+            # pass filter type and REPOSITORY header
+            theContainers=$( echo "$theContainers" | grep "$filterByType\|CONTAINER\ ID" )
+        fi
 
         if [ "$FILTER_SHOW_ONLY_DUE" = "FALSE" ];then
             echo "- Select one of the following active containers. Omit '--all' to see containers filtered by [ $userIs ]"
@@ -795,98 +795,98 @@ function fxnSelectContainer()
     fi
 
     echo " ----------------------------------------------------------------------------"
-    
+
     if [ "$theContainers" = "" ];then
         echo "  None."
         exit 0
     fi
 
 
-		# separate the head from the body to prevent it getting numbered
-		theHeader=$( echo "$theContainers" | head -n 1 )
+    # separate the head from the body to prevent it getting numbered
+    theHeader=$( echo "$theContainers" | head -n 1 )
 
-		# set -n - clip first line
-		# cat -n - put a number at the start
-		theBody=$(  echo "$theContainers" \
-				| sed -n '1!p' \
-				| cat -n \
-				| sed -e 's/^    //g' -e 's/\t/  /g' )
-		if [ "$theBody"  = "" ];then
-		    echo ""
-		    echo "  No containers found for user [ $userIs ]. Try --login-all ?"
-		    echo ""
-		    exit 0
-		fi
+    # set -n - clip first line
+    # cat -n - put a number at the start
+    theBody=$(  echo "$theContainers" \
+                    | sed -n '1!p' \
+                    | cat -n \
+                    | sed -e 's/^    //g' -e 's/\t/  /g' )
+    if [ "$theBody"  = "" ];then
+        echo ""
+        echo "  No containers found for user [ $userIs ]. Try --login-all ?"
+        echo ""
+        exit 0
+    fi
 
-		# Filter by container type
-		if [ "$filterByType" != "" ];then
-			theBody=$( echo "$theBody" | grep "$filterByType" )
-		fi
+    # Filter by container type
+    if [ "$filterByType" != "" ];then
+        theBody=$( echo "$theBody" | grep "$filterByType" )
+    fi
 
-	if [ "$enableRunChoice" = "TRUE" ];then
-		# Print the menu for the user
-		echo " #  $theHeader"
-		#    echo "$theBody" | more
-		echo "$theBody"
-		echo ""
-		echo -n "- Enter number or q to quit > "
+    if [ "$enableRunChoice" = "TRUE" ];then
+        # Print the menu for the user
+        echo " #  $theHeader"
+        #    echo "$theBody" | more
+        echo "$theBody"
+        echo ""
+        echo -n "- Enter number or q to quit > "
 
-		read -r ENTRY
+        read -r ENTRY
 
-		case $ENTRY in
-			q|Q|x|X|"" )
-				echo "Exiting"
-				exit 0
-				;;
+        case $ENTRY in
+            q|Q|x|X|"" )
+                echo "Exiting"
+                exit 0
+                ;;
 
-			h|help|-h|--help )
-				echo ""
-				echo "Got [ $ENTRY ], so...executing '$0 run --help'  and exiting."
-				echo ""
-				fxnHelpRun
-				exit 0
-				;;
-		esac
-	else
-		# default to first entry if the user is not choosing.
-		# This should be whats left from a filter operation
-		ENTRY=1
-	fi
+            h|help|-h|--help )
+                echo ""
+                echo "Got [ $ENTRY ], so...executing '$0 run --help'  and exiting."
+                echo ""
+                fxnHelpRun
+                exit 0
+                ;;
+        esac
+    else
+        # default to first entry if the user is not choosing.
+        # This should be whats left from a filter operation
+        ENTRY=1
+    fi
     if [ "$doOperation" = "start" ];then
-		# use the pre-filtered var, theBody
+        # use the pre-filtered var, theBody
 
-		# print ENTRY line only
+        # print ENTRY line only
         entryLine=$( echo "$theBody"  | sed -n "${ENTRY}p"  )
-		if [ "$entryLine" = "" ];then
-			fxnERR "Failed to parse [ $ENTRY ] out of [ $theBody ]. Exiting."
-			exit 1
-		fi
+        if [ "$entryLine" = "" ];then
+            fxnERR "Failed to parse [ $ENTRY ] out of [ $theBody ]. Exiting."
+            exit 1
+        fi
         SELECTED_CONTAINER_ID=$( echo "$entryLine" |  awk '{print$5}' )
 
-		# In Ubuntu, Docker insists on putting a space between the size and units
-		# Ex: 531 MB, not 531MB. If our IMAGE ID has a 'B' in it, use the
-		# next column over.
-		echo "$SELECTED_CONTAINER_ID" | grep "B" > /dev/null
-		if [ "$?" = "0" ];then
-			SELECTED_CONTAINER_ID=$( echo "$entryLine" |  awk '{print$6}' )
-		fi
-		#Get the tag
-		SELECTED_CONTAINER_TAG=$( echo "$entryLine" |  awk '{print$3}' )
+        # In Ubuntu, Docker insists on putting a space between the size and units
+        # Ex: 531 MB, not 531MB. If our IMAGE ID has a 'B' in it, use the
+        # next column over.
+        echo "$SELECTED_CONTAINER_ID" | grep "B" > /dev/null
+        if [ "$?" = "0" ];then
+            SELECTED_CONTAINER_ID=$( echo "$entryLine" |  awk '{print$6}' )
+        fi
+        #Get the tag
+        SELECTED_CONTAINER_TAG=$( echo "$entryLine" |  awk '{print$3}' )
 
-		# Get the name
+        # Get the name
         SELECTED_CONTAINER_NAME=$( echo "$entryLine" |  awk '{print$2}' )
 
-		if [ "$SELECTED_CONTAINER_NAME" = "<none>" ];then
-			SELECTED_CONTAINER_NAME="none"
-		fi
-		
-		if [ "$VERBOSITY_LEVEL" -ne 0 ];then
-			fxnPrintContainerLabels "$SELECTED_CONTAINER_NAME" "$SELECTED_CONTAINER_TAG"
-		fi
-		
+        if [ "$SELECTED_CONTAINER_NAME" = "<none>" ];then
+            SELECTED_CONTAINER_NAME="none"
+        fi
+
+        if [ "$VERBOSITY_LEVEL" -ne 0 ];then
+            fxnPrintContainerLabels "$SELECTED_CONTAINER_NAME" "$SELECTED_CONTAINER_TAG"
+        fi
+
     else
-		SELECTED_CONTAINER_ID=$( echo "$theBody" | sed -n "${ENTRY}p" | awk '{print$4}' )
-		SELECTED_CONTAINER_NAME=$( echo "$theBody" | sed -n "${ENTRY}p" | awk '{print$2}' )
+        SELECTED_CONTAINER_ID=$( echo "$theBody" | sed -n "${ENTRY}p" | awk '{print$4}' )
+        SELECTED_CONTAINER_NAME=$( echo "$theBody" | sed -n "${ENTRY}p" | awk '{print$2}' )
     fi
 }
 
@@ -913,30 +913,30 @@ function fxnDoLogin()
     local useImage="$2"
     # If there is only 1 of something, set this to empty
     local plural="s"
-	# Default to assuming it's a preconfigured due image they're trying to run.
-	local isDUEImage="TRUE"
+    # Default to assuming it's a preconfigured due image they're trying to run.
+    local isDUEImage="TRUE"
 
-	# Docker image label describing type of image
-	local DUEImageType=""
+    # Docker image label describing type of image
+    local DUEImageType=""
 
-	# Image name minus offending characters
-	local sanitizedContainerName=""
+    # Image name minus offending characters
+    local sanitizedContainerName=""
 
-	# Users may forget they have containers running.
-	# Remind them.
-	local usersContainers
+    # Users may forget they have containers running.
+    # Remind them.
+    local usersContainers
 
-	
-	# Docker image label hinting where the mount point should be
-	# on an independently run command.
-	# Ex: since built Debian packages are one directory up from
-	# where the build is invoked, the container should mount the
-	# host system directory one level above where the build is.
-	local DUEMountHostDirsUp
-	# Add --debug as first argument to turn on debugging in container-create-user.sh
+
+    # Docker image label hinting where the mount point should be
+    # on an independently run command.
+    # Ex: since built Debian packages are one directory up from
+    # where the build is invoked, the container should mount the
+    # host system directory one level above where the build is.
+    local DUEMountHostDirsUp
+    # Add --debug as first argument to turn on debugging in container-create-user.sh
     local executeProgram="/usr/local/bin/container-create-user.sh "
-	
-	# Docker settings for user interaction. Not used with --command
+
+    # Docker settings for user interaction. Not used with --command
     local doInteractive=" --interactive --tty "
 
 
@@ -945,130 +945,130 @@ function fxnDoLogin()
         exit 1
     fi
 
-	#
-	# Come back with SELECTED_CONTAINER_NAME set
-	# Note FILTER_SHOW_ONLY_DUE = FALSE will show all containers
-	#
-	fxnSelectContainer "$doOperation" "$useImage"
+    #
+    # Come back with SELECTED_CONTAINER_NAME set
+    # Note FILTER_SHOW_ONLY_DUE = FALSE will show all containers
+    #
+    fxnSelectContainer "$doOperation" "$useImage"
 
-	# Does this image have DUEImageType as a label?
+    # Does this image have DUEImageType as a label?
 
     if [ "$1" = "start" ];then
-		# If we are selecting an image to run as a container
-		DUEImageType=$( docker inspect -f '{{.ContainerConfig.Labels.DUEImageType}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
-	else
-		# Logging in to an already running container
-		DUEImageType=$( docker container inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_ID}")
-	fi
+        # If we are selecting an image to run as a container
+        DUEImageType=$( docker inspect -f '{{.ContainerConfig.Labels.DUEImageType}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
+    else
+        # Logging in to an already running container
+        DUEImageType=$( docker container inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_ID}")
+    fi
 
 
-	if [ "$DUEImageType" = "" ];then
-		# Don't know what that was, other than 'not good'
-		fxnWarn "Failed to determine anything about the image/container, but will try anyway."
-		DUEImageType="<no value>" 
-	fi
+    if [ "$DUEImageType" = "" ];then
+        # Don't know what that was, other than 'not good'
+        fxnWarn "Failed to determine anything about the image/container, but will try anyway."
+        DUEImageType="<no value>"
+    fi
 
-	#
-	# for debug purposes, make no assumption about the container.
-	if [ "$IGNORE_IMAGE_TYPE" = "TRUE" ];then
-		fxnPP "Not parsing any labels out of container, as --ignore-type was passed."
-		DUEImageType="<no value>"
-	fi
-	if [ "$DUEImageType" = "<no value>" ];then
-		isDUEImage="FALSE"
-		# Default to sh login as container-create-user.sh probably doesn't exist
-		echo ""
-		echo "#############################################################################"
-		echo "#                                                                           #"
-		echo "#    NOTE: This container does not have any DUE labels.                     #"
-		echo "#    You may have to run DUE again with:                                    #"
-		echo "#      --login-shell to /bin/sh                                             #"
-		echo "#      --username    to root                                                #"
-		echo "#      --userid      to 0                                                   #"
-		echo "#                                                                           #"
-		echo "#############################################################################"		
-		echo ""
-		executeProgram="$LOGIN_SHELL"
+    #
+    # for debug purposes, make no assumption about the container.
+    if [ "$IGNORE_IMAGE_TYPE" = "TRUE" ];then
+        fxnPP "Not parsing any labels out of container, as --ignore-type was passed."
+        DUEImageType="<no value>"
+    fi
+    if [ "$DUEImageType" = "<no value>" ];then
+        isDUEImage="FALSE"
+        # Default to sh login as container-create-user.sh probably doesn't exist
+        echo ""
+        echo "#############################################################################"
+        echo "#                                                                           #"
+        echo "#    NOTE: This container does not have any DUE labels.                     #"
+        echo "#    You may have to run DUE again with:                                    #"
+        echo "#      --login-shell to /bin/sh                                             #"
+        echo "#      --username    to root                                                #"
+        echo "#      --userid      to 0                                                   #"
+        echo "#                                                                           #"
+        echo "#############################################################################"
+        echo ""
+        executeProgram="$LOGIN_SHELL"
 
-		# if user name/ID has been specified, then use Docker commands
-		# to set it in the running container
-		if [ "$USER_NAME" != "" ];then
-			SET_DOCKER_USER_ARGS+=" --name $USER_NAME "
-		fi
+        # if user name/ID has been specified, then use Docker commands
+        # to set it in the running container
+        if [ "$USER_NAME" != "" ];then
+            SET_DOCKER_USER_ARGS+=" --name $USER_NAME "
+        fi
 
-		if [ "$USER_ID" != "" ];then
-			SET_DOCKER_USER_ARGS+=" --user $USER_ID "
-		fi
-	else
-		isDUEImage="TRUE"
-	fi
+        if [ "$USER_ID" != "" ];then
+            SET_DOCKER_USER_ARGS+=" --user $USER_ID "
+        fi
+    else
+        isDUEImage="TRUE"
+    fi
 
     # If we are starting a new container
     if [ "$1" = "start" ];then
-		if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
-			usersContainers=$( docker ps | grep -c " ${USER_NAME}_"  )
-			# include this container they're starting
-			usersContainers=$(( usersContainers + 1 ))
-			if [ "$usersContainers" = 1 ];then
-			    # If there is only 1, don't reference it as multiple.
-			    # It's a small thing, but it always irritates me
-			    plural=""
-			fi
-			if [ $(( usersContainers > DUE_USER_CONTAINER_LIMIT )) = 1 ];then
-				echo ""
-				echo " Error: You have [ $usersContainers ] DUE container${plural} running, exceding the system limit of [ $DUE_USER_CONTAINER_LIMIT ] on $(hostname)"
-				echo ""
-				echo " Stop some with:  $DUE_NAME --manage --stop"
-				echo ""
-				exit 2
-			fi
-		fi
+        if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
+            usersContainers=$( docker ps | grep -c " ${USER_NAME}_"  )
+            # include this container they're starting
+            usersContainers=$(( usersContainers + 1 ))
+            if [ "$usersContainers" = 1 ];then
+                # If there is only 1, don't reference it as multiple.
+                # It's a small thing, but it always irritates me
+                plural=""
+            fi
+            if [ $(( usersContainers > DUE_USER_CONTAINER_LIMIT )) = 1 ];then
+                echo ""
+                echo " Error: You have [ $usersContainers ] DUE container${plural} running, exceding the system limit of [ $DUE_USER_CONTAINER_LIMIT ] on $(hostname)"
+                echo ""
+                echo " Stop some with:  $DUE_NAME --manage --stop"
+                echo ""
+                exit 2
+            fi
+        fi
 
-		#
-		# Figure out the particulars of any directory mounts
-		#
+        #
+        # Figure out the particulars of any directory mounts
+        #
 
-		if [ "$isDUEImage" = "TRUE" ];then
-			# If the container has a hint about mounting host directories relative
-			# to the current working directory, take that into account.
-			DUEMountHostDirsUP=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirsUp}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
+        if [ "$isDUEImage" = "TRUE" ];then
+            # If the container has a hint about mounting host directories relative
+            # to the current working directory, take that into account.
+            DUEMountHostDirsUP=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirsUp}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
 
-			MOUNT_CURRENT_WORKING_DIRECTORY="$CURRENT_WORKING_DIRECTORY"
-			for (( count=DUEMountHostDirsUP ; count > 0 ; count-- ))
-			do
-				# Back up a directory
-				MOUNT_CURRENT_WORKING_DIRECTORY="$( dirname "$MOUNT_CURRENT_WORKING_DIRECTORY" )"
-			done
+            MOUNT_CURRENT_WORKING_DIRECTORY="$CURRENT_WORKING_DIRECTORY"
+            for (( count=DUEMountHostDirsUP ; count > 0 ; count-- ))
+            do
+                # Back up a directory
+                MOUNT_CURRENT_WORKING_DIRECTORY="$( dirname "$MOUNT_CURRENT_WORKING_DIRECTORY" )"
+            done
 
 
-			# DUE images have the container-create-user.sh script, so configure for that.
-			if [ "$DO_DEBUG" = "TRUE" ];then
-				# If container-create-user.sh gets --debug as the first argument, it will set -x
-				executeProgram=" $executeProgram --debug "
-			fi
+            # DUE images have the container-create-user.sh script, so configure for that.
+            if [ "$DO_DEBUG" = "TRUE" ];then
+                # If container-create-user.sh gets --debug as the first argument, it will set -x
+                executeProgram=" $executeProgram --debug "
+            fi
 
-			# If running docker in the container, it has to match the host
-			# system's group ID
-			dockerGID=$( getent group 'docker' | awk -F ':' '{print$3}' )
-			executeProgram+=" --docker-group-id $dockerGID "
-			
-			# specify user and ID
-			executeProgram+=" --username $USER_NAME --userid $USER_ID --groupid $USER_GROUP_ID --groupname $USER_GROUP_NAME "
+            # If running docker in the container, it has to match the host
+            # system's group ID
+            dockerGID=$( getent group 'docker' | awk -F ':' '{print$3}' )
+            executeProgram+=" --docker-group-id $dockerGID "
 
-			# Set any CONTAINER_SPECIFIC_ARGS
-			fxnSetContainerSpecificArgs	"$DUEImageType"
-			
-		fi
-		# Generate a unique hostname
-		# Replace any / in name with - as Docker will complain.
-		sanitizedContainerName=${SELECTED_CONTAINER_NAME/\//-}
-		
-		USE_HOSTNAME="${USER_NAME}_${sanitizedContainerName}_$(date +%s)"
+            # specify user and ID
+            executeProgram+=" --username $USER_NAME --userid $USER_ID --groupid $USER_GROUP_ID --groupname $USER_GROUP_NAME "
 
-		# Set the hostname to the container type. As this will
-		# probably show up in the user prompt since DUE can't
-		# override the .bashrc sourced from the user's home directory.
-        HOSTNAME_ARGS=" --hostname $sanitizedContainerName "		
+            # Set any CONTAINER_SPECIFIC_ARGS
+            fxnSetContainerSpecificArgs "$DUEImageType"
+
+        fi
+        # Generate a unique hostname
+        # Replace any / in name with - as Docker will complain.
+        sanitizedContainerName=${SELECTED_CONTAINER_NAME/\//-}
+
+        USE_HOSTNAME="${USER_NAME}_${sanitizedContainerName}_$(date +%s)"
+
+        # Set the hostname to the container type. As this will
+        # probably show up in the user prompt since DUE can't
+        # override the .bashrc sourced from the user's home directory.
+        HOSTNAME_ARGS=" --hostname $sanitizedContainerName "
 
         # If not otherwise specified
         # make sure the container mounts something local
@@ -1076,179 +1076,179 @@ function fxnDoLogin()
         #
         # Local filesystems the container can mount.
         #
-		if [ "$USE_HOMEDIR" = "" ];then
-			ADDITIONAL_MOUNTS+=" --volume $(realpath ~/):/home/$USER_NAME"
-		else
-			echo "$USE_HOMEDIR" | grep -q "/"
-			if [ $? = 0 ];then
-				ADDITIONAL_MOUNTS+=" --volume ${USE_HOMEDIR}:/home/$USER_NAME"
-			fi
-			# not having an absolute path = use container home dir.
-		fi
+        if [ "$USE_HOMEDIR" = "" ];then
+            ADDITIONAL_MOUNTS+=" --volume $(realpath ~/):/home/$USER_NAME"
+        else
+            echo "$USE_HOMEDIR" | grep -q "/"
+            if [ $? = 0 ];then
+                ADDITIONAL_MOUNTS+=" --volume ${USE_HOMEDIR}:/home/$USER_NAME"
+            fi
+            # not having an absolute path = use container home dir.
+        fi
 
 
         if [ "$CURRENT_WORKING_DIRECTORY" != "" ];then
-			# If we are making the inside of the container have the
-			# same path as the directory this was invoked in, do it here.
-			ADDITIONAL_MOUNTS+=" --volume $MOUNT_CURRENT_WORKING_DIRECTORY:$MOUNT_CURRENT_WORKING_DIRECTORY "
-			# Put the user in the same equivalent directory in the container.
-			COMMAND_LIST=" cd $CURRENT_WORKING_DIRECTORY ; $COMMAND_LIST"
+            # If we are making the inside of the container have the
+            # same path as the directory this was invoked in, do it here.
+            ADDITIONAL_MOUNTS+=" --volume $MOUNT_CURRENT_WORKING_DIRECTORY:$MOUNT_CURRENT_WORKING_DIRECTORY "
+            # Put the user in the same equivalent directory in the container.
+            COMMAND_LIST=" cd $CURRENT_WORKING_DIRECTORY ; $COMMAND_LIST"
         fi
 
-		#
-		# Does the container specify any host directories it would like to mount?
-		# This is handy for sharing host installed tools or libraries without
-		# bloating the container, and every instance of it.
-		# The container's Dockerfile.config would have a:
-		#   LABEL DUEMountHostDirectories=/path1,/path2,/path3, etc to mount
-		#
-		
-		MountHostDirectories=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirectories}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
-		if [ "$MountHostDirectories" != "<no value>" ];then
-			# Save the current field separator (probably return)
-			saveIFS=$IFS
-			# Because it is now a ','
-			IFS=,
-			# use a 'here string' to parse the string like a file
-			read -ra theDirs <<< "$MountHostDirectories"
+        #
+        # Does the container specify any host directories it would like to mount?
+        # This is handy for sharing host installed tools or libraries without
+        # bloating the container, and every instance of it.
+        # The container's Dockerfile.config would have a:
+        #   LABEL DUEMountHostDirectories=/path1,/path2,/path3, etc to mount
+        #
 
-			for dir in "${theDirs[@]}"; do
-				if [ -d "$dir" ];then
-					fxnPP "Mounting host directory [ $dir ] in container, as suggested by container."
-					ADDITIONAL_MOUNTS+=" --volume $dir:$dir "
-				else
-					# host system doesn't have a directory the container wants to
-					# mount. Warn and proceed. 
-					fxnWarn "Host system does not have directory [ $dir ] requested by contiainer. Continuing..."
-				fi
-			done
-			# restore the field separator to what it was.
-			IFS=$saveIFS
-		fi
+        MountHostDirectories=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirectories}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
+        if [ "$MountHostDirectories" != "<no value>" ];then
+            # Save the current field separator (probably return)
+            saveIFS=$IFS
+            # Because it is now a ','
+            IFS=,
+            # use a 'here string' to parse the string like a file
+            read -ra theDirs <<< "$MountHostDirectories"
+
+            for dir in "${theDirs[@]}"; do
+                if [ -d "$dir" ];then
+                    fxnPP "Mounting host directory [ $dir ] in container, as suggested by container."
+                    ADDITIONAL_MOUNTS+=" --volume $dir:$dir "
+                else
+                    # host system doesn't have a directory the container wants to
+                    # mount. Warn and proceed.
+                    fxnWarn "Host system does not have directory [ $dir ] requested by contiainer. Continuing..."
+                fi
+            done
+            # restore the field separator to what it was.
+            IFS=$saveIFS
+        fi
         if [ "$CONTAINER_MOUNT_DIR" = "" ];then
             # Specify where the host directory is mounted in the container
             CONTAINER_MOUNT_DIR="$DEFAULT_CONTAINER_MOUNT_BUILD_DIR"
         fi
 
-		if [ "$DO_RUN_BACKGROUND" = "TRUE" ];then
+        if [ "$DO_RUN_BACKGROUND" = "TRUE" ];then
             # default to whatever the container's default is.
             executeProgram=""
             doInteractive=""
         fi
 
-		#
-		# If the invocation is not a login, but a command to run in the
-		# container, handle that here.
-		# Keep in mind:
-		#  The invoking user's home directory will be mounted, for access
-		#  to any configuration files, or ssh keys
-		#
-		#  The path to the directory the command was invoked in is
-		#  created and mounted in the container. So the command will
-		#  always start with a 'cd' to that directory.
-		#
+        #
+        # If the invocation is not a login, but a command to run in the
+        # container, handle that here.
+        # Keep in mind:
+        #  The invoking user's home directory will be mounted, for access
+        #  to any configuration files, or ssh keys
+        #
+        #  The path to the directory the command was invoked in is
+        #  created and mounted in the container. So the command will
+        #  always start with a 'cd' to that directory.
+        #
 
-		if [ "$COMMAND_LIST" != "" ];then
-			# The user the command will run as has already been set
-			# Pass the actual command here
-			if [ "$isDUEImage" = "TRUE" ];then
-				# This container starts with due-, so it should have
-				# container-create-user.sh installed, which will run the
-				# command as the user.
-				executeProgram+=" --command $COMMAND_LIST "
-			else
-				# container-create-user.sh may not be installed, best to
-				# just run it however we log in
-				# This is a command, not a log in, so add -c
-				executeProgram+=" -c "
-				# Quote this here so it gets passed to the -c coherently
-				# when it runs below.
-				cmdList="$COMMAND_LIST "
-			fi
+        if [ "$COMMAND_LIST" != "" ];then
+            # The user the command will run as has already been set
+            # Pass the actual command here
+            if [ "$isDUEImage" = "TRUE" ];then
+                # This container starts with due-, so it should have
+                # container-create-user.sh installed, which will run the
+                # command as the user.
+                executeProgram+=" --command $COMMAND_LIST "
+            else
+                # container-create-user.sh may not be installed, best to
+                # just run it however we log in
+                # This is a command, not a log in, so add -c
+                executeProgram+=" -c "
+                # Quote this here so it gets passed to the -c coherently
+                # when it runs below.
+                cmdList="$COMMAND_LIST "
+            fi
 
-			# if this is a command, eliminate the --interactive and --tty options
-			doInteractive=""
-		fi
+            # if this is a command, eliminate the --interactive and --tty options
+            doInteractive=""
+        fi
 
         # assign a name
-		if [ "$SET_CONTAINER_NAME" != "" ];then
-			# User is overriding defaults with --container-name
-			imname="$SET_CONTAINER_NAME"
-		else
-			imname="${USE_HOSTNAME}"
-		fi
+        if [ "$SET_CONTAINER_NAME" != "" ];then
+            # User is overriding defaults with --container-name
+            imname="$SET_CONTAINER_NAME"
+        else
+            imname="${USE_HOSTNAME}"
+        fi
 
-		# Note that any variables here that are not set will evaluate to
-		# blank space and not be parsed as arguments.
+        # Note that any variables here that are not set will evaluate to
+        # blank space and not be parsed as arguments.
 
-		# Skip network configuration for now
+        # Skip network configuration for now
         #                --network=\"host\" \
-		# Pass any arguments that were set to go directly to docker
-		# Pass any arguments that may be container specific
-		# be  interactive, or not
-		# use --rm to delete the container on exit
-		# Mount any additional host directories
-		# Specify the user to Docker
-		# Set container host name
-		# Specify the container
-		# Pass the command to execute
+            # Pass any arguments that were set to go directly to docker
+        # Pass any arguments that may be container specific
+        # be  interactive, or not
+        # use --rm to delete the container on exit
+        # Mount any additional host directories
+        # Specify the user to Docker
+        # Set container host name
+        # Specify the container
+        # Pass the command to execute
         runCMD="$DOCKER_SPECIFIC_ARGS \
-				$CONTAINER_SPECIFIC_ARGS \
-				$doInteractive \
+                $CONTAINER_SPECIFIC_ARGS \
+                $doInteractive \
                 --rm \
                 $ADDITIONAL_MOUNTS \
-				$SET_DOCKER_USER_ARGS \
+                $SET_DOCKER_USER_ARGS \
                 --name $imname \
                 $userNameArg \
                 ${HOSTNAME_ARGS} \
                 ${SELECTED_CONTAINER_ID} \
-				 $executeProgram"
+                 $executeProgram"
 
         # Remove spaces for readability when echoing.
-		# put one argument per line for readability
-		# and make sure there are \ so the command can be cut and pasted
+        # put one argument per line for readability
+        # and make sure there are \ so the command can be cut and pasted
         formatRunCMD=$( echo $runCMD  | sed -e 's/                / /g' | sed -e 's# --#\\ \n     --#g' )
 
-		#
-		# Let the user know what DUE is doing behind the scenes
-	#
+        #
+        # Let the user know what DUE is doing behind the scenes
+        #
 
         echo " ----------------------------------------------------------------------------"
         echo " ------ : start and log in to [ $SELECTED_CONTAINER_ID ] with this command:      -- "
         echo "   docker run $formatRunCMD"
-		
+
         echo ""
         echo " ----------------------------------------------------------------------------"
         echo " ------ Host filesystems are mounted as follows: ----------------------------"
         echo " -"
-		# Put this on two lines and delete the starting space newline..
-		echo "$ADDITIONAL_MOUNTS" | sed -e 's/--volume/\n -   --volume/g' | sed -e '/^ $/d'
+        # Put this on two lines and delete the starting space newline..
+        echo "$ADDITIONAL_MOUNTS" | sed -e 's/--volume/\n -   --volume/g' | sed -e '/^ $/d'
 
-		if [ "$usersContainers" != "" ];then
-		    # Only limit this for DUE containers.
-		    echo " - "
-		    echo " - You now have  [ $usersContainers ] DUE container${plural} running on $(hostname)."
-		    echo " - User limit is [ $DUE_USER_CONTAINER_LIMIT ]"
-		fi
+        if [ "$usersContainers" != "" ];then
+            # Only limit this for DUE containers.
+            echo " - "
+            echo " - You now have  [ $usersContainers ] DUE container${plural} running on $(hostname)."
+            echo " - User limit is [ $DUE_USER_CONTAINER_LIMIT ]"
+        fi
         echo " -"
         echo " ----------------------------------------------------------------------------"
         echo " -------- Type 'exit' to leave.  Docker Container Output Follows ------------"
 
-		echo ""
+        echo ""
 
-		if [ "$cmdList" != "" ];then
-			# even the empty "" here will trip up a shell login, but they are
-			# needed if cmdList is set to anything. Hence two cases.
-			docker run $runCMD "$cmdList"
-		else
-			docker run $runCMD
-		fi
+        if [ "$cmdList" != "" ];then
+            # even the empty "" here will trip up a shell login, but they are
+            # needed if cmdList is set to anything. Hence two cases.
+            docker run $runCMD "$cmdList"
+        else
+            docker run $runCMD
+        fi
 
     else
-		
-		if [ "$USER_NAME" != "" ];then
-			userNameArg=" --user $USER_NAME "
-		fi		
+
+        if [ "$USER_NAME" != "" ];then
+            userNameArg=" --user $USER_NAME "
+        fi
         echo "Logging in to running  [ $SELECTED_CONTAINER_ID ] with: "
         echo " ___________________________________________________________________________"
         echo "|"
@@ -1256,11 +1256,11 @@ function fxnDoLogin()
         echo "|___________________________________________________________________________"
         echo ""
         echo ""
-		echo " ---------------------------------------------------------------------------"
+        echo " ---------------------------------------------------------------------------"
         echo " -             Logging in to container. Type 'exit' to leave.              -"
         echo " ------------------- Docker Container Output Follows -----------------------"
-		# all output from here on down is from the container session, rather than the
-		# launch from DUE
+        # all output from here on down is from the container session, rather than the
+        # launch from DUE
 
         docker exec $doInteractive  $userNameArg "${SELECTED_CONTAINER_ID}" $LOGIN_SHELL
     fi
@@ -1282,49 +1282,49 @@ function fxnDoLogin()
 
 function fxnGenerateTemplate()
 {
-	local name
-	local templateName
+    local name
+    local templateName
 
-	#	name="$( basename "$MERGE_IN_TEMPLATE_PATH" )"
-	name="$NEW_IMAGE_NAME"
-	templateName="${name}-template-merge"
+    #   name="$( basename "$MERGE_IN_TEMPLATE_PATH" )"
+    name="$NEW_IMAGE_NAME"
+    templateName="${name}-template-merge"
 
-	#
-	# Create a work directory to hold all build output in
-	#
-	if [ ! -d "$BUILD_MERGE_DIR" ];then
-		fxnHeader "Creating work directory $BUILD_MERGE_DIR"
-		fxnEC mkdir -p "$BUILD_MERGE_DIR" || exit 1
-	fi
+    #
+    # Create a work directory to hold all build output in
+    #
+    if [ ! -d "$BUILD_MERGE_DIR" ];then
+        fxnHeader "Creating work directory $BUILD_MERGE_DIR"
+        fxnEC mkdir -p "$BUILD_MERGE_DIR" || exit 1
+    fi
 
-	if [ -e "${BUILD_MERGE_DIR}"/"${templateName}" ];then
-		fxnWarn " [ ${BUILD_MERGE_DIR}/$templateName ] directory already exists. Skipping generation."
-		return 0
-	fi
-	fxnHeader "Copying $COMMON_TEMPLATE_PATH to ${BUILD_MERGE_DIR}/$templateName"
-	# here -template will stick with the directories and get filtered
+    if [ -e "${BUILD_MERGE_DIR}"/"${templateName}" ];then
+        fxnWarn " [ ${BUILD_MERGE_DIR}/$templateName ] directory already exists. Skipping generation."
+        return 0
+    fi
+    fxnHeader "Copying $COMMON_TEMPLATE_PATH to ${BUILD_MERGE_DIR}/$templateName"
+    # here -template will stick with the directories and get filtered
 
-	# --preserve Keep mode,owner,timestamp, etc
-	fxnEC cp  --recursive --preserve "$COMMON_TEMPLATE_PATH" "${BUILD_MERGE_DIR}"/"$templateName" || exit 1
-	fxnListDirContents "${BUILD_MERGE_DIR}/$templateName"
+    # --preserve Keep mode,owner,timestamp, etc
+    fxnEC cp  --recursive --preserve "$COMMON_TEMPLATE_PATH" "${BUILD_MERGE_DIR}"/"$templateName" || exit 1
+    fxnListDirContents "${BUILD_MERGE_DIR}/$templateName"
 
-	# --dereference  softlinks in the templates directory get resolved to
-	#                their actual files for merge. This allows for things
-	#                like sharing the duebuild file between debian-package
-	#                and frr
-	
-	fxnHeader "Merging in [ $name ] specific files from ${MERGE_IN_TEMPLATE_PATH} to ${BUILD_MERGE_DIR}/$templateName"
-	fxnEC cp --dereference --recursive --preserve  "${MERGE_IN_TEMPLATE_PATH}"/* "${BUILD_MERGE_DIR}"/"${templateName}"/ || exit 1
-    fxnListDirContents "${BUILD_MERGE_DIR}/$templateName" 
+    # --dereference  softlinks in the templates directory get resolved to
+    #                their actual files for merge. This allows for things
+    #                like sharing the duebuild file between debian-package
+    #                and frr
 
-	#
-	# Merge any information from Dockerfile.config into the Dockerfile.create
-	#
-#	sed -i "/# DUE_INSERT_CONFIG/ r ${BUILD_MERGE_DIR}/${templateName}/Dockerfile.config" ${BUILD_MERGE_DIR}/${templateName}/Dockerfile.template
+    fxnHeader "Merging in [ $name ] specific files from ${MERGE_IN_TEMPLATE_PATH} to ${BUILD_MERGE_DIR}/$templateName"
+    fxnEC cp --dereference --recursive --preserve  "${MERGE_IN_TEMPLATE_PATH}"/* "${BUILD_MERGE_DIR}"/"${templateName}"/ || exit 1
+    fxnListDirContents "${BUILD_MERGE_DIR}/$templateName"
 
-	# Rather than pull files from the common-templates to create the
-	# configuration direcotory for the docker image, use this merged one
-	USE_TEMPLATE_PATH="${BUILD_MERGE_DIR}/${name}-template-merge"
+    #
+    # Merge any information from Dockerfile.config into the Dockerfile.create
+    #
+    #   sed -i "/# DUE_INSERT_CONFIG/ r ${BUILD_MERGE_DIR}/${templateName}/Dockerfile.config" ${BUILD_MERGE_DIR}/${templateName}/Dockerfile.template
+
+    # Rather than pull files from the common-templates to create the
+    # configuration direcotory for the docker image, use this merged one
+    USE_TEMPLATE_PATH="${BUILD_MERGE_DIR}/${name}-template-merge"
 
 }
 
@@ -1347,28 +1347,28 @@ DUE_HOME_CONFIG_ABSOLUTE_PATH=${DUE_HOME_CONFIG_DIR}/${DUE_HOME_CONFIG_FILENAME}
 function fxnCreateConfigFile()
 {
 
-	if [ ! -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then
-		fxnPP "Making directory $DUE_HOME_CONFIG_DIR" 
-		fxnEC mkdir -p "$DUE_HOME_CONFIG_DIR" || exit 1
-	fi
+    if [ ! -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then
+        fxnPP "Making directory $DUE_HOME_CONFIG_DIR"
+        fxnEC mkdir -p "$DUE_HOME_CONFIG_DIR" || exit 1
+    fi
 
-	if [ -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then
-		fxnPP "$DUE_HOME_CONFIG_ABSOLUTE_PATH already exists. Doing nothing."
-	else
+    if [ -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then
+        fxnPP "$DUE_HOME_CONFIG_ABSOLUTE_PATH already exists. Doing nothing."
+    else
 
-		if [ ! -e "$DUE_CONFIG_FILE_PATH" ];then
-			# DUE has not been installed as a package.
-			# Assume execution from a downloaded source directory
-			fxnPP "Copying ./$DUE_CONFIG_FILE_PATH $DUE_HOME_CONFIG_ABSOLUTE_PATH" 
-			fxnEC cp ./"$DUE_CONFIG_FILE_PATH" "$DUE_HOME_CONFIG_ABSOLUTE_PATH" || exit 1
-		else
-			fxnPP "Copying $DUE_CONFIG_FILE_PATH $DUE_HOME_CONFIG_ABSOLUTE_PATH" 
-			fxnEC cp "$DUE_CONFIG_FILE_PATH" "$DUE_HOME_CONFIG_ABSOLUTE_PATH" || exit 1
-		fi
-		# Pix or it didn't happen.
-		echo "ls -l $DUE_HOME_CONFIG_DIR"
-		ls -l $DUE_HOME_CONFIG_DIR
-	fi
+        if [ ! -e "$DUE_CONFIG_FILE_PATH" ];then
+            # DUE has not been installed as a package.
+            # Assume execution from a downloaded source directory
+            fxnPP "Copying ./$DUE_CONFIG_FILE_PATH $DUE_HOME_CONFIG_ABSOLUTE_PATH"
+            fxnEC cp ./"$DUE_CONFIG_FILE_PATH" "$DUE_HOME_CONFIG_ABSOLUTE_PATH" || exit 1
+        else
+            fxnPP "Copying $DUE_CONFIG_FILE_PATH $DUE_HOME_CONFIG_ABSOLUTE_PATH"
+            fxnEC cp "$DUE_CONFIG_FILE_PATH" "$DUE_HOME_CONFIG_ABSOLUTE_PATH" || exit 1
+        fi
+        # Pix or it didn't happen.
+        echo "ls -l $DUE_HOME_CONFIG_DIR"
+        ls -l $DUE_HOME_CONFIG_DIR
+    fi
 
 }
 
@@ -1382,42 +1382,42 @@ CONFIG_FILE_PATH="$DUE_HOME_CONFIG_ABSOLUTE_PATH"
 
 function fxnReadConfigFile()
 {
-	# store variable name / value pairs
-	local configVars   
-	local homeDir
-	local maxContainers
-	
-	# If the user's local DUE config does not exist
-	if [ ! -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then		
-		if [ -e "$CONFIG_FILE_PATH" ];then
-			# Use the system wide file if it exists ( via Debian package install)
-			CONFIG_FILE_PATH="$DUE_HOME_CONFIG_ABSOLUTE_PATH"
-		else
-			# Create a local config to use.
-			fxnPP "Creating DUE configuraton file at $CONFIG_FILE_PATH" 
-			fxnEC fxnCreateConfigFile || exit 1
-		fi
-	fi
+    # store variable name / value pairs
+    local configVars
+    local homeDir
+    local maxContainers
 
-	if [ -e "$CONFIG_FILE_PATH" ];then
-		# Read the file, filter out comments (#) and empty lines (\S)
-		configVars=$( grep -v "#" "$CONFIG_FILE_PATH" | grep "\S" )
+    # If the user's local DUE config does not exist
+    if [ ! -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then
+        if [ -e "$CONFIG_FILE_PATH" ];then
+            # Use the system wide file if it exists ( via Debian package install)
+            CONFIG_FILE_PATH="$DUE_HOME_CONFIG_ABSOLUTE_PATH"
+        else
+            # Create a local config to use.
+            fxnPP "Creating DUE configuraton file at $CONFIG_FILE_PATH"
+            fxnEC fxnCreateConfigFile || exit 1
+        fi
+    fi
 
-		# Parse the DUE_ENV_DEFAULT_HOMEDIR variable.
-		homeDir=$(echo "$configVars" | grep DUE_ENV_DEFAULT_HOMEDIR | tail -n 1 )
-		if [ "$homeDir" != "" ];then
-			# This will set DUE_ENV_DEFAULT_HOMEDIR
-			eval "$( echo $homeDir )"			
-		fi
+    if [ -e "$CONFIG_FILE_PATH" ];then
+        # Read the file, filter out comments (#) and empty lines (\S)
+        configVars=$( grep -v "#" "$CONFIG_FILE_PATH" | grep "\S" )
 
-		# Parse the DUE_USER_CONTAINER_LIMIT variable, and ovedrride the
-		# default set at the top of this file.
-		maxContainers=$(echo "$configVars" | grep DUE_USER_CONTAINER_LIMIT | tail -n 1 )
-		if [ "$maxContainers" != "" ];then
-			# Trim everything before the = to leave the number
-			DUE_USER_CONTAINER_LIMIT=${maxContainers##*=} 
-		fi
-	fi
+        # Parse the DUE_ENV_DEFAULT_HOMEDIR variable.
+        homeDir=$(echo "$configVars" | grep DUE_ENV_DEFAULT_HOMEDIR | tail -n 1 )
+        if [ "$homeDir" != "" ];then
+            # This will set DUE_ENV_DEFAULT_HOMEDIR
+            eval "$( echo $homeDir )"
+        fi
+
+        # Parse the DUE_USER_CONTAINER_LIMIT variable, and ovedrride the
+        # default set at the top of this file.
+        maxContainers=$(echo "$configVars" | grep DUE_USER_CONTAINER_LIMIT | tail -n 1 )
+        if [ "$maxContainers" != "" ];then
+            # Trim everything before the = to leave the number
+            DUE_USER_CONTAINER_LIMIT=${maxContainers##*=}
+        fi
+    fi
 }
 
 # DUE embeds labels into the images it creates to get hints for how the containers should
@@ -1427,35 +1427,35 @@ function fxnReadConfigFile()
 #   $2  - tag of contiainer
 function fxnPrintContainerLabels()
 {
-	local containerName="$1"
-	local containerTag="$2"
-	
-	local DUEImageType
-	local DUEMountHostDirsUP
-	local DUEContainerVersion
-	local DUECreationVersion
+    local containerName="$1"
+    local containerTag="$2"
 
-	# How does the container identify itself?
-	DUEImageType=$( docker inspect -f '{{.ContainerConfig.Labels.DUEImageType}}' "${containerName}":"${containerTag}" )
+    local DUEImageType
+    local DUEMountHostDirsUP
+    local DUEContainerVersion
+    local DUECreationVersion
 
-	# Mount host filesystem this many directories up from current working directory
-	DUEMountHostDirsUP=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirsUp}}' "${containerName}":"${containerTag}" )
-	# Revision of container
-	DUEContainerVersion=$( docker inspect -f '{{.ContainerConfig.Labels.DUEContainerVersion}}' "${containerName}":"${containerTag}" )
-	# DUE revision that created it
+    # How does the container identify itself?
+    DUEImageType=$( docker inspect -f '{{.ContainerConfig.Labels.DUEImageType}}' "${containerName}":"${containerTag}" )
+
+    # Mount host filesystem this many directories up from current working directory
+    DUEMountHostDirsUP=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirsUp}}' "${containerName}":"${containerTag}" )
+    # Revision of container
+    DUEContainerVersion=$( docker inspect -f '{{.ContainerConfig.Labels.DUEContainerVersion}}' "${containerName}":"${containerTag}" )
+    # DUE revision that created it
     DUECreationVersion=$( docker inspect -f '{{.ContainerConfig.Labels.DUECreationVersion}}' "${containerName}":"${containerTag}" )
-	# Host directories to try and mount in the container (for shared libraries, etc)
-	DUEMountHostDirectories=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirectories}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
+    # Host directories to try and mount in the container (for shared libraries, etc)
+    DUEMountHostDirectories=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirectories}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
 
-	echo " -----------------------------------------------------------------------"
-	echo "| DUE Labels for:      ${containerName}:${containerTag}"
-	echo "|"
-	echo "| DUEImageType            $DUEImageType"
-	echo "| DUEContainerVersion     $DUEContainerVersion"
-	echo "| DUECreationVersion      $DUECreationVersion"	
-	echo "| DUEMountHostDirsUP      $DUEMountHostDirsUP"
-	echo "| DUEMountHostDirectories $DUEMountHostDirectories"
-	echo "|"
+    echo " -----------------------------------------------------------------------"
+    echo "| DUE Labels for:      ${containerName}:${containerTag}"
+    echo "|"
+    echo "| DUEImageType            $DUEImageType"
+    echo "| DUEContainerVersion     $DUEContainerVersion"
+    echo "| DUECreationVersion      $DUECreationVersion"
+    echo "| DUEMountHostDirsUP      $DUEMountHostDirsUP"
+    echo "| DUEMountHostDirectories $DUEMountHostDirectories"
+    echo "|"
 
 }
 
@@ -1470,78 +1470,78 @@ STOP_SCRIPT="stop_these_docker_containers.sh"
 
 function fxnDoContainerStop()
 {
-	local filterByUser
-	local containerInfo
-	local stopTerm="$1"	
-	local countDown=5
-	if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
-		filterByUser="${USER_NAME}"
-	fi
+    local filterByUser
+    local containerInfo
+    local stopTerm="$1"
+    local countDown=5
+    if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
+        filterByUser="${USER_NAME}"
+    fi
 
-	if [ "$stopTerm" = "" ];then
-		fxnSelectContainer "running" "$filterByUser"
-		echo "Stopping container in 5 seconds. Use Ctrl-C to cancel."
-		containerInfo=$(docker ps | grep "$SELECTED_CONTAINER_ID")
-		echo "$containerInfo"
-		while [ $countDown -ne 0 ]
-		do
-			echo -n "${countDown}..."
-			((countDown--))
-			sleep 1
-		done
-		echo ""
-		echo "Stopping container."
-		fxnEC docker stop "$SELECTED_CONTAINER_ID" || exit 1
-		# Leave some evidence in the system log in case this was not what was intended.
-		/usr/bin/logger "due: $(whoami) stopped container [ $containerInfo ]"
-		echo "Stopped."		
-	else
-		header=$( docker ps | head -n 1 )
-		terms=$( docker ps | grep "$stopTerm" )
-		if [ "$filterByUser" != "" ];then
-			terms=$( echo "$terms" | grep "$filterByUser" )
-		fi
+    if [ "$stopTerm" = "" ];then
+        fxnSelectContainer "running" "$filterByUser"
+        echo "Stopping container in 5 seconds. Use Ctrl-C to cancel."
+        containerInfo=$(docker ps | grep "$SELECTED_CONTAINER_ID")
+        echo "$containerInfo"
+        while [ $countDown -ne 0 ]
+        do
+            echo -n "${countDown}..."
+            ((countDown--))
+            sleep 1
+        done
+        echo ""
+        echo "Stopping container."
+        fxnEC docker stop "$SELECTED_CONTAINER_ID" || exit 1
+        # Leave some evidence in the system log in case this was not what was intended.
+        /usr/bin/logger "due: $(whoami) stopped container [ $containerInfo ]"
+        echo "Stopped."
+    else
+        header=$( docker ps | head -n 1 )
+        terms=$( docker ps | grep "$stopTerm" )
+        if [ "$filterByUser" != "" ];then
+            terms=$( echo "$terms" | grep "$filterByUser" )
+        fi
 
-		if [ "$terms" = "" ];then
-			echo "Found no containers that had  : $stopTerm $filterByUser"
-			echo "Exiting."
-			exit 0			
-		fi
-		# make sure there is something to act on before continuing.
-		numToDelete=$( echo "$terms" | wc -l )
-		
-		# put a # after the container ID to turn the rest of the info in to a comment
-		# prepend the ID with 'docker stop' to create an executable command.
-		#echo "$terms" | sed -e 's/   / # /' | sed -e 's/^/docker stop /g' >> $STOP_SCRIPT
+        if [ "$terms" = "" ];then
+            echo "Found no containers that had  : $stopTerm $filterByUser"
+            echo "Exiting."
+            exit 0
+        fi
+        # make sure there is something to act on before continuing.
+        numToDelete=$( echo "$terms" | wc -l )
 
-		toDelete=$( echo "$terms" | sed -e 's/   / # /' | sed -e 's/^/docker stop /g' )
+        # put a # after the container ID to turn the rest of the info in to a comment
+        # prepend the ID with 'docker stop' to create an executable command.
+        #echo "$terms" | sed -e 's/   / # /' | sed -e 's/^/docker stop /g' >> $STOP_SCRIPT
 
-		# just matching teh
-		# Create the stop script to be very explicit about what will happen
-		{
-			echo "#/bin/bash"
-			echo "# Created by $0 $INVOKED_WITH on $(date)"
-			echo "Will stop the following containers:" 
-			echo "            $header"
-			echo "$toDelete"
+        toDelete=$( echo "$terms" | sed -e 's/   / # /' | sed -e 's/^/docker stop /g' )
 
-			# Leave some evidence in the system log in case this was not what was intended.
-			echo "/usr/bin/logger \"due: $(whoami) stopped multiple containers.\""
+        # just matching teh
+        # Create the stop script to be very explicit about what will happen
+        {
+            echo "#/bin/bash"
+            echo "# Created by $0 $INVOKED_WITH on $(date)"
+            echo "Will stop the following containers:"
+            echo "            $header"
+            echo "$toDelete"
 
-			# Clean up after ourselves 
-			echo "rm ./$STOP_SCRIPT"
-		} > $STOP_SCRIPT
-		
-		chmod a+x "$STOP_SCRIPT"		
+            # Leave some evidence in the system log in case this was not what was intended.
+            echo "/usr/bin/logger \"due: $(whoami) stopped multiple containers.\""
 
-		echo " ________________________________________________________________________"
-		echo "|                                                                       "
-		echo "| Run [ ./$STOP_SCRIPT ]                                "
-		echo "|   to delete the [ $numToDelete ] containers that matched \"$stopTerm\"        "
-		echo "|________________________________________________________________________"
-		echo ""
+            # Clean up after ourselves
+            echo "rm ./$STOP_SCRIPT"
+        } > $STOP_SCRIPT
 
-	fi
+        chmod a+x "$STOP_SCRIPT"
+
+        echo " ________________________________________________________________________"
+        echo "|                                                                       "
+        echo "| Run [ ./$STOP_SCRIPT ]                                "
+        echo "|   to delete the [ $numToDelete ] containers that matched \"$stopTerm\"        "
+        echo "|________________________________________________________________________"
+        echo ""
+
+    fi
 
 }
 
@@ -1556,18 +1556,18 @@ function fxnDoContainerStop()
 # to upstream.
 function fxnSetContainerSpecificArgs()
 {
-	local imageType="$1"
+    local imageType="$1"
 
-	# uses the value set by tye DUEImageType label from
-	# template directory's Dockerfile.config
-	case $imageType in
-		"no-op-image" )
-			# Example: Mount current directory under /build in the container.
-			# Useful if this is invoked by an automated build system
-			# that builds outside the home directory hierarchy
-			# CONTAINER_SPECIFIC_ARGS="  --volume $(dirname $(pwd)):/build "
-			;;
+    # uses the value set by tye DUEImageType label from
+    # template directory's Dockerfile.config
+    case $imageType in
+        "no-op-image" )
+        # Example: Mount current directory under /build in the container.
+        # Useful if this is invoked by an automated build system
+        # that builds outside the home directory hierarchy
+        # CONTAINER_SPECIFIC_ARGS="  --volume $(dirname $(pwd)):/build "
+        ;;
 
-	esac
+    esac
 
 }

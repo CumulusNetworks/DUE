@@ -1,5 +1,8 @@
-due (1.4.1~0) UNRELEASED; urgency=medium
+due (1.5.0) RELEASED; urgency=medium
 
+  * Command line help is no longer order specific
+  * Debian package build: duebuild takes --deb-build-opt
+  * Debian package build: duebuild takes --build-command
   * Debian package build: --jobs now applies with default build
 
  -- Alex Doyle <alexddoyle@gmail.com>  Sun, 14 Jun 2020 09:35:04 -0700

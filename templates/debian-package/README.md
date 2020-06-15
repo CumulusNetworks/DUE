@@ -159,6 +159,16 @@ The build completes, and package-B debs are added to `myRepo`
 Also this has only been tested with .debs of a single architecture. Using source tarfiles
 and multiple architectures may not work.
 
+### Doing dependency install and running your own build command
+**Purpose** a finer level of control over dpkg-buildpackage, or anything else
+**Example** `./due --duebuild --build-command DEB_BUILD_OPTIONS="\'debug noopt\'" dpkg-buildpackage -b -j7`
+
+If you want to fine-tune the build command, then this will do the container
+updgrade and dependency installation, and then just run whatever follows 
+--build-command.  
+Note that --build-command must be the last argument, as everything after that
+is passed through...and you may have to escape quote terms, as illustrated above.
+
 ## Debugging
 Or, a descriptive collection of ways things have failed. Expect this list to grow.  
 

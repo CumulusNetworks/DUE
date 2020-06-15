@@ -93,6 +93,7 @@ function fxnHelp()
     echo "                               to dpkg-buildpackage. Must be the last argument on the line."
     echo "      --build-dsc <.dsc file>  Build from debian source control file .dsc and associated tar.gz"
     echo "      --default                Try to build with default settings."
+    echo "      --build-command <args>   Do environment prep and run <args>. Must be last argument on the line."
     echo ""
     echo "  Build options:"
     echo "   -j|--jobs <#>               Number of parallel builds to use."
@@ -158,22 +159,25 @@ function fxnHelpExamples()
     echo "  Insert a string into the version"
     echo "   $0 --cbuild --dev-version ~1234"
     echo ""
-	echo "  Set DEB_BUILD_OPTIONS values:"
-	echo "   $0 --cbuild --deb-build-option debug --deb-build-option nostrip "
-	echo ""
+    echo "  Set DEB_BUILD_OPTIONS values:"
+    echo "   $0 --cbuild --deb-build-option debug --deb-build-option nostrip "
+    echo ""
     echo "  Store build products in a repository for future builds"
     echo "  (i.e. building things that need other things built to build...)"
     echo "   $0 --cbuild --use-local-repo myLocalRepo "
     echo ""
-	echo "  Examples from DUE:"
-	echo "   Build package with 'nostrip' and 'debug' options, "
-	echo "   unsigned source, unsinged changes file, build binary, 5 jobs,"
-	echo "   and reference local package repository 'myLocalRepo'"
-	echo "     due --build --jobs 5 --deb-build-option nostrip "
-	echo "     --deb-build-option debug --use-local-repo myLocalRepo "
-	echo "     --cbuild -us -uc -b"
-	echo ""
-	
+    echo "  Do environmental setup and run dpkg-buildpackage -uc -us -j8"
+    echo "   $0 --build-command dpkg-buildpackage -uc -us -j8"
+    echo ""
+    echo "  Examples from DUE:"
+    echo "   Build package with 'nostrip' and 'debug' options, "
+    echo "   unsigned source, unsinged changes file, build binary, 5 jobs,"
+    echo "   and reference local package repository 'myLocalRepo'"
+    echo "     due --build --jobs 5 --deb-build-option nostrip "
+    echo "     --deb-build-option debug --use-local-repo myLocalRepo "
+    echo "     --cbuild -us -uc -b"
+    echo ""
+
 }
 
 # Set an exit trap to log completion.
@@ -207,20 +211,24 @@ function fxnPrintConfig()
     if [ "$DO_DEFAULT" != "" ];then
         echo "| Building with default settings"
     fi
-    echo "| dpkg command:      $DPKG_BUILDENV dpkg-buildpackage  $BUILD_ARGS "
+    if [ "$RAW_BUILD_COMMAND" != "" ];then
+        echo "| build command:     $RAW_BUILD_COMMAND"
+    else
+        echo "| dpkg command:      $DPKG_BUILDENV dpkg-buildpackage  $BUILD_ARGS "
+    fi
     echo "|"
     echo "| Build dir            [ $(pwd) ]"
     echo "| Local .deb repo      [ $LOCAL_REPO_NAME ]"
-if [ "$INSTALL_DEBS_DIR" != "" ];then
-    echo "| Non-repo debs        [ $INSTALL_DEBS_DIR ]"
-fi
-if [ "$ADD_SOURCES_LIST" != "" ];then
-    echo "| Extra sources.list   [ $ADD_SOURCES_LIST ]"
-fi
+    if [ "$INSTALL_DEBS_DIR" != "" ];then
+        echo "| Non-repo debs        [ $INSTALL_DEBS_DIR ]"
+    fi
+    if [ "$ADD_SOURCES_LIST" != "" ];then
+        echo "| Extra sources.list   [ $ADD_SOURCES_LIST ]"
+    fi
     echo "|"
     echo "| Reproducible stamp   [ $(date -d @"$SOURCE_DATE_EPOCH") ]"
 
-	
+
     if [ "$DO_BUILD_ARCH_SPECIFIC" != "" ];then
         echo "| Build arch specific  [ $DO_BUILD_ARCH_SPECIFIC ]"
     fi
@@ -536,6 +544,7 @@ function fxnDoDebianBuild()
 {
     local missingDepends=""
     local errorCode=""
+    local failMsg=""
 
     fxnMSG "Resolving build dependencies."
     echo ""
@@ -605,16 +614,23 @@ function fxnDoDebianBuild()
     fi
 
     while [ $(( BUILD_ATTEMPTS > 0 )) = 1 ]; do
-        fxnMSG "Building in [ $PACKAGE_DIR_NAME ] with [ $BUILD_ARGS ].  Attempt [ $BUILD_ATTEMPTS ]. "
+
 
         BUILD_ATTEMPTS=$(( BUILD_ATTEMPTS - 1 ))
         echo ""
 
-        # And ADDITIONAL_BUILD_ARGS was set
-        echo "bash -c  $DPKG_BUILDENV dpkg-buildpackage $BUILD_ARGS "
-        set -x
-        bash -c " $DPKG_BUILDENV dpkg-buildpackage $BUILD_ARGS "
-
+        if [ "$RAW_BUILD_COMMAND" != "" ];then
+            failMsg="$RAW_BUILD_COMMAND failed with error "
+            fxnMSG "Building in [ $PACKAGE_DIR_NAME ] with [ $RAW_BUILD_COMMAND ].  Attempt [ $BUILD_ATTEMPTS ]. "
+            echo "bash -c  $RAW_BUILD_COMMAND"
+            bash -c " $RAW_BUILD_COMMAND"
+        else
+            failMsg="dpkg-buildpackage $BUILD_ARGS failed with error "
+            fxnMSG "Building in [ $PACKAGE_DIR_NAME ] with [ $BUILD_ARGS ].  Attempt [ $BUILD_ATTEMPTS ]. "
+            # And ADDITIONAL_BUILD_ARGS was set
+            echo "bash -c  $DPKG_BUILDENV dpkg-buildpackage $BUILD_ARGS "
+            bash -c " $DPKG_BUILDENV dpkg-buildpackage $BUILD_ARGS "
+        fi
         result="$?"
 
         if [ "$result" != "0" ];then
@@ -626,7 +642,7 @@ function fxnDoDebianBuild()
 
                 "2" )
                     if [ "$BUILD_ATTEMPTS" = "0" ];then
-                        fxnERR "dpkg-buildpackage $BUILD_ARGS failed with error [ $result ]"
+                        fxnERR "$failMsg [ $result ]"
                         exit $result
                     fi
                     ;;
@@ -634,7 +650,7 @@ function fxnDoDebianBuild()
                 * )
                     # Retry until the tries run out.
                     if [ "$BUILD_ATTEMPTS" = "0" ];then
-                        fxnERR "dpkg-buildpackage $BUILD_ARGS failed with [ $result ]"
+                        fxnERR "$failMsg [ $result ]"
                         exit $result
                     fi
             esac
@@ -868,7 +884,7 @@ do
             shift
             ;;
 
-		
+
         -c | --cbuild )
             # Default to build everything in container context
             DO_BUILD="TRUE"
@@ -879,6 +895,20 @@ do
                 # The rest of the arguments passed should be given verbatim to
                 # whatever the build command is.
                 ADDITIONAL_BUILD_ARGS="$*"
+            fi
+            break
+            ;;
+
+        --build-command )
+            # Default to build everything in container context
+            DO_BUILD="TRUE"
+            if [ "$2" != "" ];then
+                # More arguements?
+                # skip over --build-command
+                shift
+                # The rest of the arguments passed should be given verbatim to
+                # whatever the build command is.
+                RAW_BUILD_COMMAND="$*"
             fi
             break
             ;;
@@ -961,8 +991,8 @@ do
             ;;
 
         --deb-build-option )
-	    # add term to a list that will follow DEB_BUILD_OPTIONS
-	    DEB_OPTION_LIST+=" $2 "
+            # add term to a list that will follow DEB_BUILD_OPTIONS
+            DEB_OPTION_LIST+=" $2 "
             shift
             ;;
 
