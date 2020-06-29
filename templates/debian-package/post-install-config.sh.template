@@ -26,17 +26,11 @@ apt-get update
 KERNEL_BUILD_PACKAGES=" build-essential python python-six rsync gcc bc bison cpio flex kmod quilt u-boot-tools "
 
 # Lintian checks code for errors or questionable implementations
-# in Debian packaging. Adds about 12MB to the conatiner size.
-LINTIAN_PACKAGES=" lintian ifupdown isc-dhcp-client 
-       isc-dhcp-common libapt-pkg-perl libarchive-zip-perl libauthen-sasl-perl 
-       libclass-accessor-perl libclone-perl libdigest-hmac-perl 
-       libemail-valid-perl libfile-basedir-perl libio-pty-perl 
-	   libio-socket-ssl-perl libio-string-perl 
-	   libipc-run-perl liblist-moreutils-perl libmailtools-perl 
-       libnet-dns-perl libnet-domain-tld-perl libnet-ip-perl 
-       libnet-smtp-ssl-perl libnet-ssleay-perl libparse-debianchangelog-perl 
-       libperlio-gzip-perl libsub-name-perl 
-       libtext-levenshtein-perl liburi-perl netbase patchutils t1utils"
+# in Debian packaging. Adds about 12MB to the container size
+# These were listed out, but dependencies vary with the version of
+# Debian being run, so it is more robust to just list 'lintian'
+# and let Apt sort out what to pull in
+LINTIAN_PACKAGES=" lintian "
 
 # If you expect to do development in the container, these are useful.
 EDITORS="vim emacs-nox"

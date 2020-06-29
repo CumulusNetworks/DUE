@@ -41,7 +41,7 @@ which left me wondering why there wasn't a set "template" that could be used to 
 Especially for distributed  open source projects where developers can't be sharing the same hardware,
 but could use a common development environment for debug.
 
-Incidentally, this history explains why most of the the starter image templates have a networking focus...  
+Incidentally, this history explains why most of the starter image templates have a networking focus...  
 
 # Design
 

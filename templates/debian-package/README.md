@@ -100,6 +100,7 @@ directory above the one where the build is being run.
 #### Build a Debian package from source using a .dsc file
 Given a compressed tar file and a Debian Source Code (dsc) file, DUE will configure the source directories and attempt to build.
 **Example:** due --run --build --build-dsc foo.dsc
+**Example:** due --duebuild --build-dsc foo.dsc
 
 #### Using `--build --cbuild`
 **Purpose:** The `--cbuild` option runs any default `duebuild` configuration (ex: dependency resolution ) and then passes subsequent arguments to dpkg-buildpackage 
@@ -172,6 +173,9 @@ is passed through...and you may have to escape quote terms, as illustrated above
 ## Debugging
 Or, a descriptive collection of ways things have failed. Expect this list to grow.  
 
+### Enable debug in the duebuild script.
+**Purpose** See exactly how the script in the container is interpreting things, without getting into it.
+**Example** due --duebuild --script-debug --cbuild
 
 #  Additional notes:
 None.

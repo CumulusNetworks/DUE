@@ -55,7 +55,7 @@ Bottom line: this _can_ be done, but it carries risks.
 If QEMU is properly and fully installed, DUE should be able to run containers
 of other architectures seamlessly
 If you're reading this, then you've found a seam and should file a bug at:
-[https://github.com/ehdoyle/DUE/issues](https://github.com/ehdoyle/DUE/issues)
+[https://github.com/CumulusNetworks/DUE/issues](https://github.com/CumulusNetworks/DUE/issues)
 
 
 ### Fails with: `standard\_init\_linux.go:211: exec user process caused "exec format error"`

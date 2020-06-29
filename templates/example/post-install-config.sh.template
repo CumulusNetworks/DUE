@@ -3,7 +3,7 @@
 # Bash should be installed at this point.
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 
-# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+# Copyright 2019-2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
 
@@ -13,6 +13,7 @@
 # for easy invocation (or not) in overriding scripts.
 fxnPostInstallCommon
 
- # Insert post install actions here:
+# Insert post install actions here, such as adding additional packages.
+# See other template's post-install-config.sh files for examples.
 
 echo "Done $0"
