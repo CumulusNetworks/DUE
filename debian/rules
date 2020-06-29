@@ -67,11 +67,13 @@ override_dh_clean:
 # remove intermediate merge directories, if they exist
 ifneq ($(wildcard $(MERGE_DIR)),)
 	@echo ""
-	@echo "$(MERGE_DIR) Exists. Consider (re)moving it to build DUE as a .deb #"
+	@echo "  Note: $(MERGE_DIR) work directory exists."
+	@echo "   Consider removing it when building DUE as a Debian package."
 	@echo ""
 else
-	@echo "$(MERGE_DIR) does not exist. Continuing."
+	@echo "Making clean."
 endif
 
 # Execute Debian clean
 	dh_clean
+

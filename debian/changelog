@@ -1,3 +1,10 @@
+due (1.6.0) RELEASED; urgency=medium
+
+  * Added debian-upstream branch for promotion to Debian.
+  * Packaging/Licensing cleanup prompted by Debian QA tools.
+
+ -- Alex Doyle <alexddoyle@gmail.com>  Sun, 28 Jun 2020 15:16:59 -0700
+
 due (1.5.0) RELEASED; urgency=medium
 
   * Command line help is no longer order specific

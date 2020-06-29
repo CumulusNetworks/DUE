@@ -12,7 +12,7 @@
 # Enable extended pattern matching
 shopt -s extglob
 
-DUE_VERSION="1.5.0"
+DUE_VERSION="1.6.0"
 
 # Debian packages required for DUE to run
 REQUIRED_PACKAGES=" docker.io rsync bsdutils git"
@@ -392,8 +392,11 @@ function fxnPreProcessPostInstallConfig()
         # to replace at the moment, but if there was, it would be here
         fxnPP "Creating $destDir/post-install-config.sh from [ $USE_TEMPLATE_PATH ]"
 
-        cp "${USE_TEMPLATE_PATH}"/post-install-config.sh.template "$destDir"/post-install-config.sh
-
+        fxnEC cp "${USE_TEMPLATE_PATH}"/post-install-config.sh.template "$destDir"/post-install-config.sh || exit 1
+		# Make it executable as the template versions should not run and do not have their executable bits set.
+		# Also, Lintian will flag this.
+		chmod a+x "$destDir"/post-install-config.sh
+		
         #
         # Any variable replacement via sed would happen here
         #
@@ -559,7 +562,7 @@ function fxnMakeNewDockerImage()
         fxnPreProcessDockerFile         "${BUILD_MERGE_DIR}"/"$imageName" $QEMU_STATIC
 
         #
-        # Put the current verison of DUE in the incoming Dockerfile.config for
+        # Put the current version of DUE in the incoming Dockerfile.config for
         # any future compatibility determinations
         #
         fxnPP "Embedding current version of DUE into the new image."
@@ -639,7 +642,7 @@ function fxnMakeNewDockerImage()
 } #fxnMakeNewDockerImage
 
 #
-# Save a runnning container as a new docker image
+# Save a running container as a new docker image
 #  User gets to pick from running containers.
 #
 # Uses: SNAPSHOT_IMAGE_NAME  Name of resulting image.
@@ -1016,7 +1019,7 @@ function fxnDoLogin()
             fi
             if [ $(( usersContainers > DUE_USER_CONTAINER_LIMIT )) = 1 ];then
                 echo ""
-                echo " Error: You have [ $usersContainers ] DUE container${plural} running, exceding the system limit of [ $DUE_USER_CONTAINER_LIMIT ] on $(hostname)"
+                echo " Error: You have [ $usersContainers ] DUE container${plural} running, exceeding the system limit of [ $DUE_USER_CONTAINER_LIMIT ] on $(hostname)"
                 echo ""
                 echo " Stop some with:  $DUE_NAME --manage --stop"
                 echo ""
@@ -1373,7 +1376,7 @@ function fxnCreateConfigFile()
 }
 
 #
-# Read any user set configuraton, and provide config file under ~/.config
+# Read any user set configuration, and provide config file under ~/.config
 #
 
 # Save for later if printing --verbose.
@@ -1516,7 +1519,7 @@ function fxnDoContainerStop()
 
         toDelete=$( echo "$terms" | sed -e 's/   / # /' | sed -e 's/^/docker stop /g' )
 
-        # just matching teh
+        # just matching the
         # Create the stop script to be very explicit about what will happen
         {
             echo "#/bin/bash"

@@ -17,7 +17,7 @@ Suggested configuration:
 	name it frrd10
 	tag it as frr-debian10
 	set the prompt in container to be FRRD10 so the context is (more) obvious
-	merge in the files from ./templates/frr when creating the configuraton direcotry
+	merge in the files from ./templates/frr when creating the configuration direcotry
 
 ## Image creation example.
 <br>

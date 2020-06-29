@@ -1,12 +1,10 @@
-% DUE(1) Version 1.0 | Docker User Environment
+% DUE(1) Version 1.6.0 | Dedicated User Environment
 
-NAME
-====
+# NAME
 
-**DUE** — Docker User Environment. A build environment for your build environments.
+**due** - Dedicated User Environment. A build environment for your build environments.
 
-SYNOPSIS
-========
+# SYNOPSIS
 
 | **due** \[**-r|--run** _args_] \[_dedication_]
 | **due** \[   **--create** _args_ ] \[_dedication_]
@@ -14,8 +12,7 @@ SYNOPSIS
 | **due** \[**-v**|**--version**]
 | **due** \[**-h**|**--help**]
 
-DESCRIPTION
-===========
+# DESCRIPTION
 
 DUE is a set of wrapper scripts for both creating Docker container based
 build environments, and running them with intelligent defaults so that
@@ -316,7 +313,7 @@ what they have running. This can easily be circumvented, though.
 BUGS
 ====
 
-See GitHub Issues: [https://github.com/[ehdoyle]/[DUE]/issues]
+See GitHub Issues: [https://github.com/[CumulusNetworks]/[DUE]/issues]
 
 AUTHOR
 ======
