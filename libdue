@@ -1519,13 +1519,12 @@ function fxnDoContainerStop()
 
         toDelete=$( echo "$terms" | sed -e 's/   / # /' | sed -e 's/^/docker stop /g' )
 
-        # just matching the
         # Create the stop script to be very explicit about what will happen
         {
             echo "#/bin/bash"
             echo "# Created by $0 $INVOKED_WITH on $(date)"
-            echo "Will stop the following containers:"
-            echo "            $header"
+            echo "# Will stop the following containers:"
+            echo "#            $header"
             echo "$toDelete"
 
             # Leave some evidence in the system log in case this was not what was intended.
