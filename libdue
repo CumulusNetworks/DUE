@@ -1265,7 +1265,15 @@ function fxnDoLogin()
         # all output from here on down is from the container session, rather than the
         # launch from DUE
 
-        docker exec $doInteractive  $userNameArg "${SELECTED_CONTAINER_ID}" $LOGIN_SHELL
+		if [ "$DO_DEBUG" = "TRUE" ];then
+			# If this is debug, make few assumptions about the container's ability to handle
+			# logins. Just start a specified shell.
+			docker exec $doInteractive  $userNameArg "${SELECTED_CONTAINER_ID}" $LOGIN_SHELL
+		else
+			# Log into container as root, then set ID to user. This executes .bashrc configs and
+			# feels more like a real login.
+			docker exec $doInteractive --user root "${SELECTED_CONTAINER_ID}" /bin/login -p -f "$USER_NAME"
+		fi
     fi
     # User typed 'exit' or something blew up?
     return $?

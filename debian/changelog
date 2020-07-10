@@ -1,3 +1,11 @@
+due (1.6.1) RELEASED; urgency=medium
+
+  * --login now executes ~/.bashrc, etc
+  * Fix typo in stop container script.
+  * Shellcheck corrections for container-create-user.sh
+
+ -- Alex Doyle <alexddoyle@gmail.com >  Thu, 09 Jul 2020 17:03:15 -0700
+
 due (1.6.0) RELEASED; urgency=medium
 
   * Added debian-upstream branch for promotion to Debian.
