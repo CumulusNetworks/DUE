@@ -344,8 +344,8 @@ function fxnHelpRun()
     #   echo "   --debug                 Pass a debug flag to the container."
     echo ""
     echo " Help:"
-    echo "   --help-runtime          This message."
-    echo "   --help-runtime-examples Show examples of use."
+    echo "   --help                      This message."
+    echo "   --help-examples             Show examples of use."
     echo ""
 }
 
@@ -384,7 +384,8 @@ function fxnHelpRunExamples()
     echo ""
     echo " Run a command in a container, where anything after --command is "
     echo "  passed to a shell in the container."
-    echo "    $DUE_NAME --run --command ls -l /"
+	echo "  Ex: print current directory, and list contents"
+    echo "    $DUE_NAME --run --command pwd \; ls -l /"
     echo ""
     echo " Get help for the duebuild script in a container you will choose."
     echo "  $DUE_NAME --duebuild --help"
