@@ -1089,13 +1089,46 @@ function fxnDoLogin()
             # not having an absolute path = use container home dir.
         fi
 
-
         if [ "$CURRENT_WORKING_DIRECTORY" != "" ];then
             # If we are making the inside of the container have the
             # same path as the directory this was invoked in, do it here.
-            ADDITIONAL_MOUNTS+=" --volume $MOUNT_CURRENT_WORKING_DIRECTORY:$MOUNT_CURRENT_WORKING_DIRECTORY "
+            ADDITIONAL_MOUNTS+=" --volume $MOUNT_CURRENT_WORKING_DIRECTORY:$MOUNT_CURRENT_WORKING_DIRECTORY"
             # Put the user in the same equivalent directory in the container.
             COMMAND_LIST=" cd $CURRENT_WORKING_DIRECTORY ; $COMMAND_LIST"
+        fi
+
+		#
+        # Check for mounting different directories into the same place in the container
+        # Put --volume one per line
+        # Trim whitespace
+        # Filter any identical requests (those won't bother Docker, but do break parsing here)
+        # Split out the container mount points after :
+        # Count any duplicates there
+        # ..and print those duplicates
+        duplicates=$( echo $ADDITIONAL_MOUNTS | sed -e 's/--volume/\n/g' | tr -d " " | uniq | awk -F ":" '{print$2}'| uniq -cd | awk '{print$2}')
+        if [ "$duplicates" != "" ];then
+
+            echo "Error! Multiple host directories mapping to [ $duplicates ] in the container."
+            echo "Docker command line:"
+            echo "$ADDITIONAL_MOUNTS" | sed -e 's/--volume/\n--volume/g'
+            echo ""
+            echo " Note: some containers (debian package builds) mount the host system above the current working directory."
+            echo " Solutions:  Add a directory to change the path?"
+            echo "             Move the current working directory elsewhere?"
+            #
+            # check for a redefine of the home directory and use of the original home directory.
+            # If the user's home directory was remapped, there is probably a good reason.
+			# (like it's on an NFS mount and weird permissions bugs present.)
+            #
+            echo "$duplicates" | grep -q "/home/$USER_NAME"
+            if [ $? = 0 ];then
+                if [ "$USE_HOMEDIR" != "" ];then
+                    echo "             Note: your home directory is configured to be [ $USE_HOMEDIR ]"
+                    echo "                   So you shouldn't use directories under  [ /home/$USER_NAME ]"
+                fi
+            fi
+            echo " Exiting."
+            exit 1
         fi
 
         #
