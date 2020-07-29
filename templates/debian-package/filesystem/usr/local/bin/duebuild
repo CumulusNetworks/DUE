@@ -884,8 +884,9 @@ do
             shift
             ;;
 
-
-        -c | --cbuild )
+		# take --build as it tends to get typed in contianer
+		# --cbuild is clearer when invoking from outside the container
+        -c | --cbuild | --build )
             # Default to build everything in container context
             DO_BUILD="TRUE"
             if [ "$2" != "" ];then

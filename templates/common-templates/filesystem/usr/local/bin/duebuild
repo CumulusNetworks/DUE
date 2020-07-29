@@ -260,7 +260,8 @@ do
             shift
             ;;
 
-        -c | --cbuild )
+		# Take --build as a synonym for --cbuild, although --cbuild is clearer.
+        -c | --cbuild | --build  )
             # Default to build everything in container context.
             # skip over --cbuild	
             DO_BUILD="TRUE"

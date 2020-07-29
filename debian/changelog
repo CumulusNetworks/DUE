@@ -1,3 +1,11 @@
+due (1.6.2) RELEASED; urgency=medium
+
+  * Change --snapshot to --export. Works with --import now
+  * Sanity check mounting two --volumes to the same container dir
+  * duebuild takes --build as a synonym for --cbuild
+
+ -- Alex Doyle <alexddoyle@gmail.com>  Tue, 28 Jul 2020 21:33:40 -0700
+
 due (1.6.1) RELEASED; urgency=medium
 
   * --login now executes ~/.bashrc, etc

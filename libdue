@@ -12,7 +12,7 @@
 # Enable extended pattern matching
 shopt -s extglob
 
-DUE_VERSION="1.6.0"
+DUE_VERSION="1.6.2"
 
 # Debian packages required for DUE to run
 REQUIRED_PACKAGES=" docker.io rsync bsdutils git"
@@ -645,31 +645,75 @@ function fxnMakeNewDockerImage()
 # Save a running container as a new docker image
 #  User gets to pick from running containers.
 #
-# Uses: SNAPSHOT_IMAGE_NAME  Name of resulting image.
+# Uses: EXPORT_IMAGE_NAME  Name of resulting image.
 #                             This should have been set on the command line
-function fxnDoSnapshot()
+function fxnDoExport()
 {
-    local snapshotImageName
+	# Prepend due- here so that it is part of the name when/if
+	# it gets imported back in.
+    local exportImageName="due-$1"
 
     # choose from running containers
     fxnSelectContainer "running"
 
-    # Keep the username to ID on multi user systems
-    # use due to filter
-    snapshotImageName=$(whoami)_due-${SNAPSHOT_IMAGE_NAME}
+	# check for file overwrite
+	if [ -e ${exportImageName}.tar ];then
+		fxnERR "File: [ ${exportImageName}.tar ] already exists. Not overwriting.Exiting."
+		exit 1
+	fi
 
-    fxnPP "Saving selected image as [ $snapshotImageName ]"
+	# commit saves the container as an image, so all layers are captured.
+	fxnPP "Saving container $SELECTED_CONTAINER_ID as image  ${exportImageName}"
+	fxnEC docker commit  "$SELECTED_CONTAINER_ID"  ${exportImageName}
 
-    # Run docker export -> import to save it
-    docker export "$SELECTED_CONTAINER_ID" | docker import - "$snapshotImageName"
+	# Now export the saved image
+    fxnPP "Saving selected image as [ ${exportImageName}.tar ]"
+	fxnEC docker save ${exportImageName} > ${exportImageName}.tar
+	
+	# Delete the local save. If you want to keep it as an image, rather
+	# than a tar file, import it.
+	fxnEC docker rmi --force "$exportImageName" 
+	
+	fxnPP "Exported container is in $(pwd) "
+	ls -l | grep  ${exportImageName}.tar
+	echo ""
+
+}
+
+#
+# Import a snapshot of a container.
+# Takes: name of file to import
+#
+function fxnDoImport()
+{
+	local fileName="$1"
+	local imageName
+	local dueName
+
+	# Stored image name will not have .tar* at the end
+	imageName=${fileName%%.tar*}
+
+	# trim any leading ./ that might specify the file
+	imageName=${imageName#*./}
+	# trim a leading due- if it happens to be there, because...
+	imageName=${imageName#due-}
+	# ...all imported images get due- prepended.
+	# ...and we don't want to double that up
+	dueName="due-${imageName}"
+	
+	fxnPP "Importing [ $fileName ] as [ $dueName ]"
+
+	#tar -c "$fileName"  | docker image import - "$dueName"
+	docker load --input $fileName
     if [ $? != 0 ];then
-        fxnERR "Failed to create snapshot $snapshotImageName. Exiting."
+        fxnERR "Failed to import $fileName. Exiting."
         exit 1
     fi
-
     # Show the user the result
-    docker images | grep "$snapshotImageName"
+    docker images | grep "$dueName"
 
+	fxnPP "Imported: $fileName as $dueName"
+	echo ""
 }
 
 ######################################################################

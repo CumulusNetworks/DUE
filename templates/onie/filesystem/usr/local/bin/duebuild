@@ -326,8 +326,9 @@ do
             BUILD_DIR="$2"
             shift
             ;;
-
-        -c | --cbuild )
+		
+		# take --build as well. cbuild distinguishes it, though.
+        -c | --cbuild | --build )
             # Default to build everything in container context.
             # skip over --cbuild	
             DO_BUILD="TRUE"

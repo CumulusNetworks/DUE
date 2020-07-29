@@ -1,4 +1,4 @@
-% DUE(1) Version 1.6.0 | Dedicated User Environment
+% DUE(1) Version 1.6.2 | Dedicated User Environment
 
 # NAME
 
@@ -262,8 +262,11 @@ make working with containers/images easier.
 	 NOTE: since all DUE containers are started with -rm, stopping
 	 a container deletes it and all the data in it from memory.
 
---snapshot [name]
+--export [name]
 :    Save a running container as a Docker image named name.
+
+--import [name]
+:    Import docker image stored as tarfile <name>
 
 --copy-config
 :    Create a personal DUE configuration file in ~/.config/due/due.config

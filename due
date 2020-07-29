@@ -136,7 +136,8 @@ function fxnHelpManage()
     echo " Usage: $DUE_NAME --manage [ option ]"
     echo ""
     echo "   -l | --list-images       List images created by DUE."
-    echo "   --snapshot <name>        Save a running container as a Docker image named [name]"
+    echo "   --export <name>          Save a running container as a Docker image named [name]"
+    echo "   --import <name>          Import Docker image file named [name]"
     echo "   --copy-config            Create a personal DUE configuration file in ~/.config/due/due.config"
     echo "   --make-dev-dir <dir>     Populate a local directory for DUE container development."
     echo "   --list-templates         List available templates."
@@ -176,7 +177,10 @@ function fxnHelpManageExamples()
     echo "    $DUE_NAME --manage --stop pkg "
     echo ""
     echo "   Save the current state of a container as an image."
-    echo "    $DUE_NAME --manage --snapshot myNewImage "
+    echo "    $DUE_NAME --manage --export myNewImage "
+    echo ""	
+	echo "   Import a saved container."
+    echo "    $DUE_NAME --manage --import imageFile "
     echo ""
     echo "  Clean the image build area "
     echo "    $DUE_NAME --manage --clean"
@@ -989,18 +993,29 @@ function fxnParseManageArgs()
                 exit
                 ;;
 
-            --snapshot )
+            --export )
                 # Save the configuration of a running contatiner as a Docker image
-                DO_SNAPSHOT="TRUE"
-                SNAPSHOT_IMAGE_NAME="$2"
-                if [ "$SNAPSHOT_IMAGE_NAME" = "" ];then
-                    fxnERR "Must specify a name to give the snapshot before selecting it."
-                    docker ps
+                DO_EXPORT="TRUE"
+                EXPORT_IMAGE_NAME="$2"
+                if [ "$EXPORT_IMAGE_NAME" = "" ];then
+                    docker ps					
+                    fxnERR "--export requires an export file name before selecting the container."
                     exit 1
                 fi
                 shift
                 ;;
 
+			--import )
+				DO_IMAGE_IMPORT="TRUE"
+				IMAGE_IMPORT_NAME="$2"
+				if [ ! -e "$IMAGE_IMPORT_NAME" ];then
+					fxnERR "--import failed to find [ $IMAGE_IMPORT_NAME ]. Exiting."
+                    exit 1
+                fi
+                shift
+                ;;
+
+				
             --copy-config )
                 # create a local configuration file that overrides the defaults
                 # set under /etc
@@ -1283,10 +1298,16 @@ if [ "$DO_CREATE_DIRECTORY" = "TRUE" ];then
     exit
 fi
 
-if [ "$DO_SNAPSHOT" = "TRUE" ];then
-    # Save a running container's configuration as it's own image
-    fxnDoSnapshot
+# Save a running container as an image
+if [ "$DO_EXPORT" = "TRUE" ];then
+    fxnDoExport "$EXPORT_IMAGE_NAME"
     exit
+fi
+
+# Import a Docker Image
+if [ "$DO_IMAGE_IMPORT" = "TRUE" ];then
+	fxnDoImport "$IMAGE_IMPORT_NAME"
+	exit
 fi
 
 if [ "$DO_DELETE_MATCHED" = "TRUE" ];then
