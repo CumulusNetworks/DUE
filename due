@@ -135,19 +135,20 @@ function fxnHelpManage()
     echo ""
     echo " Usage: $DUE_NAME --manage [ option ]"
     echo ""
-    echo "   -l | --list-images       List images created by DUE."
-    echo "   --export <name>          Save a running container as a Docker image named [name]"
-    echo "   --import <name>          Import Docker image file named [name]"
-    echo "   --copy-config            Create a personal DUE configuration file in ~/.config/due/due.config"
-    echo "   --make-dev-dir <dir>     Populate a local directory for DUE container development."
-    echo "   --list-templates         List available templates."
-    echo "   --stop  <match>          Stop a running container. Optional pattern <match>"
+    echo "   -l | --list-images         List images created by DUE."
+    echo "   --export-container <name>  Save a running container as a Docker image named [name]"
+    echo "   --export-image <name>      Export a docker image as a file. [name] is optional."
+    echo "   --import-image <name>      Import Docker image file named [name]"
+    echo "   --copy-config              Create a personal DUE configuration file in ~/.config/due/due.config"
+    echo "   --make-dev-dir <dir>       Populate a local directory for DUE container development."
+    echo "   --list-templates           List available templates."
+    echo "   --stop  <match>            Stop a running container. Optional pattern <match>"
     echo ""
-    echo "   --delete-matched [term]  Delete containers that contain this term. USE WITH CAUTION!"
-    echo "   --docker-clean           Run 'docker system prune ; docker image prune' to reclaim disk space."
+    echo "   --delete-matched [term]    Delete containers that contain this term. USE WITH CAUTION!"
+    echo "   --docker-clean             Run 'docker system prune ; docker image prune' to reclaim disk space."
     echo ""
-    echo "   --help                   This help."
-    echo "   --help-examples          Examples of using managment options."
+    echo "   --help                     This help."
+    echo "   --help-examples            Examples of using managment options."
     echo ""
 }
 
@@ -176,11 +177,14 @@ function fxnHelpManageExamples()
     echo "   Stop all my package build containers with a script:"
     echo "    $DUE_NAME --manage --stop pkg "
     echo ""
-    echo "   Save the current state of a container as an image."
-    echo "    $DUE_NAME --manage --export myNewImage "
-    echo ""	
-	echo "   Import a saved container."
-    echo "    $DUE_NAME --manage --import imageFile "
+    echo "   Save the current state of a container as an image on disk."
+    echo "    $DUE_NAME --manage --export-container myNewImage "
+    echo ""
+    echo "   Export a Docker image to disk."
+    echo "    $DUE_NAME --manage --export-image imageFile "
+    echo ""
+    echo "   Import a Docker image."
+    echo "    $DUE_NAME --manage --import-image imageFile "
     echo ""
     echo "  Clean the image build area "
     echo "    $DUE_NAME --manage --clean"
@@ -197,9 +201,9 @@ function fxnHelpCreate()
         echo "$DUE_NAME --create --help                Make new containers and configuration directories."
         return
     fi
-	# Lots of examples can be generated - allow a filter term
-	exampleFilter="$1"
-	
+    # Lots of examples can be generated - allow a filter term
+    exampleFilter="$1"
+
     echo "############################################################################"
     echo "#"
     echo "# Help for: --create "
@@ -230,7 +234,7 @@ function fxnHelpCreate()
     echo ""
     echo "   --clean                      Remove due-build-merge directory."
     echo "   --help                       This help."
-	echo "    --filter <term>             With --help, filter output to contain <term>"	
+    echo "    --filter <term>             With --help, filter output to contain <term>"
     echo "   --help-examples              Examples of using create."
 
     echo ""
@@ -395,7 +399,7 @@ function fxnHelpRunExamples()
     echo ""
     echo " Run a command in a container, where anything after --command is "
     echo "  passed to a shell in the container."
-	echo "  Ex: print current directory, and list contents"
+    echo "  Ex: print current directory, and list contents"
     echo "    $DUE_NAME --run --command pwd \; ls -l /"
     echo ""
     echo " Get help for the duebuild script in a container you will choose."
@@ -491,11 +495,11 @@ function fxnParseCreateArgs()
             # Parse any help requests first, as they'll result in exit
             --help-examples | help-examples)
                 # Command use to create containers
-				DO_CREATE_EXAMPLES="TRUE"
+                DO_CREATE_EXAMPLES="TRUE"
                 ;;
 
             --help | -h | help )
-				DO_CREATE_HELP="TRUE"
+                DO_CREATE_HELP="TRUE"
                 ;;
 
             -c | --create )
@@ -505,7 +509,7 @@ function fxnParseCreateArgs()
                 # autocomplete the path, just strip any '/' to go from
                 # path to image name
                 if [ "$2" = "" ];then
-					DO_CREATE_HELP="TRUE"
+                    DO_CREATE_HELP="TRUE"
                 fi
                 ;;
 
@@ -621,11 +625,11 @@ function fxnParseCreateArgs()
                 shift
                 ;;
 
-			-f | --filter )
-				# Take term to filter example output with
-				HELP_EXAMPLE_FILTER+="$2"
-				shift
-				;;
+            -f | --filter )
+                # Take term to filter example output with
+                HELP_EXAMPLE_FILTER+="$2"
+                shift
+                ;;
 
             * )
                 fxnHelpCreate
@@ -641,14 +645,14 @@ function fxnParseCreateArgs()
 
     done
 
-	if [ "$DO_CREATE_HELP" = "TRUE" ];then
-		fxnHelpCreate $HELP_EXAMPLE_FILTER
-		exit
-	fi
-	if [ "$DO_CREATE_EXAMPLES" = "TRUE" ];then
+    if [ "$DO_CREATE_HELP" = "TRUE" ];then
+        fxnHelpCreate $HELP_EXAMPLE_FILTER
+        exit
+    fi
+    if [ "$DO_CREATE_EXAMPLES" = "TRUE" ];then
         fxnHelpCreateExamples $HELP_EXAMPLE_FILTER
-		exit
-	fi
+        exit
+    fi
 }
 
 #
@@ -1010,29 +1014,39 @@ function fxnParseManageArgs()
                 exit
                 ;;
 
-            --export )
+            --export-container )
+                # Save the configuration of a running contatiner as a Docker image
+                DO_SAVE_CONTAINER="TRUE"
+                SAVE_CONTAINER_IMAGE_NAME="$2"
+                if [ "$SAVE_CONTAINER_IMAGE_NAME" = "" ];then
+                    docker ps
+                    fxnERR "--export-container requires an export file name before selecting the container."
+                    exit 1
+                fi
+                shift
+                ;;
+
+            --export-image )
                 # Save the configuration of a running contatiner as a Docker image
                 DO_EXPORT="TRUE"
-                EXPORT_IMAGE_NAME="$2"
-                if [ "$EXPORT_IMAGE_NAME" = "" ];then
-                    docker ps					
-                    fxnERR "--export requires an export file name before selecting the container."
+                # If export image name given, bypass choice menu.
+                if [ "$2" != "" ]; then
+                    EXPORT_IMAGE_NAME="$2"
+                    shift
+                fi
+                ;;
+
+            --import-image )
+                DO_IMAGE_IMPORT="TRUE"
+                IMAGE_IMPORT_NAME="$2"
+                if [ ! -e "$IMAGE_IMPORT_NAME" ];then
+                    fxnERR "--import-image failed to find Docker image file [ $IMAGE_IMPORT_NAME ]. Exiting."
                     exit 1
                 fi
                 shift
                 ;;
 
-			--import )
-				DO_IMAGE_IMPORT="TRUE"
-				IMAGE_IMPORT_NAME="$2"
-				if [ ! -e "$IMAGE_IMPORT_NAME" ];then
-					fxnERR "--import failed to find [ $IMAGE_IMPORT_NAME ]. Exiting."
-                    exit 1
-                fi
-                shift
-                ;;
 
-				
             --copy-config )
                 # create a local configuration file that overrides the defaults
                 # set under /etc
@@ -1316,6 +1330,12 @@ if [ "$DO_CREATE_DIRECTORY" = "TRUE" ];then
 fi
 
 # Save a running container as an image
+if [ "$DO_SAVE_CONTAINER" = "TRUE" ];then
+    fxnSaveContainer "$SAVE_CONTAINER_IMAGE_NAME"
+    exit
+fi
+
+# Save a running container as an image
 if [ "$DO_EXPORT" = "TRUE" ];then
     fxnDoExport "$EXPORT_IMAGE_NAME"
     exit
@@ -1323,8 +1343,8 @@ fi
 
 # Import a Docker Image
 if [ "$DO_IMAGE_IMPORT" = "TRUE" ];then
-	fxnDoImport "$IMAGE_IMPORT_NAME"
-	exit
+    fxnDoImport "$IMAGE_IMPORT_NAME"
+    exit
 fi
 
 if [ "$DO_DELETE_MATCHED" = "TRUE" ];then

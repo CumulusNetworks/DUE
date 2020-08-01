@@ -105,9 +105,9 @@ function fxnListDirContents()
 function fxnListContainersForCreation()
 {
     local foundImages
-	local foundExamples
-	local outputFormat="$1"
-	
+    local foundExamples
+    local outputFormat="$1"
+
     if [ "$outputFormat" != "JustDirs" ];then
         echo "Example build environments:"
         echo "Image type             Create it with:"
@@ -118,22 +118,22 @@ function fxnListContainersForCreation()
         # and the last field being --use-template, as that gets prepended to the example string
         # via awk to speicify the type of container being created.
         foundExamples=$( find "${SPECIFIC_TEMPLATE_PATH}" \
-             -name README.md \
-             -exec grep "^Create" {} \; \
-            | grep -- --from \
-            | sed -e 's/^.*with://g' \
-            | awk '{printf "%-20s %s\n", $NF, $0}' | sort )
+                              -name README.md \
+                              -exec grep "^Create" {} \; \
+                             | grep -- --from \
+                             | sed -e 's/^.*with://g' \
+                             | awk '{printf "%-20s %s\n", $NF, $0}' | sort )
         echo ""
 
-		if [ "$outputFormat" != "" ];then
-			echo "Filtering output to contain [ $outputFormat ]"
-			echo ""
-			echo "$foundExamples" | grep "$outputFormat"
-		else
-			echo "$foundExamples"
-		fi
-		echo ""
-		
+        if [ "$outputFormat" != "" ];then
+            echo "Filtering output to contain [ $outputFormat ]"
+            echo ""
+            echo "$foundExamples" | grep "$outputFormat"
+        else
+            echo "$foundExamples"
+        fi
+        echo ""
+
         echo "Available image templates from: $SPECIFIC_TEMPLATE_PATH"
         fxnEC cd "${SPECIFIC_TEMPLATE_PATH}" || exit 1
         ls -d */
@@ -149,12 +149,12 @@ function fxnListContainersForCreation()
 
     if [ "$foundImages" = "" ];then
         foundImages="No locally built images found in $BUILD_MERGE_DIR"
-	else
-		echo ""
-		echo "Configured directories to build from."
-		echo "Use $0 --create --build-dir <path>"
-		echo "--------------------------------------------------------------------------------"
-		echo $foundImages
+    else
+        echo ""
+        echo "Configured directories to build from."
+        echo "Use $0 --create --build-dir <path>"
+        echo "--------------------------------------------------------------------------------"
+        echo $foundImages
     fi
 
 }
@@ -406,10 +406,10 @@ function fxnPreProcessPostInstallConfig()
         fxnPP "Creating $destDir/post-install-config.sh from [ $USE_TEMPLATE_PATH ]"
 
         fxnEC cp "${USE_TEMPLATE_PATH}"/post-install-config.sh.template "$destDir"/post-install-config.sh || exit 1
-		# Make it executable as the template versions should not run and do not have their executable bits set.
-		# Also, Lintian will flag this.
-		chmod a+x "$destDir"/post-install-config.sh
-		
+        # Make it executable as the template versions should not run and do not have their executable bits set.
+        # Also, Lintian will flag this.
+        chmod a+x "$destDir"/post-install-config.sh
+
         #
         # Any variable replacement via sed would happen here
         #
@@ -655,41 +655,75 @@ function fxnMakeNewDockerImage()
 } #fxnMakeNewDockerImage
 
 #
-# Save a running container as a new docker image
+# Save a running container as a new docker image.
+# Docker image file is saved to disk and not stored locally.
+# If the user wants to run it, they need to --import it.
+#
 #  User gets to pick from running containers.
 #
-# Uses: EXPORT_IMAGE_NAME  Name of resulting image.
-#                             This should have been set on the command line
-function fxnDoExport()
+# Uses: SAVE_CONTAINER_IMAGE_NAME  Name of resulting image.
+#         This should have been set on the command line
+function fxnSaveContainer()
 {
-	# Prepend due- here so that it is part of the name when/if
-	# it gets imported back in.
+    # Prepend due- here so that it is part of the name when/if
+    # it gets imported back in.
     local exportImageName="due-$1"
 
     # choose from running containers
     fxnSelectContainer "running"
 
-	# check for file overwrite
-	if [ -e ${exportImageName}.tar ];then
-		fxnERR "File: [ ${exportImageName}.tar ] already exists. Not overwriting.Exiting."
-		exit 1
-	fi
+    # check for file overwrite
+    if [ -e ${exportImageName}.tar ];then
+        fxnERR "File: [ ${exportImageName}.tar ] already exists. Not overwriting.Exiting."
+        exit 1
+    fi
 
-	# commit saves the container as an image, so all layers are captured.
-	fxnPP "Saving container $SELECTED_CONTAINER_ID as image  ${exportImageName}"
-	fxnEC docker commit  "$SELECTED_CONTAINER_ID"  ${exportImageName}
+    # commit saves the container as an image, so all layers are captured.
+    fxnPP "Saving container $SELECTED_CONTAINER_ID as image  ${exportImageName}"
+    fxnEC docker commit  "$SELECTED_CONTAINER_ID"  ${exportImageName}
 
-	# Now export the saved image
+    # Now export the saved image
     fxnPP "Saving selected image as [ ${exportImageName}.tar ]"
-	fxnEC docker save ${exportImageName} > ${exportImageName}.tar
-	
-	# Delete the local save. If you want to keep it as an image, rather
-	# than a tar file, import it.
-	fxnEC docker rmi --force "$exportImageName" 
-	
-	fxnPP "Exported container is in $(pwd) "
-	ls -l | grep  ${exportImageName}.tar
-	echo ""
+    fxnEC docker save ${exportImageName} > ${exportImageName}.tar
+
+    # Delete the local save. If you want to keep it as an image, rather
+    # than a tar file, import it.
+    fxnEC docker rmi --force "$exportImageName"
+
+    fxnPP "Exported container is in $(pwd) "
+    ls -l | grep  ${exportImageName}.tar
+    echo ""
+
+}
+
+# Export a copy of an already available Docker image as a file.
+# This can be used with fxnDoImport to move an image between two machines.
+# Uses: EXPORT_IMAGE_NAME  Name of resulting image.
+#         This should have been set on the command line
+function fxnDoExport()
+{
+    local exportFilter="$1"
+    local exportImageName
+    # choose from running containers
+
+    fxnSelectContainer "export" $exportFilter
+
+    # fxnSelectContainer will have set this.
+    exportImageName="$SELECTED_CONTAINER_NAME"
+
+    # check for file overwrite
+    if [ -e ${exportImageName}.tar ];then
+        fxnERR "File: [ ${exportImageName}.tar ] already exists. Not overwriting.Exiting."
+        exit 1
+    fi
+
+    # Now export the saved image
+    fxnPP "Saving selected image as [ ${exportImageName}.tar ]"
+    fxnEC docker save ${exportImageName} > ${exportImageName}.tar
+
+    fxnPP "Exported container is in $(pwd) "
+    ls -l | grep  ${exportImageName}.tar
+    echo ""
 
 }
 
@@ -699,25 +733,25 @@ function fxnDoExport()
 #
 function fxnDoImport()
 {
-	local fileName="$1"
-	local imageName
-	local dueName
+    local fileName="$1"
+    local imageName
+    local dueName
 
-	# Stored image name will not have .tar* at the end
-	imageName=${fileName%%.tar*}
+    # Stored image name will not have .tar* at the end
+    imageName=${fileName%%.tar*}
 
-	# trim any leading ./ that might specify the file
-	imageName=${imageName#*./}
-	# trim a leading due- if it happens to be there, because...
-	imageName=${imageName#due-}
-	# ...all imported images get due- prepended.
-	# ...and we don't want to double that up
-	dueName="due-${imageName}"
-	
-	fxnPP "Importing [ $fileName ] as [ $dueName ]"
+    # trim any leading ./ that might specify the file
+    imageName=${imageName#*./}
+    # trim a leading due- if it happens to be there, because...
+    imageName=${imageName#due-}
+    # ...all imported images get due- prepended.
+    # ...and we don't want to double that up
+    dueName="due-${imageName}"
 
-	#tar -c "$fileName"  | docker image import - "$dueName"
-	docker load --input $fileName
+    fxnPP "Importing [ $fileName ] as [ $dueName ]"
+
+    #tar -c "$fileName"  | docker image import - "$dueName"
+    docker load --input $fileName
     if [ $? != 0 ];then
         fxnERR "Failed to import $fileName. Exiting."
         exit 1
@@ -725,8 +759,8 @@ function fxnDoImport()
     # Show the user the result
     docker images | grep "$dueName"
 
-	fxnPP "Imported: $fileName as $dueName"
-	echo ""
+    fxnPP "Imported: $fileName as $dueName"
+    echo ""
 }
 
 ######################################################################
@@ -743,6 +777,8 @@ function fxnDoImport()
 #
 # Container ID returned by fxnSelectContainer
 SELECTED_CONTAINER_ID=""
+# Container name returned by fxnSelectContainer
+SELECTED_CONTAINER_NAME=""
 
 function fxnSelectContainer()
 {
@@ -786,7 +822,7 @@ function fxnSelectContainer()
     #
     # Starting a new container. The selection process will be from existing images.
     #
-    if [ "$doOperation" = "start" ];then
+    if [ "$doOperation" = "start" ] || [ "$doOperation" = "export" ];then
         #
         # Run a container
         #
@@ -824,8 +860,14 @@ function fxnSelectContainer()
         if [ "$( echo "$theContainers" |  wc -l  )" = 2 ];then
             enableRunChoice="FALSE"
         else
-            echo "- Select one of the following containers to run:"
-			echo "-  (Skip this menu by using '--run --run-image <image name>')"
+            if [ "$doOperation" = "export" ];then
+                # Image export uses this menu
+                echo "- Select one of the following containers to export"
+            else
+                # otherwise this is to run an image
+                echo "- Select one of the following containers to run:"
+                echo "-  (Skip this menu by using '--run --run-image <image name>')"
+            fi
         fi
     fi
 
@@ -875,7 +917,7 @@ function fxnSelectContainer()
                     | sed -e 's/^    //g' -e 's/\t/  /g' )
     if [ "$theBody"  = "" ];then
         echo ""
-        echo "  No containers found for user [ $userIs ]. Try --login-all ?"
+        echo "  No containers starting with [ $filterByType ] found for user [ $userIs ]. Try adding --all to the command ?"
         echo ""
         exit 0
     fi
@@ -909,18 +951,18 @@ function fxnSelectContainer()
                 exit 0
                 ;;
 
-			# At this point, only numbers are valid values.
-			# If it is not, then exit gracefully before trying
-			# to parse whatever this was later on.
-			''|*[!0-9]* )
-				echo ""
-				echo "Invalid entry! Must be one of: 'q', 'help', or a number. Exiting."
-				echo ""
-				exit 1
-				;;
+            # At this point, only numbers are valid values.
+            # If it is not, then exit gracefully before trying
+            # to parse whatever this was later on.
+            ''|*[!0-9]* )
+                echo ""
+                echo "Invalid entry! Must be one of: 'q', 'help', or a number. Exiting."
+                echo ""
+                exit 1
+                ;;
         esac
 
-		
+
     else
         # default to first entry if the user is not choosing.
         # This should be whats left from a filter operation
@@ -1168,7 +1210,7 @@ function fxnDoLogin()
             COMMAND_LIST=" cd $CURRENT_WORKING_DIRECTORY ; $COMMAND_LIST"
         fi
 
-		#
+        #
         # Check for mounting different directories into the same place in the container
         # Put --volume one per line
         # Trim whitespace
@@ -1189,7 +1231,7 @@ function fxnDoLogin()
             #
             # check for a redefine of the home directory and use of the original home directory.
             # If the user's home directory was remapped, there is probably a good reason.
-			# (like it's on an NFS mount and weird permissions bugs present.)
+            # (like it's on an NFS mount and weird permissions bugs present.)
             #
             echo "$duplicates" | grep -q "/home/$USER_NAME"
             if [ $? = 0 ];then
@@ -1369,15 +1411,15 @@ function fxnDoLogin()
         # all output from here on down is from the container session, rather than the
         # launch from DUE
 
-		if [ "$DO_DEBUG" = "TRUE" ];then
-			# If this is debug, make few assumptions about the container's ability to handle
-			# logins. Just start a specified shell.
-			docker exec $doInteractive  $userNameArg "${SELECTED_CONTAINER_ID}" $LOGIN_SHELL
-		else
-			# Log into container as root, then set ID to user. This executes .bashrc configs and
-			# feels more like a real login.
-			docker exec $doInteractive --user root "${SELECTED_CONTAINER_ID}" /bin/login -p -f "$USER_NAME"
-		fi
+        if [ "$DO_DEBUG" = "TRUE" ];then
+            # If this is debug, make few assumptions about the container's ability to handle
+            # logins. Just start a specified shell.
+            docker exec $doInteractive  $userNameArg "${SELECTED_CONTAINER_ID}" $LOGIN_SHELL
+        else
+            # Log into container as root, then set ID to user. This executes .bashrc configs and
+            # feels more like a real login.
+            docker exec $doInteractive --user root "${SELECTED_CONTAINER_ID}" /bin/login -p -f "$USER_NAME"
+        fi
     fi
     # User typed 'exit' or something blew up?
     return $?

@@ -265,11 +265,18 @@ make working with containers/images easier.
 	 NOTE: since all DUE containers are started with -rm, stopping
 	 a container deletes it and all the data in it from memory.
 
---export [name]
-:    Save a running container as a Docker image named name.
+--export-container [name]
+:    Export a running container to disk as a Docker image named name.
+     Note that to run the saved image it must be added
+	 back to the system with --import.
 
---import [name]
-:    Import docker image stored as tarfile <name>
+--export-image [name]
+:    Save an existing Docker image as a file that can be
+     copied elsewhere. If name is not supplied, the
+	 user can choose from a menu.
+
+--import-image [name]
+:    Import a docker image stored on disk as tarfile <name>
 
 --copy-config
 :    Create a personal DUE configuration file in ~/.config/due/due.config
