@@ -906,7 +906,19 @@ function fxnSelectContainer()
                 fxnHelpRun
                 exit 0
                 ;;
+
+			# At this point, only numbers are valid values.
+			# If it is not, then exit gracefully before trying
+			# to parse whatever this was later on.
+			''|*[!0-9]* )
+				echo ""
+				echo "Invalid entry! Must be one of: 'q', 'help', or a number. Exiting."
+				echo ""
+				exit 1
+				;;
         esac
+
+		
     else
         # default to first entry if the user is not choosing.
         # This should be whats left from a filter operation
