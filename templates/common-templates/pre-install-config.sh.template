@@ -48,6 +48,7 @@ DEBIAN_FRONTEND=noninteractive \
 			   apt-get install \
 			   --assume-yes \
 			   --no-install-recommends \
+			   wget \
 			   bash \
 			   sudo \
 			   gnupg 
