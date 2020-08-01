@@ -793,8 +793,10 @@ JUST_DEV_VERSION="FALSE"
 
 # Default to this many build threads
 
-# Default to ALL THE CORES!
-BUILD_JOBS=$(nproc)
+
+# If nproc found, default to ALL THE CORES!
+# Else try 4 cores.
+BUILD_JOBS=$(nproc 2>/dev/null || echo "4" )
 
 # Don't revert to building with debian/source/format 1.0
 DEBIAN_SOURCE_FORMAT_ONE="FALSE"

@@ -218,8 +218,9 @@ SCRIPT_VERSION="1.0"
 # Default to one build attempt
 BUILD_ATTEMPTS="1"
 
-# Default to this many build threads
-BUILD_JOBS="4"
+# If nproc found, default to ALL THE CORES!
+# Else try 4 cores.
+BUILD_JOBS=$(nproc 2>/dev/null || echo "4" )
 
 BUILD_TARGET_DIR_NAME="REPLACE_THIS build dir"
 ##################################################
