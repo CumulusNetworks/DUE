@@ -1,5 +1,7 @@
 # Any image assembly isn't part of building DUE as a package
 due-build-merge/
+*.buildinfo
+*.changes
 # This is generated from docs/manpage-due-1.md and is added to the
 # package, but isn't under version control, since it's originating
 # file is.
