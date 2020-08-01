@@ -792,7 +792,9 @@ BUILD_ATTEMPTS="1"
 JUST_DEV_VERSION="FALSE"
 
 # Default to this many build threads
-BUILD_JOBS="4"
+
+# Default to ALL THE CORES!
+BUILD_JOBS=$(nproc)
 
 # Don't revert to building with debian/source/format 1.0
 DEBIAN_SOURCE_FORMAT_ONE="FALSE"

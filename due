@@ -188,13 +188,18 @@ function fxnHelpManageExamples()
 }
 
 # Help with creating containers, images, directories
+# TAKES:
+#        invocation - help just on running
+#        or argument to filter examples with
 function fxnHelpCreate()
 {
     if [ "$1" = "invocation" ];then
         echo "$DUE_NAME --create --help                Make new containers and configuration directories."
         return
     fi
-
+	# Lots of examples can be generated - allow a filter term
+	exampleFilter="$1"
+	
     echo "############################################################################"
     echo "#"
     echo "# Help for: --create "
@@ -225,11 +230,13 @@ function fxnHelpCreate()
     echo ""
     echo "   --clean                      Remove due-build-merge directory."
     echo "   --help                       This help."
+	echo "    --filter <term>             With --help, filter output to contain <term>"	
     echo "   --help-examples              Examples of using create."
+
     echo ""
     echo ""
     # show local image creation configurations
-    fxnListContainersForCreation
+    fxnListContainersForCreation $exampleFilter
     echo ""
 
 }
@@ -472,6 +479,7 @@ function fxnPrintAllHelp()
 }
 
 
+
 # Takes - rest of command line after --create
 function fxnParseCreateArgs()
 {
@@ -483,13 +491,11 @@ function fxnParseCreateArgs()
             # Parse any help requests first, as they'll result in exit
             --help-examples | help-examples)
                 # Command use to create containers
-                fxnHelpCreateExamples
-                exit
+				DO_CREATE_EXAMPLES="TRUE"
                 ;;
 
             --help | -h | help )
-                fxnHelpCreate
-                exit
+				DO_CREATE_HELP="TRUE"
                 ;;
 
             -c | --create )
@@ -499,8 +505,7 @@ function fxnParseCreateArgs()
                 # autocomplete the path, just strip any '/' to go from
                 # path to image name
                 if [ "$2" = "" ];then
-                    fxnHelpCreate
-                    exit
+					DO_CREATE_HELP="TRUE"
                 fi
                 ;;
 
@@ -616,7 +621,11 @@ function fxnParseCreateArgs()
                 shift
                 ;;
 
-
+			-f | --filter )
+				# Take term to filter example output with
+				HELP_EXAMPLE_FILTER+="$2"
+				shift
+				;;
 
             * )
                 fxnHelpCreate
@@ -632,6 +641,14 @@ function fxnParseCreateArgs()
 
     done
 
+	if [ "$DO_CREATE_HELP" = "TRUE" ];then
+		fxnHelpCreate $HELP_EXAMPLE_FILTER
+		exit
+	fi
+	if [ "$DO_CREATE_EXAMPLES" = "TRUE" ];then
+        fxnHelpCreateExamples $HELP_EXAMPLE_FILTER
+		exit
+	fi
 }
 
 #

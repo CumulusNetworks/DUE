@@ -99,12 +99,16 @@ function fxnListDirContents()
 
 
 # List what can be built.
+# If $1 = empty - then print everything
 # If $1 = "JustDirs" then don't print example commands
+# Else, use $1 as output filter to limit responses
 function fxnListContainersForCreation()
 {
     local foundImages
-
-    if [ "$1" != "JustDirs" ];then
+	local foundExamples
+	local outputFormat="$1"
+	
+    if [ "$outputFormat" != "JustDirs" ];then
         echo "Example build environments:"
         echo "Image type             Create it with:"
         echo "----------------------+---------------------------------------------------------"
@@ -113,16 +117,23 @@ function fxnListContainersForCreation()
         # in exactly the same way for all, with everything up to the 'with:' getting deleted,
         # and the last field being --use-template, as that gets prepended to the example string
         # via awk to speicify the type of container being created.
-        find "${SPECIFIC_TEMPLATE_PATH}" \
+        foundExamples=$( find "${SPECIFIC_TEMPLATE_PATH}" \
              -name README.md \
              -exec grep "^Create" {} \; \
             | grep -- --from \
             | sed -e 's/^.*with://g' \
-            | awk '{printf "%-20s %s\n", $NF, $0}' | sort
-
-
+            | awk '{printf "%-20s %s\n", $NF, $0}' | sort )
         echo ""
 
+		if [ "$outputFormat" != "" ];then
+			echo "Filtering output to contain [ $outputFormat ]"
+			echo ""
+			echo "$foundExamples" | grep "$outputFormat"
+		else
+			echo "$foundExamples"
+		fi
+		echo ""
+		
         echo "Available image templates from: $SPECIFIC_TEMPLATE_PATH"
         fxnEC cd "${SPECIFIC_TEMPLATE_PATH}" || exit 1
         ls -d */
@@ -131,10 +142,6 @@ function fxnListContainersForCreation()
     # filter any template directories
     # Directories should always have this lib file, so
     # it shouldn't confuse with anything else.
-    echo ""
-    echo "Configured directories to build from."
-    echo "Use $0 --create --build-dir <path>"
-    echo "--------------------------------------------------------------------------------"
     foundImages=$( find "$BUILD_MERGE_DIR" \
                         -maxdepth 2  \
                         -name install-config-common.lib 2>/dev/null \
@@ -142,8 +149,14 @@ function fxnListContainersForCreation()
 
     if [ "$foundImages" = "" ];then
         foundImages="No locally built images found in $BUILD_MERGE_DIR"
+	else
+		echo ""
+		echo "Configured directories to build from."
+		echo "Use $0 --create --build-dir <path>"
+		echo "--------------------------------------------------------------------------------"
+		echo $foundImages
     fi
-    echo "$foundImages"
+
 }
 
 # Print progress

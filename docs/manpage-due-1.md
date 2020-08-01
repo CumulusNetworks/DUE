@@ -234,7 +234,10 @@ Optional:
 :   With --create, allow directories to be created, but do not try
     to build the image. Effectively stops use of --dir.
 	Useful for debugging directory configuration issues.
-	
+
+--filter [term]
+:   With --create --help, filter examples to contain [term].
+
 2 - Build a Docker image from the image build directory.
 
 --dir [dirname]
