@@ -825,8 +825,10 @@ function fxnSelectContainer()
             enableRunChoice="FALSE"
         else
             echo "- Select one of the following containers to run:"
+			echo "-  (Skip this menu by using '--run --run-image <image name>')"
         fi
     fi
+
 
     #
     # Logging in to a running container.
