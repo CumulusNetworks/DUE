@@ -1,3 +1,15 @@
+due (1.6.3) RELEASED; urgency=medium
+
+  * Add --filter to --create --help.
+  * Add *.buildinfo and *.changes to .gitignore.
+  * Close #8 Use ncores to maximize build jobs.
+  * Clean exit if bad menu value chosen
+  * Mention --run-image option on image menu (addresses issue #10 )
+  * Close #12 - add wget as part of default install
+  * Container/image export/import rework.
+
+ -- Alex Doyle <alexddoyle@gmail.com>  Sat, 01 Aug 2020 16:53:56 -0700
+
 due (1.6.2) RELEASED; urgency=medium
 
   * Change --snapshot to --export. Works with --import now
