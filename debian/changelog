@@ -1,4 +1,4 @@
-due (1.6.3) RELEASED; urgency=medium
+due (1.6.3-1) unstable; urgency=medium
 
   * Add --filter to --create --help.
   * Add *.buildinfo and *.changes to .gitignore.
