@@ -105,6 +105,6 @@ uninstall:
 	sudo rm -rf   /usr/share/due
 
 orig.tar:
-	git archive --format=tar.gz   -o ../due-$(DUE_VERSION).orig.tar.gz  master
+	git archive --format=tar.gz --prefix=due_$(DUE_VERSION)/  -o ../due_$(DUE_VERSION).orig.tar.gz  master
 	@echo "Produced tar file in parent directory."
 	ls -lrt ../*.gz 
