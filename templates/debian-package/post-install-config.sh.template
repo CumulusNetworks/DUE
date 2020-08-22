@@ -14,6 +14,11 @@
 fxnPostInstallCommon
 
 
+# Jessie apt has a bug where it tries to close 100K plus files.
+# Set bash ulimit to max at 10000 to speed this up.
+ulimit -n 10000
+
+
 #
 # apt-get install development packages
 # Note at this stage, any changes to the container's sources.list
