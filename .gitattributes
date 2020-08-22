@@ -1,0 +1,6 @@
+# If building with quilt, don't need
+.gitignore export-ignore
+
+# debian/rules replaces makefile, so skip it
+# when generating the tarball.
+Makefile export-ignore

@@ -604,7 +604,12 @@ function fxnDoDebianBuild()
     fi
     echo ""
 
-
+    #
+    # mk-build-deps doesn't always clean up...
+    #
+    rm -f due-build-deps_*.buildinfo
+    rm -f due-build-deps_*.changes
+    
     #
     # If setting source to 1.0 for universal rebuild
     #
@@ -1087,6 +1092,10 @@ version=$( dpkg-buildpackage --version | grep " 1.17." )
 if [ "$version" != "" ];then
     fxnMSG "Jessie era dpkg detected. Updating arguments."
     USE_JESSIE_DPKG="TRUE"
+
+	# Jessie apt has a bug where it tries to close 100K plus files in the shell.
+	# Set bash ulimit to max at 10000 to speed this up.
+	ulimit -n 10000
 fi
 
 # Arguments passed to the dpkg build. This gets
