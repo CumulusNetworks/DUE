@@ -11,8 +11,12 @@ Skip the backtick characters, if any, when you cut and paste.
 ## Install DUE requirements
 To run DUE from the source directory, you will need to install the following
 packages:  
-  *  docker.io  (docker.ce works as well)
+  *  docker.io  (docker.ce works as well)  
   *  git  
+  *  bsdutils  
+  *  rsync  
+
+From the Master Git branch, you can also run `make install` as root and it will try to install these packages.
 
 If this is a Debian based Linux, like Ubuntu `sudo apt-get update; sudo apt-get install git docker.io` will handle this.  
 Once Docker is installed, add yourself to the docker group with:
@@ -31,6 +35,26 @@ Ex: ./due
 
 The first step in using DUE will be creating a image.
 To provide maximum flexibility, this is a muti-step process.
+
+## A Practical Example: build DUE as a Debian package
+DUE can be used to build itself as a Debian package.
+
+1. Use Git to check out the debian-upstream branch  
+   `git checkout debian-upstream`  
+    You shoud see that there is now a "debian" directory.  
+2. Create a Debian package build container, using an example from `due --create help`.  
+   If you are using Ubuntu, this might look like:  
+   `./due --create --from ubuntu:18.04 --description "Package Build for Ubuntu 18.04" --name pkg-u-18.04 --prompt PKGU1804 --tag pkg-ubuntu-18.04 --use-template debian-package  
+  
+3. Once the container has finished building, tell DUE to run a build, and pick your Debian package build container.  
+  
+`due --build`  <- Will let you choose your container, if there is more than one.  
+Or:  
+`due --run-image due-pkg-u-18.04:pkg-ubuntu-18.04 --build` <- build using `due-pkg-u-18.04` image with tag `pkg-ubuntu-18.04`  
+  
+Once the build completes, there should be a due*.deb in the directory above where you just built. This can be installed with:  
+`dpkg -i due_*all.deb`
+
 
 ### Quick Start: Create and run the example image
 
@@ -77,18 +101,6 @@ These are parsed out of the `templates/<type>/README.md` files that suggest how 
 
 The rest of this document will get in to using specific types of containers, and how you can create and debug your own.
 
-## A Practical Example.
-DUE can be used to build itself as a Debian package.  
-First, create a Debian package build container, using an example from `due --create help`. If you are using Ubuntu, this might look like:  
-`./due --create --from ubuntu:18.04 --description "Package Build for Ubuntu 18.04" --name pkg-u-18.04 --prompt PKGU1804 --tag pkg-ubuntu-18.04 --use-template debian-package  
-  
-Once the Docker image has built, DUE can use it to build itself with:  
-  
-`due --build`  <- Will let you choose your container, if there is more than one.  
-Or:  
-`due --run --image due-pkg-u-18.04:pkg-ubuntu-18.04 --build` <- build using `due-pkg-u-18.04` image with tag `pkg-ubuntu-18.04`  
-  
-Once the build completes, there should be a due*.deb in the directory above where you just built.
 
 
 ###The Details:

@@ -274,7 +274,7 @@ function fxnDeleteImage()
     if [ "$DO_DELETE_NOW" = "TRUE" ];then
         ./"$DELETE_SCRIPT"
     fi
-} #fxnDoDelete
+} #fxnDeleteImage
 
 #
 # PreProcess functions create copies of the specified file in the directory that
@@ -866,7 +866,7 @@ function fxnSelectContainer()
             else
                 # otherwise this is to run an image
                 echo "- Select one of the following containers to run:"
-                echo "-  (Skip this menu by using '--run --run-image <image name>')"
+                echo "-  (Skip this menu by using '--run-image <image name>')"
             fi
         fi
     fi
@@ -917,7 +917,10 @@ function fxnSelectContainer()
                     | sed -e 's/^    //g' -e 's/\t/  /g' )
     if [ "$theBody"  = "" ];then
         echo ""
-        echo "  No containers starting with [ $filterByType ] found for user [ $userIs ]. Try adding --all to the command ?"
+        echo "  No containers starting with [ $filterByType ] found. "
+        if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
+            echo " Results were filtered by [ $userIs ].   Try adding --all to the command ?"
+        fi
         echo ""
         exit 0
     fi
@@ -974,7 +977,7 @@ function fxnSelectContainer()
         # print ENTRY line only
         entryLine=$( echo "$theBody"  | sed -n "${ENTRY}p"  )
         if [ "$entryLine" = "" ];then
-            fxnERR "Failed to parse [ $ENTRY ] out of [ $theBody ]. Exiting."
+            fxnERR "Invalid entry [ $ENTRY ]. Exiting."
             exit 1
         fi
         SELECTED_CONTAINER_ID=$( echo "$entryLine" |  awk '{print$5}' )
