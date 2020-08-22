@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-DUE_VERSION = 1.6.3
+DUE_VERSION = 2.0.0
 # Uncomment the following to enable more makefile output
 #export DH_VERBOSE = 1
 
