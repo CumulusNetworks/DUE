@@ -1,3 +1,16 @@
+due (2.0.0-1) unstable; urgency=medium
+
+  * Initial Debian submission
+  * debian-package: Set ulimit -n 10000 for slow Apt on Jessie images
+  * debian-package: Install python version based on image Debian release
+  * debian-package: Clean up files generated when resolving build dependencies
+  * due: do not filter images after --run-image has been invoked.
+  * due: add --delete option
+  * docs: Markdown cleanup. Updated some stale docs.
+  * docs: added Branching.md to explaing the branch/release structure.
+
+ -- Alex Doyle  <alexddoyle@gmail.com>  Fri, 21 Aug 2020 21:53:56 -0700
+
 due (1.6.3-1) unstable; urgency=medium
 
   * Add --filter to --create --help.
