@@ -90,6 +90,9 @@ install:
 	sudo cp -r   ./templates /usr/share/due
 	sudo cp -r   ./README.md /usr/share/due
 
+	@echo "Finally, add yourself to the user group with: sudo /usr/sbin/usermod -a -G docker $(shell whoami)"
+	@echo ""
+
 uninstall:
 	@echo "######################################################################"
 	@echo "#                                                                    #"
