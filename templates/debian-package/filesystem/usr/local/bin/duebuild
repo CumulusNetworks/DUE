@@ -604,7 +604,12 @@ function fxnDoDebianBuild()
     fi
     echo ""
 
-
+    #
+    # mk-build-deps doesn't always clean up...
+    #
+    rm -f due-build-deps_*.buildinfo
+    rm -f due-build-deps_*.changes
+    
     #
     # If setting source to 1.0 for universal rebuild
     #
