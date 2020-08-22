@@ -72,7 +72,8 @@ function fxnHelp ()
     echo ""
     echo " due is a wrapper to use Docker conatiners as Debian build environments."
     echo ""
-    echo "   -c | --create             Build a container using configuration from DIR"
+    echo "   -c | --create             Build an image using configuration from DIR"
+    echo "        --delete <term>      Generate a script to delete all images containing <term> "
     echo "   -r | --run                Select image to run from a menu."
     echo "        --build              Shortcut to run the container's duebuild script."
     echo "        --duebuild           Same as --build but takes --help to print a container's duebuild help."
@@ -109,8 +110,8 @@ function fxnHelpExamples()
     echo " Log into a running container:"
     echo "  $0 --login"
     echo ""
-    echo " Run a command using a container: "
-    echo "  $0 --run --command ls -l /proc"
+    echo " Run a commands in a specific container:"
+	echo "  $0 --run-image due-pkg-sid:pkg-sid --command  ls -l \; cat /etc/os-release "
     echo ""
 
     echo "See topic specific help for topic specific examples."
@@ -988,12 +989,7 @@ function fxnParseManageArgs()
                 fi
                 ;;
 
-            --delete )
-                # Delete an existing image
-                DO_DELETE="TRUE"
-                ;;
-
-            --delete-matched )
+            --delete | --delete-matched )
                 # remove docker containers that contain the string passed in
                 DO_DELETE_MATCHED="TRUE"
                 if [ "$2" = "" ];then
@@ -1124,7 +1120,7 @@ do
         # Container creation/deletion commands.
         #
 
-        -m | --manage )
+        -m | --manage | --delete )
             fxnParseManageArgs $HELP_ARGS "$@"
             break
             ;;
@@ -1347,12 +1343,6 @@ if [ "$DO_IMAGE_IMPORT" = "TRUE" ];then
     exit
 fi
 
-if [ "$DO_DELETE_MATCHED" = "TRUE" ];then
-    # wipe out containers containing a term
-    fxnDeleteImage
-    exit
-fi
-
 #
 # Runtime commands
 #
@@ -1374,9 +1364,9 @@ fi
 #
 # generate a script to delete images
 #
-if [ "$DO_DELETE" = "TRUE" ];then
-    # Delete images whose names match a pattern
-    fxnDoDelete
+if [ "$DO_DELETE_MATCHED" = "TRUE" ];then
+    # wipe out containers containing a term
+    fxnDeleteImage
     exit
 fi
 

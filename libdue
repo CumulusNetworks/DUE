@@ -274,7 +274,7 @@ function fxnDeleteImage()
     if [ "$DO_DELETE_NOW" = "TRUE" ];then
         ./"$DELETE_SCRIPT"
     fi
-} #fxnDoDelete
+} #fxnDeleteImage
 
 #
 # PreProcess functions create copies of the specified file in the directory that
