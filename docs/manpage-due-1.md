@@ -50,6 +50,10 @@ Each of these options has context specific help and sub commands
 
 :   Make and configure new Docker images.
 
+--delete <term> 
+
+:   Delete existing Docker images that match the term.
+
 -m, --manage
 
 :   Manipulate and query existing images.
@@ -337,7 +341,7 @@ COPYRIGHT
 =========
 SPDX-License-Identifier:     MIT
 
-Copyright (c) 2019 Cumulus Networks, Inc.
+Copyright (c) 2019,2020 Cumulus Networks, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

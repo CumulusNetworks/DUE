@@ -104,7 +104,7 @@ function fxnHelpExamples()
     echo "#"
     echo "############################################################################"
     echo""
-    echo "Build from a source directory:"
+    echo "Build from a source directory, using a container's duebuild script."
     echo "  $0 --build"
     echo ""
     echo " Log into a running container:"
@@ -113,7 +113,9 @@ function fxnHelpExamples()
     echo " Run a commands in a specific container:"
 	echo "  $0 --run-image due-pkg-sid:pkg-sid --command  ls -l \; cat /etc/os-release "
     echo ""
-
+	echo " Print a container's duebuild help:"
+	echo "  $0 --help --duebuild "
+	echo ""
     echo "See topic specific help for topic specific examples."
     echo " Ex: $0 --help-examples --build"
 
@@ -709,6 +711,9 @@ function fxnParseRunArgs()
                 # Second parameter is the name of the image to use
                 DO_RUN_IMAGE="TRUE"
                 USE_IMAGE_NAME="$2"
+				# if an image is being specified, there is no need
+				# to filter further
+				FILTER_SHOW_ONLY_DUE="FALSE"
                 shift
                 ;;
 
