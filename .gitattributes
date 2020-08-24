@@ -4,3 +4,4 @@
 # Makefile is not present in the top level Debian packaging branch.
 # Ignore it when merging
 Makefile merge=ours
+ChangeLog merge=ours
