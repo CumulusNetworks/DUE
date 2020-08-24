@@ -525,30 +525,48 @@ function fxnMakeNewDockerImage()
         # These can be run in emulation if they have QEMU as part of the container
         # Currently only supporting armel, but more can be added.
 
-        HOST_ARCH=$( uname -m )
-        # TODO: make this support other architectures, beyond the armel hardcode here.
-        if [ "$HOST_ARCH" = "x86_64" ];then
-            # If this is an x86 system, building an armel container...
-            if [[ "$imageFrom" = *arm32v5* ]];then
-                fxnPP "Image architecture does not match host's [ $HOST_ARCH ]. Copying qemu-arm-static in for emulation."
+        # This will return amd64 on a x86_64 system (tip: uname -m gets you that)
+        HOST_ARCH=$( dpkg --print-architecture )
 
-                # Have qemu-arm-static in there so it can run
-                fxnPP "Adding qemu-arm-static to $imageName/filesystem/usr/bin/qemu-arm-static."
-                if [ ! -e /usr/bin/qemu-arm-static ];then
-                    fxnERR "Host system must have qemu-arm-static to run an armel container. sudo apt install qemu-user-static."
-                    exit 1
-                fi
-
-                # Copy the host system's QEMU for ARM to a location where it will be
-                # installed in the container.
-                if [ ! -e "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin ];then
-                    mkdir -p "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin
-                fi
-                fxnEC cp -a /usr/bin/qemu-arm-static "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin/qemu-arm-static || exit 1
-                # Set this to pass to Dockerfile configuration so that qemu-static
-                # will be present in the image _before_ Docker executes any commands in the image.
-                QEMU_STATIC="qemu-arm-static"
+        # expect this to be amd64, arm, etc
+        # Super convenient that qemu arm seems to handle all the variants (armhf, arm64, armel...)
+        # So, has the image already been pulled?
+        imageArchitecture=$( docker inspect -f '{{.Architecture}}' "${imageFrom}" 2>/dev/null )
+        if [ "$imageArchitecture" = "" ];then
+            # Well, get a copy.
+            fxnPP "[ $imageFrom ] not found. Pulling an image to check it's architecture before proceeding."
+            fxnEC docker pull "$imageFrom"  || exit 1
+            imageArchitecture=$( docker inspect -f '{{.Architecture}}' "${imageFrom}" )
+            if [ "$imageArchitecture" = "" ];then
+                # If the architecture can't be determined at this point, it is a bad sign,
+                # but maybe not fatal. Continue and see what happens.
+                fxnWarn "Failed to determine architecture of [ $imageFrom ]. Guessing same as host."
+                imageArchitecture="$HOST_ARCH"
             fi
+        fi
+
+        # TODO: make this support other architectures, beyond the armel hardcode here.
+        if [ "$HOST_ARCH" != "$imageArchitecture" ];then
+            # If this is an x86 system, building an armel container...
+            fxnPP "Image architecture [ $imageArchitecture ] does not match host's [ $HOST_ARCH ]. Copying qemu-${imageArchitecture}-static in for emulation."
+
+            # Have qemu-*-static in there so it can run
+            fxnPP "Adding qemu-${imageArchitecture}-static to $imageName/filesystem/usr/bin/qemu-${imageArchitecture}-static."
+            if [ ! -e /usr/bin/qemu-${imageArchitecture}-static ];then
+                fxnERR "Host system must have qemu-${imageArchitecture}-static to run an ${imageArchitecture} container. sudo apt install qemu-user-static."
+                exit 1
+            fi
+
+            # Copy the host system's QEMU for image architecture to a location where it will be
+            # installed in the container.
+            if [ ! -e "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin ];then
+                mkdir -p "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin
+            fi
+            fxnEC cp -a /usr/bin/qemu-${imageArchitecture}-static "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin/qemu-${imageArchitecture}-static || exit 1
+            # Set this to pass to Dockerfile configuration so that qemu-static
+            # will be present in the image _before_ Docker executes any commands in the image.
+            QEMU_STATIC="qemu-${imageArchitecture}-static"
+
         fi
 
         #
@@ -612,7 +630,7 @@ function fxnMakeNewDockerImage()
         fxnPP "Confirmed directory $imageName exists."
         echo ""
         fxnPP "If there were changes in the /templates directory, delete this particular build with: "
-        echo "      rm -r ${BUILD_MERGE_DIR}/$imageName"
+        echo "      rm -r ${BUILD_MERGE_DIR}/$imageName ; rm -r ${BUILD_MERGE_DIR}/${templateName}"
         echo ""
         echo " Or delete all of ${BUILD_MERGE_DIR} with:"
         echo "     $0 --create --clean "
