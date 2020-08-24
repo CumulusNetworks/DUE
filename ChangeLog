@@ -1,0 +1,131 @@
+due (2.0.0-1) unstable; urgency=medium
+
+  * Initial Debian submission
+  * debian-package: Set ulimit -n 10000 for slow Apt on Jessie images
+  * debian-package: Install python version based on image Debian release
+  * debian-package: Clean up files generated when resolving build dependencies
+  * libdue for emulation, choose qemu-<arch>-static based on source image's architecture
+  * due: do not filter images after --run-image has been invoked.
+  * due: add --delete option
+  * docs: Markdown cleanup. Updated some stale docs.
+  * docs: added Branching.md to explaing the branch/release structure.
+  * git branches: refactored for Debian naming conventions.
+
+ -- Alex Doyle  <alexddoyle@gmail.com>  Fri, 21 Aug 2020 21:53:56 -0700
+
+due (1.6.3-1) unstable; urgency=medium
+
+  * Add --filter to --create --help.
+  * Add *.buildinfo and *.changes to .gitignore.
+  * Close #8 Use ncores to maximize build jobs.
+  * Clean exit if bad menu value chosen
+  * Mention --run-image option on image menu (addresses issue #10 )
+  * Close #12 - add wget as part of default install
+  * Container/image export/import rework.
+
+ -- Alex Doyle <alexddoyle@gmail.com>  Sat, 01 Aug 2020 16:53:56 -0700
+
+due (1.6.2-1) UNRELEASED; urgency=medium
+
+  * Change --snapshot to --export. Works with --import now
+  * Sanity check mounting two --volumes to the same container dir
+  * duebuild takes --build as a synonym for --cbuild
+
+ -- Alex Doyle <alexddoyle@gmail.com>  Tue, 28 Jul 2020 21:33:40 -0700
+
+due (1.6.1-1) UNRELEASED; urgency=medium
+
+  * --login now executes ~/.bashrc, etc
+  * Fix typo in stop container script.
+  * Shellcheck corrections for container-create-user.sh
+
+ -- Alex Doyle <alexddoyle@gmail.com >  Thu, 09 Jul 2020 17:03:15 -0700
+
+due (1.6.0-1) UNRELEASED; urgency=medium
+
+  * Added debian-upstream branch for promotion to Debian.
+  * Packaging/Licensing cleanup prompted by Debian QA tools.
+
+ -- Alex Doyle <alexddoyle@gmail.com>  Sun, 28 Jun 2020 15:16:59 -0700
+
+due (1.5.0-1) UNRELEASED; urgency=medium
+
+  * Command line help is no longer order specific
+  * Debian package build: duebuild takes --deb-build-opt
+  * Debian package build: duebuild takes --build-command
+  * Debian package build: --jobs now applies with default build
+
+ -- Alex Doyle <alexddoyle@gmail.com>  Sun, 14 Jun 2020 09:35:04 -0700
+
+due (1.4.0-1) UNRELEASED; urgency=medium
+
+  * Copyright updates to 2020
+  * Debian package build: add local package repository feature.
+  * Debian package build: improved package dependency install error handling.
+  * Debian package build: container apt upgrades before build.
+  * Debian package build: update documentation with package build examples.
+
+ -- Alex Doyle <adoyle@cumulusnetworks.com>  Sat, 06 Jun 2020 10:21:05 -0700
+
+due (1.3.1-1) UNRELEASED; urgency=medium
+
+  * Update version number
+  * Invoke help after --build if 'help' is typed
+  * Stop containers script now has containers in the name, not images
+
+ -- Alex Doyle <alexddoyle@gmail.com>  Thu, 14 May 2020 17:46:51 -0700
+
+due (1.3.0-1) UNRELEASED; urgency=medium
+
+  * Non interactive commands now return a return code.
+  * debian-package duebuild has better .dsc build support.
+  * Label support to auto-mount host directories with DUEMountHostDirectories.
+
+ -- Alex Doyle <alexddoyle@gmail.com>  Tue, 12 May 2020 17:46:51 -0700
+
+due (1.2.1-1) UNRELEASED; urgency=medium
+
+  * Added first time setup checks and hints.
+
+ -- Alex Doyle <alexddoyle@gmail.com>  Mon, 13 Apr 2020 18:21:55 -0700
+
+due (1.2.0-1) UNRELEASED; urgency=medium
+
+  * Added --dockerarg to pass arguments directly to docker
+  * Added docker run argument setting based on container type
+  * Fixed bug where container --tag option wasn't passed.
+
+ -- Alex Doyle <alexddoyle@gmail.com>  Tue, 17 Mar 2020 01:02:00 -0800
+
+due (1.1.0-1) UNRELEASED; urgency=medium
+
+  * Added --stop option for running containers.
+  * Added --create --clean option to delete due-buid-merge directory.
+  * Added --container-name option to set the name of a container.
+  * Fixed arm32v5 (armel) container creation with qemu on amd64
+  * Fixed bug where --command was run as --interactive, when it is not.
+  * Fixed bug where image tags were not considered in filtering.
+  * Script incremental cleanup with ShellCheck
+
+ -- Alex Doyle <alexddoyle@gmail.com>  Sat, 29 Feb 2020 12:00:01 -0800
+
+due (1.0.1-1) UNRELEASED; urgency=medium
+
+  * ONIE template fixes for Debian 8, duebuild script, better docs.
+  * Added --run --debug option to debug partially created images.
+  * Added more printouts of shell/Docker commands DUE runs.
+  * Added date printouts to --delete-matched, clarified script name.
+  * Fixed --login skipping the first entry.
+  * Fixed double setting of prompt/path in due-bashrc.template.
+  * Fixed --cbuild parsing passed arguments rather than passing them.
+  * Documentation has more examples and formatting consistency.
+  * Documented existing --build option that reduces build invocation typing.
+  * Documentation rebuild is now separate from package build.
+
+ -- Alex Doyle <alexddoyle@gmail.com>  Sat, 01 Feb 2020 08:08:08 -0700
+
+due (1.0.0-1) UNRELEASED; urgency=medium
+
+  * Initial Debian packaging
+
+ -- Alex Doyle <alexddoyle@gmail.com>  Sun, 29 Dec 2019 14:52:02 -0700
