@@ -1,7 +1,10 @@
 # If building with quilt, don't need
 .gitignore export-ignore
 
-# Makefile is not present in the top level Debian packaging branch.
-# Ignore it when merging
+# These files should have been filtered out by debian/master
+# As merge is master -> debian/master -> here
 Makefile merge=ours
 ChangeLog merge=ours
+
+# This branch is used for release. Do not change format.
+debian/source/format merge=ours
