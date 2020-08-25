@@ -26,7 +26,7 @@ Key features include:
 
  2 - List based browsing of images to run and active containers to log in to.
 
- 3 - Use of container 'templates' to preconfigure and build containers for a
+ 3 - Use of container 'templates' to pre configure and build containers for a
      particular target or Debian based operating system,
      eliminating errors caused by missing dependencies, or misconfiguration.
 
@@ -110,11 +110,11 @@ DUE. This can be useful with image creation debug.
 	the target being built by the container's duebuild script.
 	For more information, check the template/README.md for the image type, or
 	use: due --duebuild --help to select a container and get its duebuild script's 
-	help nnoptions directly.
+	help options directly.
 
 --duebuild
 :	Same behavior as --build, but a bit clearer that it is working with the
-    selected container's duebuild script. One noteable difference
+    selected container's duebuild script. One notable difference
     is that due --duebuild --help will select a container and execute
 	duebuild --help to see the options provided by that particular script.
 
@@ -278,7 +278,7 @@ make working with containers/images easier.
 	 user can choose from a menu.
 
 --import-image [name]
-:    Import a docker image stored on disk as tarfile <name>
+:    Import a docker image stored on disk as tar file <name>
 
 --copy-config
 :    Create a personal DUE configuration file in ~/.config/due/due.config

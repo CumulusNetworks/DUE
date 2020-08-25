@@ -54,7 +54,7 @@ function fxnHelpAbout()
     echo "  the process of creating a Docker Image that can be used for software development"
     echo "  for any Linux that has supplied an image."
     echo " If you are new to Docker:"
-    echo "  Image = effectively a configured filesystem in a file on disk."
+    echo "  Image = effectively a configured file system in a file on disk."
     echo "  Container = a running instance of an Image."
     echo ""
 }
@@ -70,7 +70,7 @@ function fxnHelp ()
     echo ""
     echo " Usage: $DUE_NAME [ option ]"
     echo ""
-    echo " due is a wrapper to use Docker conatiners as Debian build environments."
+    echo " due is a wrapper to use Docker containers as Debian build environments."
     echo ""
     echo "   -c | --create             Build an image using configuration from DIR"
     echo "        --delete <term>      Generate a script to delete all images containing <term> "
@@ -151,11 +151,11 @@ function fxnHelpManage()
     echo "   --docker-clean             Run 'docker system prune ; docker image prune' to reclaim disk space."
     echo ""
     echo "   --help                     This help."
-    echo "   --help-examples            Examples of using managment options."
+    echo "   --help-examples            Examples of using management options."
     echo ""
 }
 
-# Example useage of management commands
+# Example usage of management commands
 function fxnHelpManageExamples()
 {
     if [ "$1" = "invocation" ];then
@@ -276,7 +276,7 @@ function fxnHelpCreateExamples()
 # Image management options
 
 #
-# help with running the conotainers you've already created
+# help with running the containers you've already created
 #
 function fxnHelpRun()
 {
@@ -297,7 +297,7 @@ function fxnHelpRun()
     echo ""
     echo " Specify how to run an image or log into an existing container."
     echo ""
-    echo " Runtime options:"
+    echo " Run time options:"
     echo ""
     echo "  Image selection:"
     echo "   <default>                  Select image to run from a menu."
@@ -352,12 +352,12 @@ function fxnHelpRun()
 }
 
 #
-# Examples of runtime use
+# Examples of run time use
 #
 function fxnHelpRunExamples()
 {
     if [ "$1" = "invocation" ];then
-        echo "$DUE_NAME --run    --help-examples       Container runtime use cases."
+        echo "$DUE_NAME --run    --help-examples       Container run time use cases."
         return
     fi
 
@@ -493,7 +493,7 @@ function fxnParseCreateArgs()
                 # If the local directory has been created, just build it.
 
                 # name of local directory. Its easy to
-                # autocomplete the path, just strip any '/' to go from
+                # auto complete the path, just strip any '/' to go from
                 # path to image name
                 if [ "$2" = "" ];then
                     DO_CREATE_HELP="TRUE"
@@ -643,7 +643,7 @@ function fxnParseCreateArgs()
 }
 
 #
-# Runtime commands
+# Run time commands
 #
 
 #
@@ -666,7 +666,7 @@ function fxnParseRunArgs()
             # Parse any help requests first, as they'll result in exit
             -h | --help | help )
                 if [ "$2" = "--duebuild" ];then
-                    # looking for a contianer's duebuild script help
+                    # looking for a container's duebuild script help
                     fxnDueBuildHelp "--help"
                 else
                     fxnHelpRun
@@ -676,7 +676,7 @@ function fxnParseRunArgs()
 
             --help-examples | help-examples )
                 if [ "$2" = "--duebuild" ];then
-                    # looking for a contianer's duebuild script help
+                    # looking for a container's duebuild script help
                     fxnDueBuildHelp "--help-examples"
                 else
                     fxnHelpRunExamples
@@ -794,7 +794,7 @@ function fxnParseRunArgs()
                 shift
                 ;;
             #
-            # username, user id, groupname, group id all default
+            # username, user id, group name, group id all default
             # to the current user's settings. These are override options
             #
             -n|--username )
@@ -817,7 +817,7 @@ function fxnParseRunArgs()
 
             --login-shell )
                 # Run this when logging into a container
-                # Typcially /bin/bash or /bin/sh for non DUE containers
+                # Typically /bin/bash or /bin/sh for non DUE containers
                 LOGIN_SHELL="$2"
                 shift
                 ;;
@@ -857,7 +857,7 @@ function fxnParseRunArgs()
                 ;;
 
             -l | --login )
-                # log in to a running contianer
+                # log in to a running container
                 DO_LOGIN="TRUE"
                 ;;
 
@@ -1000,7 +1000,7 @@ function fxnParseManageArgs()
                 ;;
 
             --export-container )
-                # Save the configuration of a running contatiner as a Docker image
+                # Save the configuration of a running container as a Docker image
                 DO_SAVE_CONTAINER="TRUE"
                 SAVE_CONTAINER_IMAGE_NAME="$2"
                 if [ "$SAVE_CONTAINER_IMAGE_NAME" = "" ];then
@@ -1012,7 +1012,7 @@ function fxnParseManageArgs()
                 ;;
 
             --export-image )
-                # Save the configuration of a running contatiner as a Docker image
+                # Save the configuration of a running container as a Docker image
                 DO_EXPORT="TRUE"
                 # If export image name given, bypass choice menu.
                 if [ "$2" != "" ]; then
@@ -1149,7 +1149,7 @@ do
             ;;
 
         --help-env-vars )
-            # Environment varables DUE will use
+            # Environment variables DUE will use
             fxnHelpEnvironmentVariables
             exit
             ;;
@@ -1333,7 +1333,7 @@ if [ "$DO_IMAGE_IMPORT" = "TRUE" ];then
 fi
 
 #
-# Runtime commands
+# Run time commands
 #
 if [ "$DO_RUN_IMAGE" = "TRUE" ];then
     # Select and start an image

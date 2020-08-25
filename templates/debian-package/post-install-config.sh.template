@@ -60,7 +60,7 @@ EDITORS="vim emacs-nox"
 
 #
 # Packages included by variables are optional.
-# They can be removed and packges should still build, if storage
+# They can be removed and packages should still build, if storage
 # space is a concern.
 #
 DEBIAN_FRONTEND=noninteractive \

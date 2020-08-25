@@ -2,7 +2,7 @@
 
 **Formatting Conventions**  
 If you are viewing this document as a text file, literal commands to type
-are start and end with backticks like `this`. If you are using a Markdown viewer, you will see just the text: this but the font will be `different`.  
+are start and end with back ticks like `this`. If you are using a Markdown viewer, you will see just the text: this but the font will be `different`.  
 **The point**  
 If you cut and paste from this file, do not copy the `
 
@@ -33,7 +33,7 @@ DUE can be used to build itself as a Debian package.
 
 1. Use Git to check out DUE's debian/upstream branch  
    `git checkout debian-upstream`  
-    You shoud see that there is now a "debian" directory.  
+    You should see that there is now a "debian" directory.  
 2. Create a Debian package build container, using an example from `due --create help`.  
    If you are using Ubuntu, this might look like:  
    `./due --create --from ubuntu:18.04 --description "Package Build for Ubuntu 18.04" --name pkg-u-18.04 --prompt PKGU1804 --tag pkg-ubuntu-18.04 --use-template debian-package`  
@@ -41,7 +41,7 @@ DUE can be used to build itself as a Debian package.
   
 3. Once the image has finished building, tell DUE to run a build, and pick your Debian package build container.  
   `due --build`  <- Will let you choose your image, if there is more than one.  
-Or specifiy the image to use with:  
+Or specify the image to use with:  
 `due --run-image due-pkg-u-18.04:pkg-ubuntu-18.04 --build` <- build using `due-pkg-u-18.04` image with tag `pkg-ubuntu-18.04`  
   
 Once the build completes, there should be a due*.deb in the directory above where you just built. This can be installed with:  
@@ -150,7 +150,7 @@ This allows me to preserve the prompt hints that describe the container.
  Holds the DUE configuration file for the system's /etc directory. A copy of this is added to the user's home directory under:  
  `~/.config/due/due.conf`  
  Note that there are currently two configurable parameters for the system (`/etc/due/due.conf`) or a user (`~/.config/due/due.conf`)  
- `DUE_ENV_DEFAULT_HOMEDIR` - change your home directory to another directory on the host. Handy if your home directory is on an NFS filesystem (See `Troubleshooting.md`) or you need to use a different disk partition to work in.  
+ `DUE_ENV_DEFAULT_HOMEDIR` - change your home directory to another directory on the host. Handy if your home directory is on an NFS file system (See `Troubleshooting.md`) or you need to use a different disk partition to work in.  
   `DUE_USER_CONTAINER_LIMIT` - set a limit on multi user systems for how many containers a user should be running. Sometimes it is tough to keep track...  
   
 					

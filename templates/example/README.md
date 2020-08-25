@@ -1,5 +1,5 @@
 # example template
-Use this as a starting point for any container development. Replace the EXAMPLE strings and update text as necesary
+Use this as a starting point for any container development. Replace the EXAMPLE strings and update text as necessary
 
 This image is configured to EXAMPLE
 
@@ -13,7 +13,7 @@ Create default EXAMPLE with:
 ### Explanation of the above:
   * Use a Debian 10 image
   * Name it example-debian-10
-  * Tag it as exmaple-debian-10
+  * Tag it as example-debian-10
   * Set the user's PS1 prompt in the image to be Ex so the context is (more) obvious
   * Merge in the files from ./templates/example when creating the configuration directory
 
@@ -68,7 +68,7 @@ a bit of abstraction so as to not bother the user with the details of the build.
 
 #### Using `--build --cbuild`
 **Purpose:** The `--cbuild` option allows for default configuration of the environment before build
-**Example:** due --run --build --cbuild EXAMPLE_COMAND_LINE_BUID_COMMAND
+**Example:** due --run --build --cbuild EXAMPLE_COMMAND_LINE_BUILD_COMMAND
 
 
 #### Using additional duebuild arguments for EXAMPLE

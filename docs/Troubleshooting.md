@@ -44,9 +44,9 @@ either `/etc/due/due.conf` or `~/.config/due/due.conf` ( generate this with `./d
 to specify this local work directory as your "home" directory.
 You'll probably want to copy config files, etc to the new "home" directory.
 
-## Symptom: Can't mount filesystems or missing dev entries in container.
+## Symptom: Can't mount file systems or missing dev entries in container.
 Certain operations (like loopback mounting files) are restricted within the
-container because they would require root level access to the host filesystem.
+container because they would require root level access to the host file system.
 While Docker containers can run with the `--privileged` option which would
 allow this access, it also provides a false sense of security that actions
 taken within the container won't trash the host system.

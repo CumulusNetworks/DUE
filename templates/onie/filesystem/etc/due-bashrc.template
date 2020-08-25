@@ -1,4 +1,4 @@
-# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+# Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
 
@@ -23,7 +23,7 @@ fi
 
 #
 # Force the user path to start with sbin so
-# certian tools will be found.
+# certain tools will be found.
 #
 if [[ $PATH != */usr/sbin* ]];then
    PATH="/sbin:/usr/sbin:$PATH"

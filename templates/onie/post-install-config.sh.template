@@ -4,7 +4,7 @@
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 
 set -e
-# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+# Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
 
@@ -25,7 +25,7 @@ fxnPostInstallCommon
 #
 # Container specific configuration
 #
-# Add an onie specific build account
+# Add an ONIE specific build account
 USER_NAME=oniebuild
 
 # Put the user ID high enough to be unique, but not to conflict
@@ -79,7 +79,7 @@ else
 	# These packages are available in Debian 9
     DEBIAN_9_PACKAGES="sbsigntool"
     
-    # Packages used for secure boot (amd64 hardcode is fine as this is Intel only)
+    # Packages used for secure boot (amd64 hard code is fine as this is Intel only)
     #linux-headers-amd64?    
     SECURE_BOOT=" qemu-utils ovmf gnu-efi libfile-slurp-perl "
 fi
@@ -204,7 +204,7 @@ fi
 # Hub (https://github.com/github/hub) is not needed for build, but is handy for
 # managing pull requests.
 # Installing it here keeps the container the same for everyone using it.
-# Note: this assumes a 64bit AMD64 contiainer
+# Note: this assumes a 64bit AMD64 container
 #
 
 HUB_VERSION="2.12.8"

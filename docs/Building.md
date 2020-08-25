@@ -59,7 +59,7 @@ or
 due --run --build --cbuild -uc -b -j8
 
 
-####Example: Buiding a Debian package with different arguments
+####Example: Building a Debian package with different arguments
 
 #####Using --command
 due --run --command sudo mk-build-deps --install --remove ./debian/control --tool \"apt-get -y\" \; dpkg-buildpackage -uc -b -j8

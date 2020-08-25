@@ -2,7 +2,7 @@
 # SCRIPT_PURPOSE: Example framework for default build script.
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 
-# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+# Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
 
@@ -158,7 +158,7 @@ function fxnPrintConfig()
     echo "| Build dir            [ $(pwd) ]"
     echo "| Build attempts       [ $BUILD_ATTEMPTS ]"
     if [ "$PREBUILD_SCRIPT" != "" ];then
-        echo "| Pre buld script      [ $PREBUILD_SCRIPT ]"
+        echo "| Pre build script      [ $PREBUILD_SCRIPT ]"
     fi
     if [ "$DO_BUILD" = "TRUE" ];then
         echo "| Build jobs           [ $BUILD_JOBS ]"
@@ -280,7 +280,7 @@ do
 			# when this container is run. The intent is to do a very 
 			# basic build operation to demonstrate functionality
 			# and hopefully cover common cases.
-			# For Debian packge build, the --cbuild option conveniently 
+			# For Debian package build, the --cbuild option conveniently 
 			# does all this, so use it.
 			DO_BUILD="TRUE"
 			;;
@@ -315,7 +315,7 @@ do
             # Sometimes the first try isn't the charm.
             BUILD_ATTEMPTS="$2"
             if [ "$2" = "" ];then
-                fxnERR "--build-attempts reqires a number. Ex: --build-attempts 2.  Exiting."
+                fxnERR "--build-attempts requires a number. Ex: --build-attempts 2.  Exiting."
                 exit 1
             fi
             shift

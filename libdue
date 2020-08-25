@@ -1,5 +1,5 @@
 #!/bin/bash
-# SCRIPT_PURPOSE: A function library for Dedicated User Environment (due)
+# SCRIPT_PURPOSE: A function library for Dedicated User Environment (DUE)
 
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
@@ -114,7 +114,7 @@ function fxnListContainersForCreation()
         # To simplify parsing, this counts on the example line in the README.md files being formatted
         # in exactly the same way for all, with everything up to the 'with:' getting deleted,
         # and the last field being --use-template, as that gets prepended to the example string
-        # via awk to speicify the type of container being created.
+        # via awk to specify the type of container being created.
         foundExamples=$( find "${SPECIFIC_TEMPLATE_PATH}" \
                               -name README.md \
                               -exec grep "^Create" {} \; \
@@ -543,7 +543,7 @@ function fxnMakeNewDockerImage()
             fi
         fi
 
-        # TODO: make this support other architectures, beyond the armel hardcode here.
+        # TODO: make this support other architectures, beyond the armel hard code here.
         if [ "$HOST_ARCH" != "$imageArchitecture" ];then
             # If this is an x86 system, building an armel container...
             fxnPP "Image architecture [ $imageArchitecture ] does not match host's [ $HOST_ARCH ]. Copying qemu-${imageArchitecture}-static in for emulation."
@@ -1209,7 +1209,7 @@ function fxnDoLogin()
         # make sure the container mounts something local
 
         #
-        # Local filesystems the container can mount.
+        # Local file systems the container can mount.
         #
         if [ "$USE_HOMEDIR" = "" ];then
             ADDITIONAL_MOUNTS+=" --volume $(realpath ~/):/home/$USER_NAME"
@@ -1232,7 +1232,7 @@ function fxnDoLogin()
         #
         # Check for mounting different directories into the same place in the container
         # Put --volume one per line
-        # Trim whitespace
+        # Trim white space
         # Filter any identical requests (those won't bother Docker, but do break parsing here)
         # Split out the container mount points after :
         # Count any duplicates there
@@ -1287,7 +1287,7 @@ function fxnDoLogin()
                 else
                     # host system doesn't have a directory the container wants to
                     # mount. Warn and proceed.
-                    fxnWarn "Host system does not have directory [ $dir ] requested by contiainer. Continuing..."
+                    fxnWarn "Host system does not have directory [ $dir ] requested by container. Continuing..."
                 fi
             done
             # restore the field separator to what it was.
@@ -1387,7 +1387,7 @@ function fxnDoLogin()
 
         echo ""
         echo " ----------------------------------------------------------------------------"
-        echo " ------ Host filesystems are mounted as follows: ----------------------------"
+        echo " ------ Host file systems are mounted as follows: ---------------------------"
         echo " -"
         # Put this on two lines and delete the starting space newline..
         echo "$ADDITIONAL_MOUNTS" | sed -e 's/--volume/\n -   --volume/g' | sed -e '/^ $/d'
@@ -1499,7 +1499,7 @@ function fxnGenerateTemplate()
     #   sed -i "/# DUE_INSERT_CONFIG/ r ${BUILD_MERGE_DIR}/${templateName}/Dockerfile.config" ${BUILD_MERGE_DIR}/${templateName}/Dockerfile.template
 
     # Rather than pull files from the common-templates to create the
-    # configuration direcotory for the docker image, use this merged one
+    # configuration directory for the docker image, use this merged one
     USE_TEMPLATE_PATH="${BUILD_MERGE_DIR}/${name}-template-merge"
 
 }
@@ -1570,7 +1570,7 @@ function fxnReadConfigFile()
             CONFIG_FILE_PATH="$DUE_HOME_CONFIG_ABSOLUTE_PATH"
         else
             # Create a local config to use.
-            fxnPP "Creating DUE configuraton file at $CONFIG_FILE_PATH"
+            fxnPP "Creating DUE configuration file at $CONFIG_FILE_PATH"
             fxnEC fxnCreateConfigFile || exit 1
         fi
     fi
@@ -1586,7 +1586,7 @@ function fxnReadConfigFile()
             eval "$( echo $homeDir )"
         fi
 
-        # Parse the DUE_USER_CONTAINER_LIMIT variable, and ovedrride the
+        # Parse the DUE_USER_CONTAINER_LIMIT variable, and override the
         # default set at the top of this file.
         maxContainers=$(echo "$configVars" | grep DUE_USER_CONTAINER_LIMIT | tail -n 1 )
         if [ "$maxContainers" != "" ];then
@@ -1600,7 +1600,7 @@ function fxnReadConfigFile()
 # be run. Print all known labels here:
 # Takes:
 #   $1  - name of container
-#   $2  - tag of contiainer
+#   $2  - tag of container
 function fxnPrintContainerLabels()
 {
     local containerName="$1"
@@ -1614,7 +1614,7 @@ function fxnPrintContainerLabels()
     # How does the container identify itself?
     DUEImageType=$( docker inspect -f '{{.ContainerConfig.Labels.DUEImageType}}' "${containerName}":"${containerTag}" )
 
-    # Mount host filesystem this many directories up from current working directory
+    # Mount host file system this many directories up from current working directory
     DUEMountHostDirsUP=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirsUp}}' "${containerName}":"${containerTag}" )
     # Revision of container
     DUEContainerVersion=$( docker inspect -f '{{.ContainerConfig.Labels.DUEContainerVersion}}' "${containerName}":"${containerTag}" )
@@ -1733,7 +1733,7 @@ function fxnSetContainerSpecificArgs()
 {
     local imageType="$1"
 
-    # uses the value set by tye DUEImageType label from
+    # uses the value set by the DUEImageType label from
     # template directory's Dockerfile.config
     case $imageType in
         "no-op-image" )

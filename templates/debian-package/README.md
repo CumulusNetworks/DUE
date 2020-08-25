@@ -134,7 +134,7 @@ Or:
 **Example** ``due --run --image due-package-debian-10 --build --use-local-repo myRepo``  
 
 The ``--use-local-repo`` option will create a local Debian package repository in the
-directory above the build directory, and the DUE contianer will use packages from 
+directory above the build directory, and the DUE container will use packages from 
 it at the start of build, and add all built packages to it at the end of build.  
     
 This is incredibly helpful when building packages that depend on other packages to have already been built.  
@@ -147,7 +147,7 @@ Now use a previously built Debian 10 image by default, and name the repository m
 `due --run --build --image due-package-debian-10 --build --use-local-repo myRepo`  
 
 The duebuild script in the container  looks for `myRepo`, fails to find it, creates it, and then accesses it,
-resulting in a few warnings because the repository isn't popluated.  
+resulting in a few warnings because the repository isn't populated.  
 
 The build completes and the *.debs are put in `myRepo`  
 
@@ -160,7 +160,7 @@ The build proceeds, with the package-A *.debs being accessed.
 The build completes, and package-B debs are added to `myRepo`
 
 *Caveats*: There is some overlap here with the `--install-debs-dir` option.  
-Also this has only been tested with .debs of a single architecture. Using source tarfiles
+Also this has only been tested with .debs of a single architecture. Using source tar files
 and multiple architectures may not work.
 
 ### Doing dependency install and running your own build command  
@@ -168,7 +168,7 @@ and multiple architectures may not work.
 **Example** `./due --duebuild --build-command DEB_BUILD_OPTIONS="\'debug noopt\'" dpkg-buildpackage -b -j7`
 
 If you want to fine-tune the build command, then this will do the container
-updgrade and dependency installation, and then just run whatever follows 
+upgrade and dependency installation, and then just run whatever follows 
 `--build-command`.  
 Note that `--build-command` must be the last argument, as everything after that
 is passed through...and you may have to escape quote terms, as illustrated above.

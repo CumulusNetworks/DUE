@@ -8,7 +8,7 @@ Well, maybe not _frequently_ but things worth knowing.
 The DUE install scripts will automatically add any keys for an APT repository. The FRR template has an example of pulling a key and adding a custom repository to the sources.list in its container.
 
 ## Soft links to include other files.
-See `templates/frr/filesystem/usr/local/bin` for a relative path link to the debian-package's `duebuild` script for building debian packages. THis can be useful if you are creating templates that have common code.
+See `templates/frr/filesystem/usr/local/bin` for a relative path link to the debian-package's `duebuild` script for building debian packages. This can be useful if you are creating templates that have common code.
 
 ## The template README files supply default build instructions
 DUE scans all `template/<name>/README.md` files and looks for a line starting with:  
@@ -82,7 +82,7 @@ Or use `due --login --debug`, which is a shortcut to log you in as root.
 
 ## On using `--privileged`. Do. Not. Recommend.
 The `--privileged` option gives a Docker container access to host device entries that would normally
-not be accessible. This can be useful for things like loopback mounting a filesystem to write to it,
+not be accessible. This can be useful for things like loopback mounting a file system to write to it,
 or having a container that runs other containers.  
 **However** this also allows the container to modify the host system, and presents a **security/stability** risk,
 as users in the container may be able to affect the host system without realizing they are doing so.
@@ -135,7 +135,7 @@ On the development side, I see a few advantages to generating the Dockerfile tha
 4. **Template processing** allows for minor detail change details between builds. Ex: setting the container identity with --from allows for a Debian 10 or Ubuntu 16.04 container to be built with exactly the same configuration.  
 5. **Debugging inside the container** is easier as DUE puts all the files used in container creation in the container, and they can be run individually inside to narrow down issues.  
 6. **Current user identity is preserved** by wrapping the Docker invocation (see below)
-6. It allows for **embedding default information** into the container that can be parsed at runtime (see **Easier Runtime**, below).  
+6. It allows for **embedding default information** into the container that can be parsed at Runtime (see **Easier Runtime**, below).  
 ...and in the end, there is a Dockerfile created that does all this, but the user doesn't have to do as much work.  
 
 ### Easier Runtime
