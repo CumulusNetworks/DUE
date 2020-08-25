@@ -4,6 +4,7 @@ due (2.0.0-1) unstable; urgency=medium
   * debian-package: Set ulimit -n 10000 for slow Apt on Jessie images
   * debian-package: Install python version based on image Debian release
   * debian-package: Clean up files generated when resolving build dependencies
+  * libdue for emulation, qemu-<arch>-static comes from source image's arch
   * due: do not filter images after --run-image has been invoked.
   * due: add --delete option
   * docs: Markdown cleanup. Updated some stale docs.
