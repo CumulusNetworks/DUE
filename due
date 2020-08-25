@@ -237,8 +237,8 @@ function fxnHelpCreate()
     echo ""
     echo "   --clean                      Remove due-build-merge directory."
     echo "   --help                       This help."
-    echo "    --filter <term>             With --help, filter output to contain <term>"
-    echo "   --help-examples              Examples of using create."
+    echo "   --filter <term>             With --help, filter output to contain <term>"
+    echo "   --create --help-examples     Examples of using create."
 
     echo ""
     echo ""
@@ -261,30 +261,14 @@ function fxnHelpCreateExamples()
     echo "#"
     echo "############################################################################"
 
-    echo " Container configuration directory and creation examples:"
+	# show local image creation configurations
+    fxnListContainersForCreation $exampleFilter
+	echo ""
+	echo " Ex: clean container creation work area."
+	echo " $0 --create --clean"
     echo ""
-    echo " Make a basic Ubuntu 18.04 contianer."
-    echo "  Create the configuration directory with:"
-    echo "   $DUE_NAME --create --from ubuntu:18.04 --description \"Ubuntu 18.04\" --name ubuntu1804 --tag ubuntu18"
-    echo "  Then make the Docker image with:"
-    echo "   $DUE_NAME --create --build-dir ubuntu1804"
-    echo ""
-    echo " Make a  Buster Debian package build image, with:"
-    echo "       - the default debian:buster container"
-    echo "       - described as as a Buster build container."
-    echo "       - named as busterbuild"
-    echo "       - the prompt in container to be D10build to provide some user context."
-    echo "       - the container tagged as buildenv-debian"
-    echo "      Note --name should be lowercase."
-    echo "  "
-    echo "  Create the configuration directory using templates/debian-package with:"
-    echo "   $DUE_NAME --create --from debian:10 --description \"Buster Build container\" --name busterbuild --prompt D10build --tag buildenv-debian --use-template debian-package"
-    echo "  Then make the Docker image with:"
-    echo "   $DUE_NAME --create --build-dir --busterbuild"
-    echo ""
-    echo "  If you've modified files in the configuration directory, rebuild the Docker image with:"
-    echo "   $DUE_NAME --create \"busterbuild\""
-    echo ""
+	echo " Ex: filter creation examples to only show those containing 'foo' "
+	echo " $0 --create --help --filter foo"
     echo ""
 }
 
@@ -292,7 +276,7 @@ function fxnHelpCreateExamples()
 # Image management options
 
 #
-# help with running the containers you've already created
+# help with running the conotainers you've already created
 #
 function fxnHelpRun()
 {
@@ -362,8 +346,8 @@ function fxnHelpRun()
     #   echo "   --debug                 Pass a debug flag to the container."
     echo ""
     echo " Help:"
-    echo "   --help                      This message."
-    echo "   --help-examples             Show examples of use."
+    echo "   --help --run                 This message."
+    echo "   --run --help-examples        Show examples of use."
     echo ""
 }
 
