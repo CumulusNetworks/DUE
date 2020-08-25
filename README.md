@@ -73,7 +73,7 @@ Well, give me an environment with the different versions and I'll build there.
 environments to use it, and, apart from being friendly, the less the end user has to do, the less support I'll have to do.
 
 7.  It has to be **easy to modify**, since developer requirements will vary. By writing it with Bash scripts the code
-resembles the commands the developers woudld want to run anyway.
+resembles the commands the developers would want to run anyway.
 
 8.  It has to work on **shared user systems**. Many users should be able to run containers off the same image without colliding.
 

@@ -4,11 +4,11 @@ This is a first pass at a configuration to build Debian packages
 for Free range routing, so expect some rough edges.
 
 Notes:
-This configuraion has the key for the FRR repository in 
+This configuration has the key for the FRR repository in 
   filesystem/etc/apt/trusted.gpg.d/keys.asc
   Should the key change, this will need to be updated.
 
-This steals the dpkg-plus script from the debian-packge template.
+This steals the dpkg-plus script from the debian-package template.
 Now I've got the same thing in two places, which is always a bad idea.
 This will need to get addressed at some point.
 
@@ -17,7 +17,7 @@ Suggested configuration:
 	name it frrd10
 	tag it as frr-debian10
 	set the prompt in container to be FRRD10 so the context is (more) obvious
-	merge in the files from ./templates/frr when creating the configuration direcotry
+	merge in the files from ./templates/frr when creating the configuration directory
 
 ## Image creation example.
 <br>

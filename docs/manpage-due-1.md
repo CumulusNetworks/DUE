@@ -8,6 +8,7 @@
 
 | **due** \[**-r|--run** _args_] \[_dedication_]
 | **due** \[   **--create** _args_ ] \[_dedication_]
+| **due** \[   **--delete** _term_ ] \[_dedication_]
 | **due** \[**-m**|**--manage** _args_] \[_dedication_]
 | **due** \[**-v**|**--version**]
 | **due** \[**-h**|**--help**]
@@ -25,7 +26,7 @@ Key features include:
 
  2 - List based browsing of images to run and active containers to log in to.
 
- 3 - Use of container 'templates' to preconfigure and build containers for a
+ 3 - Use of container 'templates' to pre configure and build containers for a
      particular target or Debian based operating system,
      eliminating errors caused by missing dependencies, or misconfiguration.
 
@@ -84,7 +85,7 @@ matches the filter, it will be invoked without asking the user to choose it.
 containers that it did not create, but the user may have to supply a default
 --username and --userid (usually --username root and --userid 0. See below )
 
---ignore type
+--ignore-type
 :		 When accessing the container, do not attempt to create a user
 account for the user logging in, and assume the container was not created by
 DUE. This can be useful with image creation debug.
@@ -94,16 +95,13 @@ DUE. This can be useful with image creation debug.
  This must be the last command parsed, as [cmd] is handed off to be run in
  the container. The primary use of this would be using the container to
  build without having to interactively log in to it.
-
  Note: when issuing multiple commands, remember to "" your arguments, and
  backslash (\) any semicolons (;) used to split up the commands. Otherwise the
  shell where the commands are invoked will take anything after the first ;, and
  treat it as a command to be run locally.
-
  This can obfuscate things if the command can work inside or out of the container.  
-
  Example: look at /proc and the password file in a container:
-          ./due --run --command "ls -lrt /proc"  \; "cat /etc/passwd"
+          ./due --run --command "ls -lrt /proc"  \; "cat /etc/passwd"  
 
 --build | --duebuild
 :	If there is a /usr/local/bin/duebuild script in the container, this option
@@ -112,11 +110,11 @@ DUE. This can be useful with image creation debug.
 	the target being built by the container's duebuild script.
 	For more information, check the template/README.md for the image type, or
 	use: due --duebuild --help to select a container and get its duebuild script's 
-	help nnoptions directly.
+	help options directly.
 
 --duebuild
 :	Same behavior as --build, but a bit clearer that it is working with the
-    selected container's duebuild script. One noteable difference
+    selected container's duebuild script. One notable difference
     is that due --duebuild --help will select a container and execute
 	duebuild --help to see the options provided by that particular script.
 
@@ -151,7 +149,7 @@ creation dies running internal configuration scripts.
 Logging in to a running container
 -------
 -l, --login
-:	Choose an existing container to log in to
+:	Choose an existing container to log in to.
 
 --username  [username]
 :	Name to use when logging in.
@@ -189,15 +187,15 @@ account for the user in the container, and allows commands to be run in the cont
 it was the user invoking them.
 
 The order of creation is as follows, using the debian-package template as an example, where
-the resulting image will be named 'debian-package-10'
+the resulting image will be named 'debian-package-10'  
 
 1 - The contents of common-templates are copied to a debian-package-10-template-merge directory under
-    ./due-build-merge/
+    ./due-build-merge/  
 2 - The contents of the debian-package template directory copied in to the 
-    debian-package-10-template-merge directory and will overwrite any files with identical names.
-3 - Any REPLACE_* fields in the *template files are replaced with values supplied from
+    debian-package-10-template-merge directory and will overwrite any files with identical names.  
+3 - Any REPLACE_ fields in the template files are replaced with values supplied from
     the command line (such as the starting container image)  and all files are copied to
-	./due-build-merge/debian-package-10
+	./due-build-merge/debian-package-10  
 4 - The ./due-build-merge/debian-package-10/Dockerfile.create file is used to create the image
     from this build directory. 
 
@@ -280,7 +278,7 @@ make working with containers/images easier.
 	 user can choose from a menu.
 
 --import-image [name]
-:    Import a docker image stored on disk as tarfile <name>
+:    Import a docker image stored on disk as tar file <name>
 
 --copy-config
 :    Create a personal DUE configuration file in ~/.config/due/due.config
@@ -321,7 +319,8 @@ The configuration file sets up the following variables:
 
 `DUE_ENV_DEFAULT_HOMEDIR` - evaled to define the user's home directory.
 This can be useful if there is a naming convention for work directories
-on shared systems.
+on shared systems, or your home directory is an NFS mount (which can create  
+strange behavior when mounted in Docker) or you need to use a bigger build directory.
 
 `DUE_USER_CONTAINER_LIMIT` - limit the number of containers a user
 is allowed to run. Handy on a shared system to remind people of 
@@ -335,7 +334,7 @@ See GitHub Issues: [https://github.com/[CumulusNetworks]/[DUE]/issues]
 AUTHOR
 ======
 
-Alex Doyle <alexddoyle@gmail.com>
+Alex Doyle <adoyle@nvidia.com>
 
 COPYRIGHT
 =========

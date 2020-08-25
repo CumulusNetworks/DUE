@@ -3,7 +3,7 @@
 # SCRIPT_PURPOSE: Run configuration inside the docker container, after package install.
 # Bash should be installed at this point.
 
-# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+# Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
 
@@ -79,7 +79,7 @@ echo deb https://deb.frrouting.org/frr $(lsb_release -s -c) frr-stable | sudo te
 
 apt-get update
 
-echo "Installing libyang0.16 libyang-dev, from the FRR package repository, if the distributon didn't already have it."
+echo "Installing libyang0.16 libyang-dev, from the FRR package repository, if the distribution didn't already have it."
 apt-get install libyang0.16 libyang-dev
 
 echo "Done $0"

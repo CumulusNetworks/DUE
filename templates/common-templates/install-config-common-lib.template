@@ -3,7 +3,7 @@
 # SCRIPT_PURPOSE: Run configuration inside the docker container, after package install.
 # Bash should be installed at this point.
 
-# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+# Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
 
@@ -15,7 +15,7 @@ CONF_DIR="/due-configuration/filesystem"
 
 # Common post install functions are provided as a sourceable function
 # to reduce copy-paste in overriding scripts, and allow the option for
-# not runnign it at all
+# not running it at all
 function fxnPostInstallCommon()
 {
 	echo " ___________________________________________________________________________"

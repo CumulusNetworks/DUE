@@ -9,6 +9,8 @@ If you've downloaded DUE as source, run:
 
 The last three packages there are optional, but necessary if you want to run alternate architectures.
 
+**TIP** if you are on the master Git branch of DUE, run `make install` to achieve the same effect.
+
 ### Installing Docker through the DUE .deb
 The lack of Docker will be obvious on the initial install of the DUE .deb, as you'll see the error:  
  `due depends on docker.io | docker-ce; however:  
@@ -19,7 +21,7 @@ To resolve this, try:
 `sudo apt update`  
 `sudo apt install --fix-broken`
 If that fails (and might, depending on how old the version of your operating system is), try
-`sudo apt install docker.io`
+`sudo apt install docker.io`  
 ...and if that fails, try downloading and installing docker.ce from [https://hub.docker.com](https://hub.docker.com/)
 
 ## Symptom: Docker containers don't run (or only run as root).
@@ -27,7 +29,7 @@ You'll see `Got permission denied while trying to connect to the Docker daemon s
 You are probably not a member of the Docker group, so you'll need to:
 
 ### Add yourself to the Docker group:  
-`sudo usermod -a -G docker <yourusername>`  
+`sudo usermod -a -G docker $(whoami)`  
 
 You may have to *log out* and back in again for the group change to take effect.
 Running `groups` should show `docker` along with your other groups.
@@ -42,10 +44,10 @@ either `/etc/due/due.conf` or `~/.config/due/due.conf` ( generate this with `./d
 to specify this local work directory as your "home" directory.
 You'll probably want to copy config files, etc to the new "home" directory.
 
-## Symptom: Can't mount filesystems/missing dev entries in container.
+## Symptom: Can't mount file systems or missing dev entries in container.
 Certain operations (like loopback mounting files) are restricted within the
-container because they would require root level access to the host filesystem.
-While Docker containers can run with the --privileged option which would
+container because they would require root level access to the host file system.
+While Docker containers can run with the `--privileged` option which would
 allow this access, it also provides a false sense of security that actions
 taken within the container won't trash the host system.
 Bottom line: this _can_ be done, but it carries risks.
@@ -64,7 +66,7 @@ So far this has been the only time I've seen this die, and I tracked it down to 
 the architectures it can run with binfmt-support, so that when non-native code is encountered,
 it can be passed off to qemu.
 
-####Other things to check:
+####Other emulation related failures to check:
 #####Are there qemu-* entries under `/proc/sys/fs/binfmt_misc/`
 If  `ls -l /proc/sys/fs/binfmt_misc` doesn't show them, then a few required packages may not be installed. Try:
 
@@ -85,15 +87,16 @@ Restart binfmt-support
 # Debugging a failed image creation
 
 If image creation does not complete, a partial image will have been created with the
-name <none>. Running `due --manage --list-images` will list all containers on the 
+name `<none>`. Running `due --manage --list-images` will list all containers on the 
 system with the most recently created ones listed first.  
 
 To get inside the failed container and debug it, run:  
 
-`due --run --any --username root --userid 0`  
+`due --run --debug`  and select the image.  
+Then:
 `cd /due_configuration`
 
-Here you'll find all the configuration scripts being run to create the container,
+Here you'll find all the configuration scripts that were run to create the container,
 so you can run them as needed to track down the failure.
 
 Your home directory will be mounted under `/home/root`, so any file changes you make
@@ -104,6 +107,7 @@ Run `due --manage --delete-matched none`
 This gets the IDs of all images that have 'none' in their name and generates 
 a script named `delete_these_docker_images.sh` that can be run to delete all those images.
 
---delete-matched filters images with  with `*term-supplied*` so you should 
+`--delete-matched` filters images with  with `*term-supplied*` so you should 
 check that the images listed in the script are, indeed,
-the ones you want to get rid of.
+the ones you want to get rid of.  
+

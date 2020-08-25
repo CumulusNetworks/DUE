@@ -3,8 +3,9 @@
 # SCRIPT_PURPOSE: Script to run configuration inside the docker container before
 # package install.
 # CONTEXT: runs inside the container at creation time.
+# Note - this is /bin/sh as /bin/bash may not be available.
 
-# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+# Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
 
