@@ -2,7 +2,7 @@
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 # SCRIPT_PURPOSE: Dynamically add a user to a docker container
 
-# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+# Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
 
@@ -103,7 +103,7 @@ function fxnAddUserInContainer()
             echo "| Using container account UID [ $containerUID ]"
         else
             # USER_ID comes in by default and is set to the invoking user's ID,
-            # unless explictly passed in.
+            # unless explicitly passed in.
 
             #
             # Passed in user ID is different, but does not match any user IDs in use.

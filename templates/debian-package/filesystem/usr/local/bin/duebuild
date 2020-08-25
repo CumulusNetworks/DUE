@@ -1,5 +1,5 @@
 #!/bin/bash
-# SCRIPT_PURPOSE: Low-rent version of sbuild. Resolve dependencies. Build a debian package, and mabye more
+# SCRIPT_PURPOSE: Low-rent version of sbuild. Resolve dependencies. Build a debian package, and maybe more
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
@@ -256,7 +256,7 @@ function fxnPrintConfig()
     fi
 
     if [ "$PREBUILD_SCRIPT" != "" ];then
-        echo "| Pre buld script      [ $PREBUILD_SCRIPT ]"
+        echo "| Pre build script      [ $PREBUILD_SCRIPT ]"
     fi
     if [ "$DEV_PACKAGE_VERSION" != "" ];then
         echo "| Version change       [ $DEV_PACKAGE_VERSION ]"
@@ -280,7 +280,7 @@ function fxnDebianSourceOne()
 {
 
     #
-    # expect to be running in the directory that contans debian/
+    # expect to be running in the directory that contains debian/
     # packageName should be the base name of the package ( no versions )
     #
     if [ ! -e ~/.git ];then
@@ -316,7 +316,7 @@ function fxnDebianSourceOne()
     echo "1.0" > debian/source/format
     echo "" >> debian/source/format
 
-    # if building tarfiles - this would continue. Commit once to save it
+    # if building tar files - this would continue. Commit once to save it
     return 0
 
 }
@@ -366,7 +366,7 @@ function fxnIsolatePackageDependencies()
                           | tr '\n' ' ')
 
     if [ "$missingDepends" = "" ];then
-        echo "   Looks like all dependencies are present. Proably a local leftover depends package triggering this."
+        echo "   Looks like all dependencies are present. Probably a local leftover depends package triggering this."
         return 0
     fi
     # Ignore shellcheck warning to "" missingDepends
@@ -380,7 +380,7 @@ function fxnIsolatePackageDependencies()
         if [ "$?" = "0" ];then
             echo "Installed [ $pkg ]"
         else
-            # Run a loud install to hilight the failure
+            # Run a loud install to highlight the failure
             fxnPP "Failed  [ $pkg ]. Retrying the install to get the errors."
             sudo apt-get install --assume-yes --no-install-recommends "$pkg"
         fi
@@ -395,7 +395,7 @@ function fxnIsolatePackageDependencies()
 #        Debian package  architecture ( or 'default' to determine it from the system.)
 #        absolute path to a directory that contains files to add to the repository
 
-# Does:  Creates a local package repsoitory one directory up from
+# Does:  Creates a local package repository one directory up from
 #        the current build directory (or uses it if it already exists)
 #        and adds it to the build.
 function fxnUseLocalPackageRepository()
@@ -445,7 +445,7 @@ function fxnUseLocalPackageRepository()
         if [ "$addContentsDir" != "" ];then
             # only update if there is stuff to update.
             if [ ! -e "$addContentsDir" ];then
-                fxnERR "Failed to find directory of debs to add at [ $addContentsDir ]. NOT modifiying local repository."
+                fxnERR "Failed to find directory of debs to add at [ $addContentsDir ]. NOT modifying local repository."
                 exit 1
             fi
 
@@ -708,7 +708,7 @@ function fxnDoDevBuild()
 
     #
     # Now that the dev string has been sorted,
-    # update the debain/changelog with dch
+    # update the debian/changelog with dch
     #
 
     fxnMSG "Running dch --package $PACKAGE_NAME --force-bad-version --newversion  $DEBIAN_VERSION~$VERSION_SUFFIX \"Added dev string for $DEBIAN_VERSION-$VERSION_SUFFIX\""
@@ -718,7 +718,7 @@ function fxnDoDevBuild()
 
 
     if [ "$DO_GIT_BUILD" = "TRUE" ];then
-        fxnMSG "Commiting dev string to change log. To undo, run: git reset --hard $CURRENT_GIT_COMMIT"
+        fxnMSG "Committing dev string to change log. To undo, run: git reset --hard $CURRENT_GIT_COMMIT"
         # If python version files were modified, commit them here too
         fxnEC git commit debian/changelog  -m "Added dev string for $DEBIAN_VERSION-$VERSION_SUFFIX"  || return 1
     fi
@@ -841,7 +841,7 @@ do
         --install-debs-dir )
             INSTALL_DEBS_DIR="$2"
             if [ ! -e "$INSTALL_DEBS_DIR" ];then
-                fxnERR "Failed to find additonal deb directory [ $INSTALL_DEBS_DIR ]"
+                fxnERR "Failed to find additional deb directory [ $INSTALL_DEBS_DIR ]"
                 exit 1
             fi
             shift
@@ -893,13 +893,13 @@ do
             shift
             ;;
 
-		# take --build as it tends to get typed in contianer
+		# take --build as it tends to get typed in container
 		# --cbuild is clearer when invoking from outside the container
         -c | --cbuild | --build )
             # Default to build everything in container context
             DO_BUILD="TRUE"
             if [ "$2" != "" ];then
-                # More arguements?
+                # More arguments?
                 # skip over --cbuild
                 shift
                 # The rest of the arguments passed should be given verbatim to
@@ -913,7 +913,7 @@ do
             # Default to build everything in container context
             DO_BUILD="TRUE"
             if [ "$2" != "" ];then
-                # More arguements?
+                # More arguments?
                 # skip over --build-command
                 shift
                 # The rest of the arguments passed should be given verbatim to
@@ -929,7 +929,7 @@ do
             # when this container is run. The intent is to do a very
             # basic build operation to demonstrate functionality
             # and hopefully cover common cases.
-            # For Debian packge build, the --cbuild option conveniently
+            # For Debian package build, the --cbuild option conveniently
             # does all this, so use it.
             DO_BUILD="TRUE"
             ;;
@@ -959,7 +959,7 @@ do
             # number of build job threads
             BUILD_JOBS="${term#-j}"
             # If only jobs were specified, do default build
-            if [ $TOTAL_COMMAND_LINE_ARGS = 1 ];then
+            if [ "$TOTAL_COMMAND_LINE_ARGS" = 1 ];then
                 DO_DEFAULT="TRUE"
                 DO_BUILD="TRUE"
             fi
@@ -973,7 +973,7 @@ do
                 exit 1
             fi
             # If only jobs were specified, do default build
-            if [ $TOTAL_COMMAND_LINE_ARGS = 2 ];then
+            if [ "$TOTAL_COMMAND_LINE_ARGS" = 2 ];then
                 DO_DEFAULT="TRUE"
                 DO_BUILD="TRUE"
             fi
@@ -1008,7 +1008,7 @@ do
 
         --source-date-epoch )
             # Force the timestamp ( in date +%s format ) that files
-            # and directories in the packge will have.
+            # and directories in the package will have.
             # Debian tools key off the last changelog entry by default
             # This will default to the current time, if this argument is
             # not passed.
@@ -1035,7 +1035,7 @@ do
             # Sometimes the first try isn't the charm.
             BUILD_ATTEMPTS="$2"
             if [ "$2" = "" ];then
-                fxnERR "--build-attempts reqires a number. Ex: --build-attempts 2.  Exiting."
+                fxnERR "--build-attempts requires a number. Ex: --build-attempts 2.  Exiting."
                 exit 1
             fi
             shift
@@ -1060,10 +1060,12 @@ do
             ;;
 
         --verbose )
+	    # Unused for now
             DO_VERBOSE="TRUE"
             ;;
 
         --quiet )
+	    # Unused for now
             DO_QUIET="TRUE"
             ;;
 
@@ -1154,7 +1156,7 @@ fi
 grep -iq "git" ./debian/source/format 2>/dev/null
 if [ $? = 0 ];then
     DO_GIT_BUILD="TRUE"
-    # save the curent state of git for restore
+    # save the current state of git for restore
     CURRENT_GIT_COMMIT=$( git rev-parse --short HEAD )
     trap 'fxnResetGit $RETURN_CODE' EXIT
 fi
@@ -1173,7 +1175,7 @@ fi
 #    echo "| Reproducible stamp   [ $(dpkg-parsechangelog -SDate) ]"
 
 if [ "$SOURCE_DATE_EPOCH" = "" ];then
-    # default to the curent time if not set
+    # default to the current time if not set
     SOURCE_DATE_EPOCH=$(date +%s)
     export SOURCE_DATE_EPOCH
 fi
@@ -1270,7 +1272,7 @@ if [ "$DO_BUILD" = "TRUE" ];then
         # The above dpkg-source -x should have generated this directory.
         # If not, we've no idea where to go, and are done.
 
-        packageName=$( basename ${BUILD_SOURCE_DSC_FILE%%_*} )
+        packageName=$( basename "${BUILD_SOURCE_DSC_FILE%%_*}" )
 
 
         # list most recent directory

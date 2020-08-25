@@ -7,7 +7,9 @@ due (2.0.0-1) unstable; urgency=medium
   * due: do not filter images after --run-image has been invoked.
   * due: add --delete option
   * docs: Markdown cleanup. Updated some stale docs.
-  * docs: added Branching.md to explaing the branch/release structure.
+  * docs: Added Branching.md to explaing the branch/release structure.
+  * git branches: refactored for Debian naming conventions.
+  * everything: Ran spell check.
 
  -- Alex Doyle  <alexddoyle@gmail.com>  Fri, 21 Aug 2020 21:53:56 -0700
 

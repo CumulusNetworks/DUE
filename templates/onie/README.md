@@ -1,11 +1,11 @@
 # Open Network Install Environment
 
-Create ONIE build environments using a Debian 8 (Jessie) or Debian 9 (Stretch) image.
+Create ONIE build environments using a Debian 8 (Jessie) or Debian 9 (Stretch) image.  
 **Note** The Debian 9 version is recommended for new platforms.
 Currently Debian 10 (and related releases) aren't supported by ONIE.  
 
 ## ONIE build environment creation example
-Create latest default ONIE build environment with: ./due --create --from debian:9  --description "ONIE Build Debian 9" --name onie-build-debian-9 --prompt ONIE-9 --tag onie --use-template onie  
+Create the latest default ONIE build environment with:  ./due --create --from debian:9  --description "ONIE Build Debian 9" --name onie-build-debian-9 --prompt ONIE-9 --tag onie --use-template onie  
 **OR**  
 Create Debian 8 ONIE build environment with: ./due --create --from debian:8  --description "ONIE Build Debian 8" --name onie-build-debian-8 --prompt ONIE-8 --tag onie-8 --use-template onie
 ### Explanation of the first example:
@@ -51,7 +51,9 @@ You can use `due --run`  and select the image built in the previous step, which 
 ## Build without interaction
 
 There are a number of ways to use the container to build ONIE without logging in
-to the container.
+to the container.  
+**Tip** Use the `--run-image image-name:image-tag` argument to skip the image selection menu if you already know which image and tag you want to run.
+
 
 See `DUE/docs/Building.md` for additional information.
 
@@ -66,10 +68,10 @@ Then try one of the following:
 **Example:** due --run --command export PATH="/sbin:/usr/sbin:\$PATH" \; make -j4 MACHINE=kvm\_x86\_64 all  
 **Example:** due --run --command export PATH="/sbin:/usr/sbin:\$PATH" \; make MACHINEROOT=../machine/accton MACHINE=accton_as7112_54x all demo recovery-iso  
 
-**NOTES:**
+**NOTES:**  
 1.  The **\;** used to separate the two commands to be run in the container. Without the **'\'**,
-the invoking shell will interpret everything after the **';'** as a command to be run _after_ invoking DUE.
-This can create confusion and complicate debugging as it will not be obvious the second command is failing outside of the container.
+the invoking shell will interpret everything after the **';'** as a command to be run _after_ invoking DUE.  
+This can create confusion and complicate debugging as it will not be obvious the second command is failing outside of the container.  
 2.  The addition of /sbin and /usr/sbin to the path is only needed if you are making the recovery-iso target.
 
 
@@ -93,10 +95,10 @@ doesn't apply to ONIE, so here it just passes the make string straight through, 
 Here the duebuild script can provide some convenience in the build by specifying the build
 details as arguments that then get passed to a makefile. The benefit here is that the MACHINEROOT gets
 determined by searching for the MACHINE.
-It's just another way of arriving at the final makefile invocation, however.
+It's just another way of arriving at the final makefile invocation, however.  
 
-**Example:** due --run --build --jobs 4 --machine kvm_x86_64 --build-targets all demo recovery-iso
-**Example:** due --run --build --jobs 4 --machine accton_as7112_54x --build-targets all demo recovery-iso
+**Example:** due --run --build --jobs 4 --machine kvm_x86_64 --build-targets all demo recovery-iso  
+**Example:** due --run --build --jobs 4 --machine accton_as7112_54x --build-targets all demo recovery-iso  
 
 ## Debugging
 Or, a descriptive collection of ways things have failed. Expect this list to grow.  
