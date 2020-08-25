@@ -3,16 +3,18 @@
 There are a few ways to build using DUE.
 
 ##Build inside the container
-This is the expected use case if you are debugging a build.
-1. Run due (if the code is not under your home directory, use the `--mount-dir` command to have the container mount it.)
-2. Select a build container
-3. You are now logged in with your home directory mounted.
-4. cd to the build directory
-5. Build as you normally would
+This is the expected use case if you are debugging a build.  
+1. Run due (if the code is not under your home directory, use the `--mount-dir` command to have the container mount it.)  
+2. Select a build container.  
+3. You are now logged in with your home directory mounted.  
+4. cd to the build directory.  
+5. Build as you normally would.  
 
 ##Build outside the container.
 In this case, you'll invoke commands that run inside the container that do the build.  
 This is the expected use case for code that you know builds, or automated build environments.
+
+**Tip** Use the `--run-image image-name:image-tag` argument to skip the image selection menu if you already know which image and tag you want to run.
 
 There are two options for running build commands in the container:
 
@@ -38,7 +40,7 @@ or more involved. The end goal is to produce a binary that showcases the softwar
 As build requirements may vary, other options may be present in the duebuild script to prepare the build environment, or post process the output.
 For example, the user might want to change the version of a Debian package build to have a development string in it, or skip running tests if
 they are doing debug builds. The duebuild script is a convenient place to handle this complexity.
-See existing scripts for examples of this.
+See the existing duebuild scripts under the `templates` directory for examples of this.
 
 
 ##Practical build invocation examples
@@ -52,7 +54,9 @@ due --run --command sudo mk-build-deps --install --remove ./debian/control --too
 due --run --build --default
 
 #####Using --build --cbuild
-due --run --build --cbuild -uc -us
+due --run --build --cbuild -uc -us    
+or  
+due --run --build --cbuild -uc -b -j8
 
 
 ####Example: Buiding a Debian package with different arguments
@@ -60,14 +64,13 @@ due --run --build --cbuild -uc -us
 #####Using --command
 due --run --command sudo mk-build-deps --install --remove ./debian/control --tool \"apt-get -y\" \; dpkg-buildpackage -uc -b -j8
 
-#####Using --build --default
+##### A failure using --build --default
 due --run --build --default -b -j8
 Unrecognized option [ -b ]. Exiting                                               
-ERROR - /usr/local/bin/duebuild [ --default -b -j8 ] failed with return code [ 1 ]
+ERROR - /usr/local/bin/duebuild [ --default -b -j8 ] failed with return code [ 1 ]  
 ( Fails because default does not take other arguments, and would also still be supplying the '-us' anyway)
 
-#####Using --build --cbuild
-due --run --build --cbuild -uc -b -j8
+
 
 
 

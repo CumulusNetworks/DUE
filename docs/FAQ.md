@@ -1,6 +1,6 @@
 # Frequently Asked Questions
 
-Well, maybe not _frequently_ given the low release number, but things worth knowing.
+Well, maybe not _frequently_ but things worth knowing.
 
 # Template creation
 
@@ -8,13 +8,14 @@ Well, maybe not _frequently_ given the low release number, but things worth know
 The DUE install scripts will automatically add any keys for an APT repository. The FRR template has an example of pulling a key and adding a custom repository to the sources.list in its container.
 
 ## Soft links to include other files.
-See `templates/frr/filesystem/usr/local/bin` for a relative path link to the debian-package's `duebuild` script for building debian packages.
+See `templates/frr/filesystem/usr/local/bin` for a relative path link to the debian-package's `duebuild` script for building debian packages. THis can be useful if you are creating templates that have common code.
 
 ## The template README files supply default build instructions
 DUE scans all `template/<name>/README.md` files and looks for a line starting with:  
-`Create default frr build environment with: `
+`Create` and containing `with:`
 ...when `due --create help` is run. If you are creating your own templates, I _highly_recommend_ putting this in there.
-During development it is very useful to have DUE kick out a complete command to build and image.
+During development it is very useful to have DUE kick out a complete command to build an image, and it creates a convenient starting 
+point for new users.
 
 ## Local vs system installed execution
 Running `./due` has it access only files in the local directory. Running `due` will have it use the version installed on the
@@ -52,7 +53,7 @@ OR
 
 ## How do I specify a container from the command line and skip menu selection?
 
-Use `due --run --image <name>`  Due uses `<name>` as a `*name*` wildcard match, and if there is only one match,
+Use `due --run--image <name>`  Due uses `<name>` as a `*name*` wildcard match, and if there is only one match,
  runs that image. Otherwise you'll get the menu.
  
 ## How do I know what arguments a container's duebuild script will take?
@@ -62,6 +63,8 @@ Run `due --duebuild --help` and you can select a container to run `duebuild --he
 ## Can I log in to a running container?
 Yes, use `due --login`, which will show all running DUE created containers, and should log you in as yourself.
 This is handy if you're used to working with multiple terminals.
+**NOTE** if you log into someone _else's_ running container, you will not have an account created, and would
+want to come in as root with `due --login --debug`
 
 ## Can I use DUE with containers it did not create?
 Yes, although functionality will be limited.
@@ -69,11 +72,13 @@ Yes, although functionality will be limited.
 `due --run --any` will show all Docker images. Note that for images not created by DUE, you may need to
 add the --username and --userid options to have an account to log in as. The root account usually works, so:
 
-`due --run --any --username root --userid 0` will probably get you a sane environment.
+`due --run --any --username root --userid 0` will probably get you a sane environment.  
+
 
 ## Well, can I log in to containers that DUE did not create?
 Yes - `due --login --any` will show all running containers on the system, although you'll probably want
-to supply `--username root --userid 0` if the container wasn't created by DUE.
+to supply `--username root --userid 0` if the container wasn't created by DUE.  
+Or use `due --login --debug`, which is a shortcut to log you in as root.
 
 ## On using `--privileged`. Do. Not. Recommend.
 The `--privileged` option gives a Docker container access to host device entries that would normally
@@ -129,7 +134,8 @@ On the development side, I see a few advantages to generating the Dockerfile tha
 3. **Softlink awareness** allows copying files between templates for assembly without requiring multiple copies of the file. Ex: the FRR template steals the `duebuild` script from the `debian-package` template using a softlink.  
 4. **Template processing** allows for minor detail change details between builds. Ex: setting the container identity with --from allows for a Debian 10 or Ubuntu 16.04 container to be built with exactly the same configuration.  
 5. **Debugging inside the container** is easier as DUE puts all the files used in container creation in the container, and they can be run individually inside to narrow down issues.  
-6. And it allows for **embedding default information** into the container that can be parsed at runtime (see **Easier Runtime**, below).  
+6. **Current user identity is preserved** by wrapping the Docker invocation (see below)
+6. It allows for **embedding default information** into the container that can be parsed at runtime (see **Easier Runtime**, below).  
 ...and in the end, there is a Dockerfile created that does all this, but the user doesn't have to do as much work.  
 
 ### Easier Runtime
@@ -142,4 +148,9 @@ So things like:
   * Auto creation of a matching **user account** in the container.  
   * Auto mounting the user's **home/work directory** so their configuration is available, and work can be saved when the container exits.  
   * A **selection menu** for available containers, rather than having to remember the container name.  
-  * Labels embedded in the container that provide **defaults for running** the container. Example: Debian package builds put the build products one level up from the current directory. DUE debian-package containers know to mount the host directory one level up in the container so that build products are seamlessly there when the container exits. Seems simple, but it's super irritating if it is not there.  
+  * Labels embedded in the container that provide **defaults for running** the container.   
+  * Example: Debian package builds put the build products one level up from the current directory. DUE debian-package containers know to mount the host directory one level up in the container so that build products are seamlessly there when the container exits. Seems simple, but it's super irritating if it is not there. 
+
+
+
+ 

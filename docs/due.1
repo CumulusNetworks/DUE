@@ -16,6 +16,10 @@ A build environment for your build environments.
 .PD 0
 .P
 .PD
+\f[B]due\f[] [ \f[B]\-\-delete\f[] \f[I]term\f[] ] [\f[I]dedication\f[]]
+.PD 0
+.P
+.PD
 \f[B]due\f[] [\f[B]\-m\f[]|\f[B]\-\-manage\f[] \f[I]args\f[]]
 [\f[I]dedication\f[]]
 .PD 0
@@ -110,7 +114,7 @@ See below )
 .RS
 .RE
 .TP
-.B \-\-ignore type
+.B \-\-ignore\-type
 .IP
 .nf
 \f[C]
@@ -129,19 +133,19 @@ This must be the last command parsed, as [cmd] is handed off to be run
 in the container.
 The primary use of this would be using the container to build without
 having to interactively log in to it.
-.RS
-.RE
-.PP
 Note: when issuing multiple commands, remember to "" your arguments, and
 backslash () any semicolons (;) used to split up the commands.
 Otherwise the shell where the commands are invoked will take anything
 after the first ;, and treat it as a command to be run locally.
-.PP
 This can obfuscate things if the command can work inside or out of the
 container.
-.PP
+.PD 0
+.P
+.PD
 Example: look at /proc and the password file in a container: ./due
 \-\-run \-\-command "ls \-lrt /proc" ; "cat /etc/passwd"
+.RS
+.RE
 .TP
 .B \-\-build | \-\-duebuild
 If there is a /usr/local/bin/duebuild script in the container, this
@@ -210,7 +214,7 @@ Example: mount host /tmp dir in container /var/build: \-\-mount\-dir
 .SS Logging in to a running container
 .TP
 .B \-l, \-\-login
-Choose an existing container to log in to
+Choose an existing container to log in to.
 .RS
 .RE
 .TP
@@ -266,15 +270,24 @@ as an example, where the resulting image will be named
 .PP
 1 \- The contents of common\-templates are copied to a
 debian\-package\-10\-template\-merge directory under
-\&./due\-build\-merge/ 2 \- The contents of the debian\-package template
-directory copied in to the debian\-package\-10\-template\-merge
-directory and will overwrite any files with identical names.
-3 \- Any REPLACE_* fields in the *template files are replaced with
-values supplied from the command line (such as the starting container
-image) and all files are copied to
-\&./due\-build\-merge/debian\-package\-10 4 \- The
-\&./due\-build\-merge/debian\-package\-10/Dockerfile.create file is used
-to create the image from this build directory.
+\&./due\-build\-merge/
+.PD 0
+.P
+.PD
+2 \- The contents of the debian\-package template directory copied in to
+the debian\-package\-10\-template\-merge directory and will overwrite
+any files with identical names.
+.PD 0
+.P
+.PD
+3 \- Any REPLACE_ fields in the template files are replaced with values
+supplied from the command line (such as the starting container image)
+and all files are copied to ./due\-build\-merge/debian\-package\-10
+.PD 0
+.P
+.PD
+4 \- The ./due\-build\-merge/debian\-package\-10/Dockerfile.create file
+is used to create the image from this build directory.
 .SS Creation tips
 .PP
 Quick image changes can be made by editing the build directory (
@@ -433,7 +446,13 @@ The configuration file sets up the following variables:
 \f[C]DUE_ENV_DEFAULT_HOMEDIR\f[] \- evaled to define the user\[aq]s home
 directory.
 This can be useful if there is a naming convention for work directories
-on shared systems.
+on shared systems, or your home directory is an NFS mount (which can
+create
+.PD 0
+.P
+.PD
+strange behavior when mounted in Docker) or you need to use a bigger
+build directory.
 .PP
 \f[C]DUE_USER_CONTAINER_LIMIT\f[] \- limit the number of containers a
 user is allowed to run.
@@ -444,7 +463,7 @@ This can easily be circumvented, though.
 See GitHub Issues: [https://github.com/[CumulusNetworks]/[DUE]/issues]
 .SH AUTHOR
 .PP
-Alex Doyle <alexddoyle@gmail.com>
+Alex Doyle <adoyle@nvidia.com>
 .SH COPYRIGHT
 .PP
 SPDX\-License\-Identifier: MIT
