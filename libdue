@@ -133,6 +133,7 @@ function fxnListContainersForCreation()
         echo ""
 
         echo "Available image templates from: $SPECIFIC_TEMPLATE_PATH"
+        echo "--------------------------------------------------------------------------------"
         fxnEC cd "${SPECIFIC_TEMPLATE_PATH}" || exit 1
         ls -d */
 
@@ -152,7 +153,7 @@ function fxnListContainersForCreation()
         echo "Configured directories to build from."
         echo "Use $0 --create --build-dir <path>"
         echo "--------------------------------------------------------------------------------"
-        echo $foundImages
+        echo "$foundImages"
     fi
 
 }
@@ -543,14 +544,16 @@ function fxnMakeNewDockerImage()
             fi
         fi
 
-        # TODO: make this support other architectures, beyond the armel hard code here.
+        #
+        # Take advantage of a naming convention to figure out which qemu-<arch>-static to copy.
+        #
         if [ "$HOST_ARCH" != "$imageArchitecture" ];then
             # If this is an x86 system, building an armel container...
             fxnPP "Image architecture [ $imageArchitecture ] does not match host's [ $HOST_ARCH ]. Copying qemu-${imageArchitecture}-static in for emulation."
 
             # Have qemu-*-static in there so it can run
             fxnPP "Adding qemu-${imageArchitecture}-static to $imageName/filesystem/usr/bin/qemu-${imageArchitecture}-static."
-            if [ ! -e /usr/bin/qemu-${imageArchitecture}-static ];then
+            if [ ! -e /usr/bin/qemu-"${imageArchitecture}"-static ];then
                 fxnERR "Host system must have qemu-${imageArchitecture}-static to run an ${imageArchitecture} container. sudo apt install qemu-user-static."
                 exit 1
             fi
@@ -588,7 +591,7 @@ function fxnMakeNewDockerImage()
 
         # Set parameters in the generated Docker file
         # If qemu needs to be installed, QEMU_STATIC will not be empty
-        fxnPreProcessDockerFile         "${BUILD_MERGE_DIR}"/"$imageName" $QEMU_STATIC
+        fxnPreProcessDockerFile         "${BUILD_MERGE_DIR}"/"$imageName" "$QEMU_STATIC"
 
         #
         # Put the current version of DUE in the incoming Dockerfile.config for
@@ -689,25 +692,25 @@ function fxnSaveContainer()
     fxnSelectContainer "running"
 
     # check for file overwrite
-    if [ -e ${exportImageName}.tar ];then
+    if [ -e "${exportImageName}".tar ];then
         fxnERR "File: [ ${exportImageName}.tar ] already exists. Not overwriting.Exiting."
         exit 1
     fi
 
     # commit saves the container as an image, so all layers are captured.
     fxnPP "Saving container $SELECTED_CONTAINER_ID as image  ${exportImageName}"
-    fxnEC docker commit  "$SELECTED_CONTAINER_ID"  ${exportImageName}
+    fxnEC docker commit  "$SELECTED_CONTAINER_ID"  "${exportImageName}"
 
     # Now export the saved image
     fxnPP "Saving selected image as [ ${exportImageName}.tar ]"
-    fxnEC docker save ${exportImageName} > ${exportImageName}.tar
+    fxnEC docker save "${exportImageName}" > "${exportImageName}".tar
 
     # Delete the local save. If you want to keep it as an image, rather
     # than a tar file, import it.
     fxnEC docker rmi --force "$exportImageName"
 
     fxnPP "Exported container is in $(pwd) "
-    ls -l | grep  ${exportImageName}.tar
+    ls -l | grep  "${exportImageName}".tar
     echo ""
 
 }

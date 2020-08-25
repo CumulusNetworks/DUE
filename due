@@ -111,11 +111,11 @@ function fxnHelpExamples()
     echo "  $0 --login"
     echo ""
     echo " Run a commands in a specific container:"
-	echo "  $0 --run-image due-pkg-sid:pkg-sid --command  ls -l \; cat /etc/os-release "
+    echo "  $0 --run-image due-pkg-sid:pkg-sid --command  ls -l \; cat /etc/os-release "
     echo ""
-	echo " Print a container's duebuild help:"
-	echo "  $0 --help --duebuild "
-	echo ""
+    echo " Print a container's duebuild help:"
+    echo "  $0 --help --duebuild "
+    echo ""
     echo "See topic specific help for topic specific examples."
     echo " Ex: $0 --help-examples --build"
 
@@ -261,14 +261,14 @@ function fxnHelpCreateExamples()
     echo "#"
     echo "############################################################################"
 
-	# show local image creation configurations
+    # show local image creation configurations
     fxnListContainersForCreation $exampleFilter
-	echo ""
-	echo " Ex: clean container creation work area."
-	echo " $0 --create --clean"
     echo ""
-	echo " Ex: filter creation examples to only show those containing 'foo' "
-	echo " $0 --create --help --filter foo"
+    echo " Ex: clean container creation work area."
+    echo " $0 --create --clean"
+    echo ""
+    echo " Ex: filter creation examples to only show those containing 'foo' "
+    echo " $0 --create --help --filter foo"
     echo ""
 }
 
@@ -637,7 +637,7 @@ function fxnParseCreateArgs()
         exit
     fi
     if [ "$DO_CREATE_EXAMPLES" = "TRUE" ];then
-        fxnHelpCreateExamples $HELP_EXAMPLE_FILTER
+        fxnHelpCreateExamples "$HELP_EXAMPLE_FILTER"
         exit
     fi
 }
@@ -695,9 +695,9 @@ function fxnParseRunArgs()
                 # Second parameter is the name of the image to use
                 DO_RUN_IMAGE="TRUE"
                 USE_IMAGE_NAME="$2"
-				# if an image is being specified, there is no need
-				# to filter further
-				FILTER_SHOW_ONLY_DUE="FALSE"
+                # if an image is being specified, there is no need
+                # to filter further
+                FILTER_SHOW_ONLY_DUE="FALSE"
                 shift
                 ;;
 

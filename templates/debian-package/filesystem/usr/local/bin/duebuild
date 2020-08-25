@@ -959,7 +959,7 @@ do
             # number of build job threads
             BUILD_JOBS="${term#-j}"
             # If only jobs were specified, do default build
-            if [ $TOTAL_COMMAND_LINE_ARGS = 1 ];then
+            if [ "$TOTAL_COMMAND_LINE_ARGS" = 1 ];then
                 DO_DEFAULT="TRUE"
                 DO_BUILD="TRUE"
             fi
@@ -973,7 +973,7 @@ do
                 exit 1
             fi
             # If only jobs were specified, do default build
-            if [ $TOTAL_COMMAND_LINE_ARGS = 2 ];then
+            if [ "$TOTAL_COMMAND_LINE_ARGS" = 2 ];then
                 DO_DEFAULT="TRUE"
                 DO_BUILD="TRUE"
             fi
@@ -1060,10 +1060,12 @@ do
             ;;
 
         --verbose )
+	    # Unused for now
             DO_VERBOSE="TRUE"
             ;;
 
         --quiet )
+	    # Unused for now
             DO_QUIET="TRUE"
             ;;
 
@@ -1270,7 +1272,7 @@ if [ "$DO_BUILD" = "TRUE" ];then
         # The above dpkg-source -x should have generated this directory.
         # If not, we've no idea where to go, and are done.
 
-        packageName=$( basename ${BUILD_SOURCE_DSC_FILE%%_*} )
+        packageName=$( basename "${BUILD_SOURCE_DSC_FILE%%_*}" )
 
 
         # list most recent directory
