@@ -12,6 +12,7 @@
 # Enable extended pattern matching
 shopt -s extglob
 
+# Documentation and changelog builds get the official version from here.
 DUE_VERSION="2.0.0"
 
 # Debian packages required for DUE to run

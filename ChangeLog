@@ -10,6 +10,7 @@ due (2.0.0-1) unstable; urgency=medium
   * due: add --manage --browse Docker registry option
   * docs: Markdown cleanup. Updated some stale docs.
   * docs: Added Branching.md to explaing the branch/release structure.
+  * Makefile: write release version in libdue to documentation.
   * git branches: refactored for Debian naming conventions.
   * everything: Ran spell check.
 

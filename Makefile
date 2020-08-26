@@ -1,6 +1,8 @@
 #!/usr/bin/make -f
 
-DUE_VERSION = 2.0.0
+# Set the version in libdue as the source of truth
+DUE_VERSION := $(shell /bin/sh -c "grep -o 'DUE_VERSION=\".*\"' ./libdue | sed -e 's/DUE_VERSION=//g' | tr -d \\\" " )
+
 # Uncomment the following to enable more makefile output
 #export DH_VERBOSE = 1
 
@@ -16,10 +18,10 @@ PANDOC_PRESENT = /usr/bin/pandoc
 
 # Manual page is generated from manpage-due-1.md via Pandoc
 MAN_PAGE = docs/due.1
+MAN_PAGE_SOURCE = docs/manpage-due-1.md
+MASTER_CHANGE_LOG = ChangeLog
 
-
-
-.PHONY: docs depends install
+.PHONY: docs depends install test
 
 docs: $(MAN_PAGE)
 # Docs will not automatically rebuild.
@@ -35,10 +37,17 @@ docs: $(MAN_PAGE)
 ifneq ($(wildcard $(PANDOC_PRESENT)),)
 	@echo ""
 	@echo "#######################################################################"
-	@echo "#                                                                    #"	
+	@echo "#                                                                     #"	
 	@echo "# Pandoc detected: updating documentation "
 	@echo "# Removing existing $(MAN_PAGE) "
 	rm $(MAN_PAGE)
+
+	@echo "# Setting version to [ $(DUE_VERSION) ] in docs/manpage-due-1.md "
+	sed -i 's/DUE(1) Version.*|/DUE(1) Version $(DUE_VERSION) |/' $(MAN_PAGE_SOURCE)
+
+	@echo "# Setting version to [ $(DUE_VERSION) ] in ChangeLog "
+	sed -i '0,/due (.*-1) / s/due (.*-1) /due ($(DUE_VERSION)-1) /' $(MASTER_CHANGE_LOG)
+
 	@echo "# Generating new man page from docs/manpage-due-1.md "
 	pandoc --standalone --to man docs/manpage-due-1.md -o $(MAN_PAGE)
 	@echo ""
@@ -114,3 +123,6 @@ orig.tar:
 	git archive --format=tar.gz --prefix=due_$(DUE_VERSION)/  -o ../due_$(DUE_VERSION).orig.tar.gz  master
 	@echo "Produced tar file in parent directory."
 	ls -lrt ../*.gz 
+
+test:
+	@echo "Due version $(DUE_VERSION)"
