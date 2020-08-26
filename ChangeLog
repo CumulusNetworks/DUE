@@ -7,6 +7,7 @@ due (2.0.0-1) unstable; urgency=medium
   * libdue for emulation, qemu-<arch>-static comes from source image's arch
   * due: do not filter images after --run-image has been invoked.
   * due: add --delete option
+  * due: add --manage --browse Docker registry option
   * docs: Markdown cleanup. Updated some stale docs.
   * docs: Added Branching.md to explaing the branch/release structure.
   * git branches: refactored for Debian naming conventions.

@@ -65,11 +65,14 @@ depends:
 	@echo "#                                                                    #"
 	@echo "# DUE requires the following packages:                               #"
 	@echo "#                                                                    #"
-	@echo "#   bsdutils git rsync docker.io                                     #"
+	@echo "#   bsdutils git rsync docker.io jq curl                             #"
 	@echo "#                                                                    #"
 	@echo "######################################################################"
 	@echo ""
-	sudo apt-get install bsdutils git rsync docker.io
+# Rsync is used in merging template directories
+# jq and curl get used to browse docker registries
+# pandoc gets used to turn markdown into man pages, and is optional
+	sudo apt-get install bsdutils git rsync docker.io jq curl
 
 install:
 	@echo "######################################################################"

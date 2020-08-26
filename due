@@ -142,13 +142,16 @@ function fxnHelpManage()
     echo "   --export-container <name>  Save a running container as a Docker image named [name]"
     echo "   --export-image <name>      Export a docker image as a file. [name] is optional."
     echo "   --import-image <name>      Import Docker image file named [name]"
+	echo ""
+	echo "   --browse <registry >       Browse a docker registry. Ex: due --manage --browse localhost:5000"
+	echo ""
     echo "   --copy-config              Create a personal DUE configuration file in ~/.config/due/due.config"
     echo "   --make-dev-dir <dir>       Populate a local directory for DUE container development."
     echo "   --list-templates           List available templates."
+    echo "   --docker-clean             Run 'docker system prune ; docker image prune' to reclaim disk space."	
+    echo ""	
     echo "   --stop  <match>            Stop a running container. Optional pattern <match>"
-    echo ""
     echo "   --delete-matched [term]    Delete containers that contain this term. USE WITH CAUTION!"
-    echo "   --docker-clean             Run 'docker system prune ; docker image prune' to reclaim disk space."
     echo ""
     echo "   --help                     This help."
     echo "   --help-examples            Examples of using management options."
@@ -656,6 +659,7 @@ function fxnDueBuildHelp()
     due --run --command duebuild $theHelp
 }
 
+
 function fxnParseRunArgs()
 {
 
@@ -913,6 +917,20 @@ function fxnParseManageArgs()
                 fi
                 ;;
 
+			--browse )
+				# URL to browse
+				if [ "$2" = "" ];then
+					fxnERR " --browse requres a registry URL"
+					echo "Maybe one of these on [ localhost | $(hostname --fqdn ) ] ?"
+					# search for docker instances using port 5000."
+					docker ps | grep "registry"
+					exit 1
+				fi
+				fxnBrowseRegistry "$2"
+				shift
+				exit 0
+				;;
+			
             -l |--list-images )
                 # dump the docker header
                 docker images | head -n 1  | sed -e 's/                //g'

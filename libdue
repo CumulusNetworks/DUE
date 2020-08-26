@@ -782,6 +782,72 @@ function fxnDoImport()
     echo ""
 }
 
+#
+# Takes: url of repository to browse, with optional port number
+# Does:  list contents of registry, and supplies access hints.
+#        This is mostly informational and a Docker syntax reference,
+#        as I access these things infrequently enough to have just
+#        forgotten the syntax by the next time I need to use it.
+#
+function fxnBrowseRegistry()
+{
+    local result
+    local access="insecure"
+    local fullURL="$1"
+    local browseURL
+    local port=${1##*:}
+    local images
+    local examplePushImage
+    local examplePullImage
+
+    # if no port supplied, set Docker registry default of 5000
+    if [ "$port" = "$1" ];then
+        fullURL="$1:5000"
+    fi
+
+    browseURL="${fullURL}/v2/_catalog"
+    # --silent - do not print curl progress header
+    # filter unprintable characters as it will cause Bash to error out
+    browsedWith="curl --silent --request GET http://${browseURL}"
+    result=$( $browsedWith | tr -cd '[:print:]' )
+    if [ "$result" = ""  ];then
+        access="secure"
+        browsedWith="curl --silent --request GET http://${browseURL} "
+        result=$($browsedWith  | tr -cd '[:print:]' )
+        if [ "$result" = "" ];then
+            access="possibly insecure"
+            # note the use of httpS here
+            browsedWith=" curl --insecure --silent --request GET https://${browseURL}"
+            result=$( $browsedWith | tr -cd '[:print:]' )
+            if [ "$result" = "" ];then
+                echo "ERROR! Failed to browse ${browseURL}"
+                exit 1
+            fi
+        fi
+    fi
+
+    echo "Contents of $access Docker registry:[ $browseURL ]"
+    echo "Browsed with: $browsedWith "
+    echo "------------------------------------------------------------"
+    # use command line JSON parser jq to make it pretty.
+    echo ""
+    images=$(   echo "$result"  | jq '.repositories[]' | tr -d \" )
+    examplePullImage=$(echo "$images" | head -n 1)
+    examplePushImage=$(docker images --format "{{.Repository}}:{{.Tag}}" | head -n 1)
+    echo "$images"
+    echo ""
+    echo "------------------------------------------------------------"
+    echo " Access examples:"
+    echo ""
+    echo "  Pull registry image  [ $examplePullImage ] from $fullURL "
+    echo "    docker image pull ${fullURL}/${examplePullImage} "
+    echo ""
+    echo "  Push a local image like [ $examplePushImage ] to $fullURL"
+    echo "    docker image tag $examplePushImage ${fullURL}/${examplePushImage};  docker image push ${fullURL}/${examplePushImage}"
+    echo ""
+
+}
+
 ######################################################################
 # Container Runtime functions
 ######################################################################
