@@ -641,10 +641,6 @@ function fxnDoDebianBuild()
         if [ "$result" != "0" ];then
 
             case $result in
-                "25" )
-                    fxnPP "Ignoring unsigned package build error - signing can happen later."
-                    ;;
-
                 "2" )
                     if [ "$BUILD_ATTEMPTS" = "0" ];then
                         fxnERR "$failMsg [ $result ]"
