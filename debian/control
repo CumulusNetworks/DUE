@@ -2,12 +2,12 @@ Source: due
 Maintainer: Alex Doyle <alexddoyle@gmail.com>
 Section: admin
 Priority: optional
-Build-Depends: debhelper (>= 9),
+Build-Depends: debhelper (>= 10),
 	       git
-Standards-Version: 4.5.0
+Standards-Version: 4.3.0
 Homepage: https://github.com/CumulusNetworks/DUE
 Vcs-Browser: https://github.com/CumulusNetworks/DUE
-Vcs-Git: git@github.com:CumulusNetworks/DUE.git
+Vcs-Git: https://github.com/ehdoyle/DUE.git
 
 Package: due
 Architecture: all
