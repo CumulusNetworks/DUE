@@ -4,7 +4,7 @@
 If you are viewing this document as a text file, literal commands to type
 are start and end with back ticks like `this`. If you are using a Markdown viewer, you will see just the text: this but the font will be `different`.  
 **The point**  
-If you cut and paste from this file, do not copy the `
+If you cut and paste from this file, do not copy the `s
 
 
 # Install DUE's software dependencies
@@ -14,6 +14,9 @@ packages:
   *  git  
   *  bsdutils  
   *  rsync  
+  *  jq  
+  *  curl  
+  *  and maybe pandoc, if you plan on updating the man pages.
 
 From the Master Git branch, you can also run `make install` as root and it will try to install these packages.
 
@@ -31,8 +34,8 @@ If you have downloaded DUE as source from it's GitHub page (https://github.com/C
 # A Practical Example: create an image and build DUE as a Debian package
 DUE can be used to build itself as a Debian package.
 
-1. Use Git to check out DUE's debian/upstream branch  
-   `git checkout debian-upstream`  
+1. Use Git to check out DUE's debian/master branch  
+   `git checkout debian/master`  
     You should see that there is now a "debian" directory.  
 2. Create a Debian package build container, using an example from `due --create help`.  
    If you are using Ubuntu, this might look like:  
