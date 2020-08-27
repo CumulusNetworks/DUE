@@ -1,8 +1,24 @@
 # Dedicated User Environment (DUE)
 
-DUE is a build environment for building easy to use build environments.
+DUE is a wrapper for Docker to create easy to use build environments.  
+
 
 ## The TL:DR
+
+Docker image for your desired Debian based operating system  
+**+**  
+DUE configuration utilities  
+**+**  
+configuration for your build target  
+
+**=**  DUE image.  
+
+The due launcher application will run this image with defaults specified by the image itself, so that
+building, regardless of the target's architecture or operating system, can be as easy as:  
+
+### `due --build`  
+
+
 See **./docs/GettingStarted.md** to get started creating and running an example image.  
 Or run `./due --help`
 to jump right in with the comprehensive command line help and examples.
@@ -20,6 +36,10 @@ Painfully aware you're building in a container because the configuration
 you'd get from your home directory isn't present, and you have to copy files around?
 DUE lets you **be yourself in a container**.
 
+## Talks and tutorial videos
+[Building ONIE](https://www.youtube.com/watch?v=-5onRbZA0QQ)  
+[DebConf 20 talk on building everything with DUE](https://meetings-archive.debian.net/pub/debian-meetings/2020/DebConf20/7-due-a-container-manager-for-building-things-that-arent-debianized-and-things-that-are.webm)  
+[Package build demo from DebConf 20](https://youtu.be/8h60O8O0RcY )  
 
 ## The L:DR
 If you're building software, odds are it requires some level of build environment configuration.
