@@ -2,6 +2,7 @@
 
 DUE is a wrapper for Docker to create easy to use build environments.  
 
+**TIP** to package DUE for Debian, start with the debian/master branch.
 
 ## The TL:DR
 
