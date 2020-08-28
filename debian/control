@@ -1,0 +1,27 @@
+Source: due
+Maintainer: Alex Doyle <alexddoyle@gmail.com>
+Section: admin
+Priority: optional
+Build-Depends: debhelper (>= 10),
+	       git
+Standards-Version: 4.3.0
+Homepage: https://github.com/CumulusNetworks/DUE
+Vcs-Browser: https://github.com/CumulusNetworks/DUE
+Vcs-Git: https://github.com/ehdoyle/DUE.git
+
+Package: due
+Architecture: all
+Depends: ${misc:Depends},
+	 docker.io | docker-ce,
+	 bsdutils (>= 1:2.25.2-6),
+	 git,
+	 rsync,
+	 jq,
+	 curl
+Recommends: binfmt-support, qemu, qemu-user-static
+Description: Dedicated User Environment: manage build environments in Docker containers.
+ DUE uses templates to generate target specific build images based on any
+ version or architecture of any Debian release, and provides a launcher
+ application to reduce complexity and let the developer 'just build it',
+ whatever 'it' may happen to be.
+ 
