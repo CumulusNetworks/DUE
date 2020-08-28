@@ -1,5 +1,5 @@
 #!/bin/bash
-# SCRIPT_PURPOSE: A function library for Dedicated User Environment (due)
+# SCRIPT_PURPOSE: A function library for Dedicated User Environment (DUE)
 
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
@@ -12,7 +12,8 @@
 # Enable extended pattern matching
 shopt -s extglob
 
-DUE_VERSION="1.6.3"
+# Documentation and changelog builds get the official version from here.
+DUE_VERSION="2.0.0"
 
 # Debian packages required for DUE to run
 REQUIRED_PACKAGES=" docker.io rsync bsdutils git"
@@ -39,12 +40,10 @@ DOCKER_IMAGE_TAG="latest"
 
 # List of example images
 KNOWN_IMAGES="
- debian:8
- debian:9
  debian:10
  ubuntu:18.04
  arm32v5/debian:jessie
- arm32v5/debian:buster
+ ppc64le/debian:10
 "
 
 # Max number of containers per user.
@@ -116,7 +115,7 @@ function fxnListContainersForCreation()
         # To simplify parsing, this counts on the example line in the README.md files being formatted
         # in exactly the same way for all, with everything up to the 'with:' getting deleted,
         # and the last field being --use-template, as that gets prepended to the example string
-        # via awk to speicify the type of container being created.
+        # via awk to specify the type of container being created.
         foundExamples=$( find "${SPECIFIC_TEMPLATE_PATH}" \
                               -name README.md \
                               -exec grep "^Create" {} \; \
@@ -135,6 +134,7 @@ function fxnListContainersForCreation()
         echo ""
 
         echo "Available image templates from: $SPECIFIC_TEMPLATE_PATH"
+        echo "--------------------------------------------------------------------------------"
         fxnEC cd "${SPECIFIC_TEMPLATE_PATH}" || exit 1
         ls -d */
 
@@ -154,7 +154,7 @@ function fxnListContainersForCreation()
         echo "Configured directories to build from."
         echo "Use $0 --create --build-dir <path>"
         echo "--------------------------------------------------------------------------------"
-        echo $foundImages
+        echo "$foundImages"
     fi
 
 }
@@ -274,7 +274,7 @@ function fxnDeleteImage()
     if [ "$DO_DELETE_NOW" = "TRUE" ];then
         ./"$DELETE_SCRIPT"
     fi
-} #fxnDoDelete
+} #fxnDeleteImage
 
 #
 # PreProcess functions create copies of the specified file in the directory that
@@ -299,8 +299,16 @@ function fxnPreProcessDockerFile()
 
         # now edit the copy
         if [ "$FROM_IMAGE_TYPE" != "" ];then
-            sed -i "s#REPLACE_IMAGE_FROM\$#$FROM_IMAGE_TYPE#g" "$destDir"/Dockerfile.create
-            sed -i "s#REPLACE_DUE_IMAGE_TYPE_LABEL\$#$DUE_IMAGE_TYPE_LABEL#g" "$destDir"/Dockerfile.create
+            sed -i "s#REPLACE_IMAGE_FROM\$#$FROM_IMAGE_TYPE#g"                          "$destDir"/Dockerfile.create
+            sed -i "s#REPLACE_DUE_IMAGE_TYPE_LABEL\$#$DUE_IMAGE_TYPE_LABEL#g"           "$destDir"/Dockerfile.create
+			# if the maintainer/organization is still set to the default, change it to the current user.
+			sed -i "s/yourmaintainer@your-organization.org/$(whoami)@$(dnsdomainname)/" "$destDir"/Dockerfile.create
+
+			# Embed description of the image
+            sed -i "s#REPLACE_IMAGE_DESCRIPTION#\"$IMAGE_DESCRIPTION\"#g" "$destDir"/Dockerfile.create
+			
+			# Log the version of DUE that created this container.
+			sed -i "s/REPLACE_DUE_CREATION_VERSION/${DUE_VERSION}/"                     "$destDir"/Dockerfile.create
             # If qemu is to be installed, uncomment the copy of it
             if [ "$useQEMU" != "" ];then
                 fxnPP "Configuring Dockerfile to copy in qemu as the first step."
@@ -525,30 +533,50 @@ function fxnMakeNewDockerImage()
         # These can be run in emulation if they have QEMU as part of the container
         # Currently only supporting armel, but more can be added.
 
-        HOST_ARCH=$( uname -m )
-        # TODO: make this support other architectures, beyond the armel hardcode here.
-        if [ "$HOST_ARCH" = "x86_64" ];then
-            # If this is an x86 system, building an armel container...
-            if [[ "$imageFrom" = *arm32v5* ]];then
-                fxnPP "Image architecture does not match host's [ $HOST_ARCH ]. Copying qemu-arm-static in for emulation."
+        # This will return amd64 on a x86_64 system (tip: uname -m gets you that)
+        HOST_ARCH=$( dpkg --print-architecture )
 
-                # Have qemu-arm-static in there so it can run
-                fxnPP "Adding qemu-arm-static to $imageName/filesystem/usr/bin/qemu-arm-static."
-                if [ ! -e /usr/bin/qemu-arm-static ];then
-                    fxnERR "Host system must have qemu-arm-static to run an armel container. sudo apt install qemu-user-static."
-                    exit 1
-                fi
-
-                # Copy the host system's QEMU for ARM to a location where it will be
-                # installed in the container.
-                if [ ! -e "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin ];then
-                    mkdir -p "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin
-                fi
-                fxnEC cp -a /usr/bin/qemu-arm-static "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin/qemu-arm-static || exit 1
-                # Set this to pass to Dockerfile configuration so that qemu-static
-                # will be present in the image _before_ Docker executes any commands in the image.
-                QEMU_STATIC="qemu-arm-static"
+        # expect this to be amd64, arm, etc
+        # Super convenient that qemu arm seems to handle all the variants (armhf, arm64, armel...)
+        # So, has the image already been pulled?
+        imageArchitecture=$( docker inspect -f '{{.Architecture}}' "${imageFrom}" 2>/dev/null )
+        if [ "$imageArchitecture" = "" ];then
+            # Well, get a copy.
+            fxnPP "[ $imageFrom ] not found. Pulling an image to check it's architecture before proceeding."
+            fxnEC docker pull "$imageFrom"  || exit 1
+            imageArchitecture=$( docker inspect -f '{{.Architecture}}' "${imageFrom}" )
+            if [ "$imageArchitecture" = "" ];then
+                # If the architecture can't be determined at this point, it is a bad sign,
+                # but maybe not fatal. Continue and see what happens.
+                fxnWarn "Failed to determine architecture of [ $imageFrom ]. Guessing same as host."
+                imageArchitecture="$HOST_ARCH"
             fi
+        fi
+
+        #
+        # Take advantage of a naming convention to figure out which qemu-<arch>-static to copy.
+        #
+        if [ "$HOST_ARCH" != "$imageArchitecture" ];then
+            # If this is an x86 system, building an armel container...
+            fxnPP "Image architecture [ $imageArchitecture ] does not match host's [ $HOST_ARCH ]. Copying qemu-${imageArchitecture}-static in for emulation."
+
+            # Have qemu-*-static in there so it can run
+            fxnPP "Adding qemu-${imageArchitecture}-static to $imageName/filesystem/usr/bin/qemu-${imageArchitecture}-static."
+            if [ ! -e /usr/bin/qemu-"${imageArchitecture}"-static ];then
+                fxnERR "Host system must have qemu-${imageArchitecture}-static to run an ${imageArchitecture} container. sudo apt install qemu-user-static."
+                exit 1
+            fi
+
+            # Copy the host system's QEMU for image architecture to a location where it will be
+            # installed in the container.
+            if [ ! -e "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin ];then
+                mkdir -p "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin
+            fi
+            fxnEC cp -a /usr/bin/qemu-${imageArchitecture}-static "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin/qemu-${imageArchitecture}-static || exit 1
+            # Set this to pass to Dockerfile configuration so that qemu-static
+            # will be present in the image _before_ Docker executes any commands in the image.
+            QEMU_STATIC="qemu-${imageArchitecture}-static"
+
         fi
 
         #
@@ -572,7 +600,7 @@ function fxnMakeNewDockerImage()
 
         # Set parameters in the generated Docker file
         # If qemu needs to be installed, QEMU_STATIC will not be empty
-        fxnPreProcessDockerFile         "${BUILD_MERGE_DIR}"/"$imageName" $QEMU_STATIC
+        fxnPreProcessDockerFile         "${BUILD_MERGE_DIR}"/"$imageName" "$QEMU_STATIC"
 
         #
         # Put the current version of DUE in the incoming Dockerfile.config for
@@ -612,7 +640,7 @@ function fxnMakeNewDockerImage()
         fxnPP "Confirmed directory $imageName exists."
         echo ""
         fxnPP "If there were changes in the /templates directory, delete this particular build with: "
-        echo "      rm -r ${BUILD_MERGE_DIR}/$imageName"
+        echo "      rm -r ${BUILD_MERGE_DIR}/$imageName ; rm -r ${BUILD_MERGE_DIR}/${templateName}"
         echo ""
         echo " Or delete all of ${BUILD_MERGE_DIR} with:"
         echo "     $0 --create --clean "
@@ -673,25 +701,25 @@ function fxnSaveContainer()
     fxnSelectContainer "running"
 
     # check for file overwrite
-    if [ -e ${exportImageName}.tar ];then
+    if [ -e "${exportImageName}".tar ];then
         fxnERR "File: [ ${exportImageName}.tar ] already exists. Not overwriting.Exiting."
         exit 1
     fi
 
     # commit saves the container as an image, so all layers are captured.
     fxnPP "Saving container $SELECTED_CONTAINER_ID as image  ${exportImageName}"
-    fxnEC docker commit  "$SELECTED_CONTAINER_ID"  ${exportImageName}
+    fxnEC docker commit  "$SELECTED_CONTAINER_ID"  "${exportImageName}"
 
     # Now export the saved image
     fxnPP "Saving selected image as [ ${exportImageName}.tar ]"
-    fxnEC docker save ${exportImageName} > ${exportImageName}.tar
+    fxnEC docker save "${exportImageName}" > "${exportImageName}".tar
 
     # Delete the local save. If you want to keep it as an image, rather
     # than a tar file, import it.
     fxnEC docker rmi --force "$exportImageName"
 
     fxnPP "Exported container is in $(pwd) "
-    ls -l | grep  ${exportImageName}.tar
+    ls -l | grep  "${exportImageName}".tar
     echo ""
 
 }
@@ -761,6 +789,72 @@ function fxnDoImport()
 
     fxnPP "Imported: $fileName as $dueName"
     echo ""
+}
+
+#
+# Takes: url of repository to browse, with optional port number
+# Does:  list contents of registry, and supplies access hints.
+#        This is mostly informational and a Docker syntax reference,
+#        as I access these things infrequently enough to have just
+#        forgotten the syntax by the next time I need to use it.
+#
+function fxnBrowseRegistry()
+{
+    local result
+    local access="insecure"
+    local fullURL="$1"
+    local browseURL
+    local port=${1##*:}
+    local images
+    local examplePushImage
+    local examplePullImage
+
+    # if no port supplied, set Docker registry default of 5000
+    if [ "$port" = "$1" ];then
+        fullURL="$1:5000"
+    fi
+
+    browseURL="${fullURL}/v2/_catalog"
+    # --silent - do not print curl progress header
+    # filter unprintable characters as it will cause Bash to error out
+    browsedWith="curl --silent --request GET http://${browseURL}"
+    result=$( $browsedWith | tr -cd '[:print:]' )
+    if [ "$result" = ""  ];then
+        access="secure"
+        browsedWith="curl --silent --request GET http://${browseURL} "
+        result=$($browsedWith  | tr -cd '[:print:]' )
+        if [ "$result" = "" ];then
+            access="possibly insecure"
+            # note the use of httpS here
+            browsedWith=" curl --insecure --silent --request GET https://${browseURL}"
+            result=$( $browsedWith | tr -cd '[:print:]' )
+            if [ "$result" = "" ];then
+                echo "ERROR! Failed to browse ${browseURL}"
+                exit 1
+            fi
+        fi
+    fi
+
+    echo "Contents of $access Docker registry:[ $browseURL ]"
+    echo "Browsed with: $browsedWith "
+    echo "------------------------------------------------------------"
+    # use command line JSON parser jq to make it pretty.
+    echo ""
+    images=$(   echo "$result"  | jq '.repositories[]' | tr -d \" )
+    examplePullImage=$(echo "$images" | head -n 1)
+    examplePushImage=$(docker images --format "{{.Repository}}:{{.Tag}}" | head -n 1)
+    echo "$images"
+    echo ""
+    echo "------------------------------------------------------------"
+    echo " Access examples:"
+    echo ""
+    echo "  Pull registry image  [ $examplePullImage ] from $fullURL "
+    echo "    docker image pull ${fullURL}/${examplePullImage} "
+    echo ""
+    echo "  Push a local image like [ $examplePushImage ] to $fullURL"
+    echo "    docker image tag $examplePushImage ${fullURL}/${examplePushImage};  docker image push ${fullURL}/${examplePushImage}"
+    echo ""
+
 }
 
 ######################################################################
@@ -866,7 +960,7 @@ function fxnSelectContainer()
             else
                 # otherwise this is to run an image
                 echo "- Select one of the following containers to run:"
-                echo "-  (Skip this menu by using '--run --run-image <image name>')"
+                echo "-  (Skip this menu by using '--run-image <image name>')"
             fi
         fi
     fi
@@ -917,7 +1011,10 @@ function fxnSelectContainer()
                     | sed -e 's/^    //g' -e 's/\t/  /g' )
     if [ "$theBody"  = "" ];then
         echo ""
-        echo "  No containers starting with [ $filterByType ] found for user [ $userIs ]. Try adding --all to the command ?"
+        echo "  No containers starting with [ $filterByType ] found. "
+        if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
+            echo " Results were filtered by [ $userIs ].   Try adding --all to the command ?"
+        fi
         echo ""
         exit 0
     fi
@@ -974,7 +1071,7 @@ function fxnSelectContainer()
         # print ENTRY line only
         entryLine=$( echo "$theBody"  | sed -n "${ENTRY}p"  )
         if [ "$entryLine" = "" ];then
-            fxnERR "Failed to parse [ $ENTRY ] out of [ $theBody ]. Exiting."
+            fxnERR "Invalid entry [ $ENTRY ]. Exiting."
             exit 1
         fi
         SELECTED_CONTAINER_ID=$( echo "$entryLine" |  awk '{print$5}' )
@@ -1190,7 +1287,7 @@ function fxnDoLogin()
         # make sure the container mounts something local
 
         #
-        # Local filesystems the container can mount.
+        # Local file systems the container can mount.
         #
         if [ "$USE_HOMEDIR" = "" ];then
             ADDITIONAL_MOUNTS+=" --volume $(realpath ~/):/home/$USER_NAME"
@@ -1213,7 +1310,7 @@ function fxnDoLogin()
         #
         # Check for mounting different directories into the same place in the container
         # Put --volume one per line
-        # Trim whitespace
+        # Trim white space
         # Filter any identical requests (those won't bother Docker, but do break parsing here)
         # Split out the container mount points after :
         # Count any duplicates there
@@ -1268,7 +1365,7 @@ function fxnDoLogin()
                 else
                     # host system doesn't have a directory the container wants to
                     # mount. Warn and proceed.
-                    fxnWarn "Host system does not have directory [ $dir ] requested by contiainer. Continuing..."
+                    fxnWarn "Host system does not have directory [ $dir ] requested by container. Continuing..."
                 fi
             done
             # restore the field separator to what it was.
@@ -1368,7 +1465,7 @@ function fxnDoLogin()
 
         echo ""
         echo " ----------------------------------------------------------------------------"
-        echo " ------ Host filesystems are mounted as follows: ----------------------------"
+        echo " ------ Host file systems are mounted as follows: ---------------------------"
         echo " -"
         # Put this on two lines and delete the starting space newline..
         echo "$ADDITIONAL_MOUNTS" | sed -e 's/--volume/\n -   --volume/g' | sed -e '/^ $/d'
@@ -1480,7 +1577,7 @@ function fxnGenerateTemplate()
     #   sed -i "/# DUE_INSERT_CONFIG/ r ${BUILD_MERGE_DIR}/${templateName}/Dockerfile.config" ${BUILD_MERGE_DIR}/${templateName}/Dockerfile.template
 
     # Rather than pull files from the common-templates to create the
-    # configuration direcotory for the docker image, use this merged one
+    # configuration directory for the docker image, use this merged one
     USE_TEMPLATE_PATH="${BUILD_MERGE_DIR}/${name}-template-merge"
 
 }
@@ -1551,7 +1648,7 @@ function fxnReadConfigFile()
             CONFIG_FILE_PATH="$DUE_HOME_CONFIG_ABSOLUTE_PATH"
         else
             # Create a local config to use.
-            fxnPP "Creating DUE configuraton file at $CONFIG_FILE_PATH"
+            fxnPP "Creating DUE configuration file at $CONFIG_FILE_PATH"
             fxnEC fxnCreateConfigFile || exit 1
         fi
     fi
@@ -1567,7 +1664,7 @@ function fxnReadConfigFile()
             eval "$( echo $homeDir )"
         fi
 
-        # Parse the DUE_USER_CONTAINER_LIMIT variable, and ovedrride the
+        # Parse the DUE_USER_CONTAINER_LIMIT variable, and override the
         # default set at the top of this file.
         maxContainers=$(echo "$configVars" | grep DUE_USER_CONTAINER_LIMIT | tail -n 1 )
         if [ "$maxContainers" != "" ];then
@@ -1581,7 +1678,7 @@ function fxnReadConfigFile()
 # be run. Print all known labels here:
 # Takes:
 #   $1  - name of container
-#   $2  - tag of contiainer
+#   $2  - tag of container
 function fxnPrintContainerLabels()
 {
     local containerName="$1"
@@ -1595,7 +1692,7 @@ function fxnPrintContainerLabels()
     # How does the container identify itself?
     DUEImageType=$( docker inspect -f '{{.ContainerConfig.Labels.DUEImageType}}' "${containerName}":"${containerTag}" )
 
-    # Mount host filesystem this many directories up from current working directory
+    # Mount host file system this many directories up from current working directory
     DUEMountHostDirsUP=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirsUp}}' "${containerName}":"${containerTag}" )
     # Revision of container
     DUEContainerVersion=$( docker inspect -f '{{.ContainerConfig.Labels.DUEContainerVersion}}' "${containerName}":"${containerTag}" )
@@ -1714,7 +1811,7 @@ function fxnSetContainerSpecificArgs()
 {
     local imageType="$1"
 
-    # uses the value set by tye DUEImageType label from
+    # uses the value set by the DUEImageType label from
     # template directory's Dockerfile.config
     case $imageType in
         "no-op-image" )

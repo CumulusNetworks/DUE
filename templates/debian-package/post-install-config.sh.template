@@ -14,16 +14,39 @@
 fxnPostInstallCommon
 
 
+# Jessie apt has a bug where it tries to close 100K plus files.
+# Set bash ulimit to max at 10000 to speed this up.
+ulimit -n 10000
+
+
 #
 # apt-get install development packages
 # Note at this stage, any changes to the container's sources.list
 # will have happened.
 #
 
+
 apt-get update
 
+#
+# if python can't be installed, try python3
+# Success will vary by distribution...
+#
+
+DEBIAN_FRONTEND=noninteractive \
+			   apt-get install \
+			   --assume-yes \
+			   --no-install-recommends \
+			   python 2>/dev/null
+if [ $? != 0 ];then
+	DEBIAN_FRONTEND=noninteractive \
+			   apt-get install \
+			   --assume-yes \
+			   --no-install-recommends \
+			   python3
+fi
 # Packages for kernel build, but not essential for Debian packaging
-KERNEL_BUILD_PACKAGES=" build-essential python python-six rsync gcc bc bison cpio flex kmod quilt u-boot-tools "
+KERNEL_BUILD_PACKAGES=" build-essential python-six rsync gcc bc bison cpio flex kmod quilt u-boot-tools "
 
 # Lintian checks code for errors or questionable implementations
 # in Debian packaging. Adds about 12MB to the container size
@@ -37,7 +60,7 @@ EDITORS="vim emacs-nox"
 
 #
 # Packages included by variables are optional.
-# They can be removed and packges should still build, if storage
+# They can be removed and packages should still build, if storage
 # space is a concern.
 #
 DEBIAN_FRONTEND=noninteractive \

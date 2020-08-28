@@ -2,55 +2,61 @@
 
 **Formatting Conventions**  
 If you are viewing this document as a text file, literal commands to type
-are start and end with backticks like `this`. If you are using a Markdown viewer,
-these will not be visible but the font will be `different`.  
+are start and end with back ticks like `this`. If you are using a Markdown viewer, you will see just the text: this but the font will be `different`.  
 **The point**  
-Skip the backtick characters, if any, when you cut and paste.
+If you cut and paste from this file, do not copy the `s
 
 
-## Install DUE requirements
+# Install DUE's software dependencies
 To run DUE from the source directory, you will need to install the following
 packages:  
-  *  docker.io  (docker.ce works as well)
+  *  docker.io  (docker.ce works as well)  
   *  git  
+  *  bsdutils  
+  *  rsync  
+  *  jq  
+  *  curl  
+  *  and maybe pandoc, if you plan on updating the man pages.
 
-If this is a Debian based Linux, like Ubuntu `sudo apt-get update; sudo apt-get install git docker.io` will handle this.  
+From the Master Git branch, you can also run `make install` as root and it will try to install these packages.
+
+If you are using a Debian based Linux, like Ubuntu `sudo apt-get update; sudo apt-get install git docker.io` will handle this.  
 Once Docker is installed, add yourself to the docker group with:
 
 `sudo /usr/sbin/usermod -a -G docker $(whoami)`
 
-You will probably have to log out and back in for your new membership to take effect
+You will probably have to log out and back in for your new membership to take effect.
 
-If you have downloaded the source (as Debian package builds of DUE
-are not widely available) you can run it without installing by invoking
-it with a ./
-Ex: ./due
+If you have downloaded DUE as source from it's GitHub page (https://github.com/CumulusNetworks/DUE) you can run it by invoking it with a ./  
+**Ex:** `./due`
 
 
-## Creating Images
+# A Practical Example: create an image and build DUE as a Debian package
+DUE can be used to build itself as a Debian package.
 
-The first step in using DUE will be creating a image.
-To provide maximum flexibility, this is a muti-step process.
+1. Use Git to check out DUE's debian/master branch  
+   `git checkout debian/master`  
+    You should see that there is now a "debian" directory.  
+2. Create a Debian package build container, using an example from `due --create help`.  
+   If you are using Ubuntu, this might look like:  
+   `./due --create --from ubuntu:18.04 --description "Package Build for Ubuntu 18.04" --name pkg-u-18.04 --prompt PKGU1804 --tag pkg-ubuntu-18.04 --use-template debian-package`  
+   **TIP** `--filter` term  can be used with `due --create --help` to limit the output to entries that match the term.
+  
+3. Once the image has finished building, tell DUE to run a build, and pick your Debian package build container.  
+  `due --build`  <- Will let you choose your image, if there is more than one.  
+Or specify the image to use with:  
+`due --run-image due-pkg-u-18.04:pkg-ubuntu-18.04 --build` <- build using `due-pkg-u-18.04` image with tag `pkg-ubuntu-18.04`  
+  
+Once the build completes, there should be a due*.deb in the directory above where you just built. This can be installed with:  
+`sudo dpkg -i due_*all.deb`
 
-### Quick Start: Create and run the example image
+**Note** if you have problems, read the `Troubleshooting.md` file which is in the current directory.
 
-The **example** image installs the minimum required framework 
-for a DUE image, and is useful as a starting point for customization,
-or just testing the mechanics of DUE image creation.
+## Working in a container
 
-1. Run:  
- `./due --create help`
- You will see a list of example image build commands
-
-2. Cut and paste the one whose Image Type is `example`  
- `./due --create --from debian:10 --description "Debian 10 example" --name example-debian-10 --prompt Ex --tag example-debian-10 --use-template example`  
-   This will determine if you have installed all the software necessary to run DUE, and will then create a Docker image by downloading the Debian:10 image, and then apply the files in the `DUE/templates/example` directory to it. This process should end with:  
-   `Successfully tagged due-example-debian-10:debian-10`  
-   If it does not, see  `DUE/docs/Troubleshooting.md`
-   
-3. Run `./due --run`
-   If the image you just created is the only one on the system, it will be run by default. Otherwise DUE will present a menu of images to choose from.  
-
+1. Run `./due --run`
+   If the image created in the previous step is the only one on the system, it will be run by default. Otherwise DUE will present a menu of images to choose from.  
+Example:  
 
     `  REPOSITORY                      TAG                   SIZE                IMAGE ID`  
     `-----------------------------------------------------------------------------------------`  
@@ -59,44 +65,63 @@ or just testing the mechanics of DUE image creation.
     `3  due-onie-build                 debian-9              823MB               70cb5b66aa87`  
     `4  due-pkg-u-18.04                pkg-ubuntu-18.04      598MB               aae462a75630`  
 
-4. For reference, the Docker command used to start the container will scroll by, as well as the output
+2. For reference, the Docker command used to start the container will scroll by, as well as the output
 from the DUE scripts that dynamically create your user account in the container, and any other additional
-configuration
-5. You are now in a bash shell in the container. DUE defaults to setting the prompt to something that indicates
-the role of the container, as it may not be obvious to the user that they are in one. The example sets the
-prompt to `<username>@due-example-debian-10`
-6. Your home directory in the container is your home directory on the host system, although the DUE configuration file can be set to change this.
-7. Type `exit` to leave the container.
+configuration.  
+3. DUE will have mounted your home directory by default and created a user account for you in the container that matches the one you have on your host system.  
+4. You are now in a bash shell in the container. DUE defaults to setting the prompt to something that indicates
+the role of the container, as this may not be obvious. The Ubuntu package build example sets the prompt to `<username>@PKGU1804`
+5. If you want to use the default build script for the container, run `duebuild --help` to see what common build operations are available, or just start to build as you normally would.
+6. Type `exit` to leave the container.
 
 ..And that's the basics of using DUE to create and run containers.
 
-If you'd like to build a more practical container, run:  
-`due --create help`  
-and note the `Create it with` commands after the `Image type` listings.
-These are parsed out of the `templates/<type>/README.md` files that suggest how to build the type of image.
 
-The rest of this document will get in to using specific types of containers, and how you can create and debug your own.
-
-## A Practical Example.
-DUE can be used to build itself as a Debian package.  
-First, create a Debian package build container, using an example from `due --create help`. If you are using Ubuntu, this might look like:  
-`./due --create --from ubuntu:18.04 --description "Package Build for Ubuntu 18.04" --name pkg-u-18.04 --prompt PKGU1804 --tag pkg-ubuntu-18.04 --use-template debian-package  
-  
-Once the Docker image has built, DUE can use it to build itself with:  
-  
-`due --build`  <- Will let you choose your container, if there is more than one.  
-Or:  
-`due --run --image due-pkg-u-18.04:pkg-ubuntu-18.04 --build` <- build using `due-pkg-u-18.04` image with tag `pkg-ubuntu-18.04`  
-  
-Once the build completes, there should be a due*.deb in the directory above where you just built.
+The rest of this document will get in to using specific types of containers, and how you can create and debug your own.  
+**TIP** Take a look at the README.md files under the `./templates` directory as well.
 
 
-###The Details:
+# Run time: A few things to know about running DUE
 
-Let's take a deeper dive in to what was happening behind the scenes with the example container.
-We'll start with the files involved.
+Take a look at the help by running `./due --run help`  
+You'll find things like using `--image` (to limit the names of images shown, or run a particular container)
+or using `--login` to access a running container
 
-### Files:
+### Local or system context?
+DUE can be built as a Debian package and be installed system-wide, or run from the local directory.  
+There are a few behavior changes depending on which option you're using.
+
+#### Local context
+If you are using DUE from a source code check out, invoking it with `./due` limits its search
+paths for templates and the `libdue` library to the local directory. This is useful for local
+debugging, or trying it out without having to install it.
+
+#### System context
+If you build DUE into a package and install it, it will store the templates under `/usr/share/due`.
+The templates that are available system-wide can be listed with `due --create help`
+
+DUE also installs an `/etc/due/due.conf` that will hold any system wide settings.
+Users can override this by running:
+ `./due --manage --copy-config` 
+which will install:
+   ~/.conf/due/due.conf`
+
+###Tip: Knowing you are in a Docker container
+Docker containers have a `/.dockerenv` file, so any configuration scripts you
+have can be set to check for that.
+
+For example, on my laptop, DUE is configured to mount ~/
+My .bashrc has the following logic:
+
+>    `#Only set prompt if NOT in a container.`  
+>    `if [ ! -e /.dockerenv ];then`  
+>    `        export PS1='\u@\h$:\$ '`  
+>    `fi`  
+
+This allows me to preserve the prompt hints that describe the container.
+
+
+# Files:
  **`due`**  
  User interface script for DUE, and the script that a user executes at run time.
  Note: If due is run with ./due, it references all the local files, rather than
@@ -109,40 +134,51 @@ We'll start with the files involved.
  Documents DUE's MIT license
 
  **`README.md`**  
- Starter documentation.  
+ Starter documentation.   
 
+ **`Makefile`**  
+ This is present in the Master branch for basic installation and configuration. It is **not** present in the `debian/*` branches.  
+
+
+ 
 ### Directories:
 
  **`debian`**  
- Files for building DUE as a Debian package, rules, changelog, etc.
+ Files for building DUE as a Debian package, rules, changelog, etc. Note: this is, for obvious reasons, only present in `debian/*` Git branches.
 
  **`docs`**  
  DUE documentation
 
  **`etc`**  
- Holds the DUE configuration file for the system's /etc directory.
+ Holds the DUE configuration file for the system's /etc directory. A copy of this is added to the user's home directory under:  
+ `~/.config/due/due.conf`  
+ Note that there are currently two configurable parameters for the system (`/etc/due/due.conf`) or a user (`~/.config/due/due.conf`)  
+ `DUE_ENV_DEFAULT_HOMEDIR` - change your home directory to another directory on the host. Handy if your home directory is on an NFS file system (See `Troubleshooting.md`) or you need to use a different disk partition to work in.  
+  `DUE_USER_CONTAINER_LIMIT` - set a limit on multi user systems for how many containers a user should be running. Sometimes it is tough to keep track...  
+  
 					
  **`templates`**  
  Holds all files used to create a dedicated type of image.
- The default is to use just the contents of common-templates if no other template type is specified.
+ The default is to use just the contents of `common-templates` if no other template type is specified.
  If a template type is specified (ONIE build, Debian package build, etc) then that will be merged
- with the contents of common-templates to produce the image.
+ with the contents of `common-templates` to produce the image.  
  Files ending in `.template` are processed to contain values set by using arguments in conjunction with
- --create, so that things like the source container, prompt, or name can be set dynamically.
+ `--create`, so that things like the source container, prompt, or name can be set dynamically.
  
 
  **`due-build-merge`**  
  This is the work/build area that holds image merges for build. For any image build, there will be two directories:
  
- 1.  **`<name>-template-merge`** Directory generated by --create when a --use-template <role>
+ 1.  **`<name>-template-merge`** Directory generated by `--create` when a `--use-template `
    is specified. This directory contains the contents of `templates/common-templates`,
-   with the contents of the specified source template (debian-package, example,etc)
-   merged in. If the source template has a file with the same name as a common template,
-   the common template file will be overwritten.
+   with the contents of the specified source template (`debian-package`, `example`,etc)
+   merged in.  
+   If the source template has a file with the same name as a common template,
+   the common template file will be overwritten.  
    At this stage, all the files are present, but strings in them that get replaced for
    final configuration have not been replaced yet.
 					   
- 2.  **`<name>`**      This is mostly a copy of `<name>-template-merge` but with all **REPLACE** terms in the files
+ 2.  **`<name>`**      This is mostly a copy of `name-template-merge` but with all **REPLACE** terms in the files
  set to their final values. This would be things like the base docker image to use, the name of the image,
  or the prompt to use inside the container. The Dockerfile used to create the final image comes from this
  directory. By default, DUE runs the configuration and build
@@ -150,6 +186,14 @@ We'll start with the files involved.
  made in this directory and a new image generated by running `due --create --dir`. Of course, if you want
  those changes to be preserved for future creation, you'll need to update the `DUE/templates` directory with a new entry.
 
+**TIP** the image build area can be deleted for a clean build by running `due --create --clean`
+
+
+
+#Image build details:
+
+If you want a closer look at how the templates get turned in to the final Dockerfile
+We'll start with the files involved.
 
 ### Directory creation works as follows:
 
@@ -163,7 +207,7 @@ the files from common-templates into a `<name>-template-merge` directory, where
 **So:**  
 `templates/<role> + common-templates = <name>-template-merge directory`
 
-Create the build directory
+####Create the build directory
 
 This copies any non-template files from the `<name>-template-merge` directory
 into the `<name>` directory under `due-build-merge/`.
@@ -204,42 +248,4 @@ You can build just the Docker image stage with `./due --build-dir <path to name>
 	`./due --create --build-dir oniebuild`
 
 
-## Run time: A few things to know about running DUE
-
-Take a look at the help by running `./due --run help`  
-You'll find things like using `--image` (to limit the names of images shown, or run a particular container)
-or using `--login` to access a running container
-
-### Local or system context?
-DUE can be built as a Debian package and be installed system-wide, or run from the local directory.  
-There are a few behavior changes depending on which option you're using.
-
-#### Local context
-If you are using DUE from a source code check out, invoking it with `./due` limits its search
-paths for templates and the `libdue` library to the local directory. This is useful for local
-debugging, or trying it out without having to install it.
-
-#### System context
-If you build DUE into a package and install it, it will store the templates under /usr/share/due.
-The templates that are available system-wide can be listed with `due --create help`
-
-DUE also installs an `/etc/due/due.conf` that will hold any system wide settings.
-Users can override this by running:
- `./due --manage --copy-config` 
-which will install:
-   ~/.conf/due/due.conf`
-
-###Tip: Knowing you are in a Docker container
-Docker containers have a `/.dockerenv` file, so any configuration scripts you
-have can be set to check for that.
-
-For example, on my laptop, DUE is configured to mount ~/
-My .bashrc has the following logic:
-
->    `#Only set prompt if NOT in a container.`  
->    `if [ ! -e /.dockerenv ];then`  
->    `        export PS1='\u@\h$:\$ '`  
->    `fi`  
-
-This allows me to preserve the prompt hints that describe the container.
 

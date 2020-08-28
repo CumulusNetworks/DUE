@@ -1,4 +1,4 @@
-# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+# Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.1.0
@@ -9,6 +9,10 @@ MAINTAINER maintainer <yourmaintainer@your-organization.org>
 # For DUE the container type allows assigning default behaviors
 LABEL DUEImageType=REPLACE_DUE_IMAGE_TYPE_LABEL
 
+# The version of DUE that created this container
+LABEL DUECreationVersion=REPLACE_DUE_CREATION_VERSION
+
+# Role specific Docker file configuration is inserted here:
 # DUE_INSERT_CONFIG
 
 LABEL org.yourorg.version="1.0.0"

@@ -1,4 +1,22 @@
-due (1.6.3) RELEASED; urgency=medium
+due (2.0.0-1) unstable; urgency=medium
+
+  * Initial Debian submission
+  * debian-package: Set ulimit -n 10000 for slow Apt on Jessie images
+  * debian-package: Install python version based on image Debian release
+  * debian-package: Clean up files generated when resolving build dependencies
+  * libdue for emulation, qemu-<arch>-static comes from source image's arch
+  * due: do not filter images after --run-image has been invoked.
+  * due: add --delete option
+  * due: add --manage --browse Docker registry option
+  * docs: Markdown cleanup. Updated some stale docs.
+  * docs: Added Branching.md to explaing the branch/release structure.
+  * Makefile: write release version in libdue to documentation.
+  * git branches: refactored for Debian naming conventions.
+  * everything: Ran spell check.
+
+ -- Alex Doyle  <alexddoyle@gmail.com>  Fri, 21 Aug 2020 21:53:56 -0700
+
+due (1.6.3-1) unstable; urgency=medium
 
   * Add --filter to --create --help.
   * Add *.buildinfo and *.changes to .gitignore.
@@ -10,7 +28,7 @@ due (1.6.3) RELEASED; urgency=medium
 
  -- Alex Doyle <alexddoyle@gmail.com>  Sat, 01 Aug 2020 16:53:56 -0700
 
-due (1.6.2) RELEASED; urgency=medium
+due (1.6.2-1) UNRELEASED; urgency=medium
 
   * Change --snapshot to --export. Works with --import now
   * Sanity check mounting two --volumes to the same container dir
@@ -18,7 +36,7 @@ due (1.6.2) RELEASED; urgency=medium
 
  -- Alex Doyle <alexddoyle@gmail.com>  Tue, 28 Jul 2020 21:33:40 -0700
 
-due (1.6.1) RELEASED; urgency=medium
+due (1.6.1-1) UNRELEASED; urgency=medium
 
   * --login now executes ~/.bashrc, etc
   * Fix typo in stop container script.
@@ -26,14 +44,14 @@ due (1.6.1) RELEASED; urgency=medium
 
  -- Alex Doyle <alexddoyle@gmail.com >  Thu, 09 Jul 2020 17:03:15 -0700
 
-due (1.6.0) RELEASED; urgency=medium
+due (1.6.0-1) UNRELEASED; urgency=medium
 
   * Added debian-upstream branch for promotion to Debian.
   * Packaging/Licensing cleanup prompted by Debian QA tools.
 
  -- Alex Doyle <alexddoyle@gmail.com>  Sun, 28 Jun 2020 15:16:59 -0700
 
-due (1.5.0) RELEASED; urgency=medium
+due (1.5.0-1) UNRELEASED; urgency=medium
 
   * Command line help is no longer order specific
   * Debian package build: duebuild takes --deb-build-opt
@@ -42,7 +60,7 @@ due (1.5.0) RELEASED; urgency=medium
 
  -- Alex Doyle <alexddoyle@gmail.com>  Sun, 14 Jun 2020 09:35:04 -0700
 
-due (1.4.0) RELEASED; urgency=medium
+due (1.4.0-1) UNRELEASED; urgency=medium
 
   * Copyright updates to 2020
   * Debian package build: add local package repository feature.
@@ -52,7 +70,7 @@ due (1.4.0) RELEASED; urgency=medium
 
  -- Alex Doyle <adoyle@cumulusnetworks.com>  Sat, 06 Jun 2020 10:21:05 -0700
 
-due (1.3.1) RELEASED; urgency=medium
+due (1.3.1-1) UNRELEASED; urgency=medium
 
   * Update version number
   * Invoke help after --build if 'help' is typed
@@ -60,7 +78,7 @@ due (1.3.1) RELEASED; urgency=medium
 
  -- Alex Doyle <alexddoyle@gmail.com>  Thu, 14 May 2020 17:46:51 -0700
 
-due (1.3.0) RELEASED; urgency=medium
+due (1.3.0-1) UNRELEASED; urgency=medium
 
   * Non interactive commands now return a return code.
   * debian-package duebuild has better .dsc build support.
@@ -68,13 +86,13 @@ due (1.3.0) RELEASED; urgency=medium
 
  -- Alex Doyle <alexddoyle@gmail.com>  Tue, 12 May 2020 17:46:51 -0700
 
-due (1.2.1) RELEASED; urgency=medium
+due (1.2.1-1) UNRELEASED; urgency=medium
 
   * Added first time setup checks and hints.
 
  -- Alex Doyle <alexddoyle@gmail.com>  Mon, 13 Apr 2020 18:21:55 -0700
 
-due (1.2.0) RELEASED; urgency=medium
+due (1.2.0-1) UNRELEASED; urgency=medium
 
   * Added --dockerarg to pass arguments directly to docker
   * Added docker run argument setting based on container type
@@ -82,7 +100,7 @@ due (1.2.0) RELEASED; urgency=medium
 
  -- Alex Doyle <alexddoyle@gmail.com>  Tue, 17 Mar 2020 01:02:00 -0800
 
-due (1.1.0) RELEASED; urgency=medium
+due (1.1.0-1) UNRELEASED; urgency=medium
 
   * Added --stop option for running containers.
   * Added --create --clean option to delete due-buid-merge directory.
@@ -94,7 +112,7 @@ due (1.1.0) RELEASED; urgency=medium
 
  -- Alex Doyle <alexddoyle@gmail.com>  Sat, 29 Feb 2020 12:00:01 -0800
 
-due (1.0.1) RELEASED; urgency=medium
+due (1.0.1-1) UNRELEASED; urgency=medium
 
   * ONIE template fixes for Debian 8, duebuild script, better docs.
   * Added --run --debug option to debug partially created images.
@@ -109,7 +127,7 @@ due (1.0.1) RELEASED; urgency=medium
 
  -- Alex Doyle <alexddoyle@gmail.com>  Sat, 01 Feb 2020 08:08:08 -0700
 
-due (1.0.0) RELEASED; urgency=medium
+due (1.0.0-1) UNRELEASED; urgency=medium
 
   * Initial Debian packaging
 
