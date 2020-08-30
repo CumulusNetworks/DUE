@@ -460,12 +460,21 @@ function fxnUseLocalPackageRepository()
         useArchitecture=$( dpkg-architecture --query DEB_TARGET_ARCH )
     fi
 
-    LOCAL_PACKAGE_REPOSITORY_PATH=$( realpath "${BUILD_DIR}/.." )
-    echo "Using path $LOCAL_PACKAGE_REPOSITORY_PATH"
+    #
+    # Is the repository given as an absolute path?
+    # (it starts with a '/' ?)
+    if [[ $repoName == /* ]];then
+        # An absolute path
+        LOCAL_PACKAGE_REPOSITORY_PATH=$( realpath "${repoName}/.." )
+        LOCAL_PACKAGE_REPOSITORY_ROOT="${repoName}"
+        echo "Using ABSOLUTE  path to repository $LOCAL_PACKAGE_REPOSITORY_ROOT"
+    else
+        # A relative path. Drop it local.
+        LOCAL_PACKAGE_REPOSITORY_PATH=$( realpath "${BUILD_DIR}/.." )
+        LOCAL_PACKAGE_REPOSITORY_ROOT="${LOCAL_PACKAGE_REPOSITORY_PATH}/${repoName}"
+        echo "Using RELATIVE path to repository $LOCAL_PACKAGE_REPOSITORY_ROOT"
+    fi
 
-    LOCAL_PACKAGE_REPOSITORY_DIR=$( realpath "${BUILD_DIR}/.." )
-    echo "Using path $LOCAL_PACKAGE_REPOSITORY_DIR"
-    LOCAL_PACKAGE_REPOSITORY_ROOT="${LOCAL_PACKAGE_REPOSITORY_DIR}/${repoName}"
 
     poolDir="${LOCAL_PACKAGE_REPOSITORY_ROOT}/pool"
     debsDir="${LOCAL_PACKAGE_REPOSITORY_ROOT}/debs"
@@ -607,13 +616,18 @@ function fxnDoDebianBuild()
     fi
     sudo apt-get update || fxnWARN "apt-get update failed. Continuing with local index."
 
-    fxnPP "Upgrading local packages so that any already installed build dependencies are up to date."
-    sudo apt-get upgrade --assume-yes || fxnWARN "apt-get upgrade failed. Continuing with local index."
+    fxnPP "Upgrading local packages so that any already installed build dependencies are up to date. Keeping existing config files."
+    # stick with existing configurations if asked. Not entirely sure this is good in all cases.
+    export DEBIAN_FRONTEND=noninteractive
+    sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade \
+         -o Dpkg::Options::="--force-confdef" \
+         -o Dpkg::Options::="--force-confold" \
+         --assume-yes || fxnWARN "apt-get upgrade failed. Continuing with local index."
 
     # Make sure the environment has the tools to configure the environment.
     if [ ! -e /usr/bin/mk-build-deps ];then
         fxnPP "Failed to find mk-build-deps. Installing devscripts and equivs."
-        fxnEC sudo apt-get install --assume-yes equivs devscripts || exit 1
+        fxnEC sudo DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes equivs devscripts || exit 1
     fi
 
 
@@ -622,6 +636,10 @@ function fxnDoDebianBuild()
     # remove the .deb after to keep git from FREAKING OUT!
     sudo mk-build-deps --install --remove ./debian/control --tool "apt-get -y"
     errorCode="$?"
+    if [ "$errorCode" = "25" ];then
+        fxnWARN "mk-build-deps finds no dependencies? Well, let's see where this goes...."
+        errorCode=0
+    fi
     if [ "$errorCode" != "0" ];then
         #note that an error was hit in case it's not a lack of dependencies.
         fxnERR "Hit error [ $errorCode ] in : sudo mk-build-deps --install ./debian/control --tool apt-get -y"
