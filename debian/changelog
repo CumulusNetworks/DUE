@@ -17,7 +17,7 @@ due (2.0.0-1) unstable; urgency=medium
   * git branches: refactored for Debian naming conventions.
   * everything: Ran spell check.
 
- -- Alex Doyle  <alexddoyle@gmail.com>  Fri, 21 Aug 2020 21:53:56 -0700
+ -- Alex Doyle <alexddoyle@gmail.com>  Fri, 21 Aug 2020 21:53:56 -0700
 
 due (1.6.3-1) unstable; urgency=medium
 
