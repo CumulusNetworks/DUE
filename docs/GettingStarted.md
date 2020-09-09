@@ -34,15 +34,16 @@ If you have downloaded DUE as source from it's GitHub page (https://github.com/C
 # A Practical Example: create an image and build DUE as a Debian package
 DUE can be used to build itself as a Debian package.
 
-1. Use Git to check out DUE's debian/master branch  
+1. Start with DUE's `master` Git branch.
+2. `make orig.tar`
+3. Use Git to check out DUE's debian/master branch  
    `git checkout debian/master`  
     You should see that there is now a "debian" directory.  
-2. Create a Debian package build container, using an example from `due --create help`.  
+4. Create a Debian package build container, using an example from `due --create help`.  
    If you are using Ubuntu, this might look like:  
    `./due --create --from ubuntu:18.04 --description "Package Build for Ubuntu 18.04" --name pkg-u-18.04 --prompt PKGU1804 --tag pkg-ubuntu-18.04 --use-template debian-package`  
-   **TIP** `--filter` term  can be used with `due --create --help` to limit the output to entries that match the term.
-  
-3. Once the image has finished building, tell DUE to run a build, and pick your Debian package build container.  
+   **TIP** `--filter` term  can be used with `due --create --help` to limit the output to entries that match the term.  
+5. Once image creation has finished,  tell DUE to run a build, and pick your Debian package build container.  
   `due --build`  <- Will let you choose your image, if there is more than one.  
 Or specify the image to use with:  
 `due --run-image due-pkg-u-18.04:pkg-ubuntu-18.04 --build` <- build using `due-pkg-u-18.04` image with tag `pkg-ubuntu-18.04`  
