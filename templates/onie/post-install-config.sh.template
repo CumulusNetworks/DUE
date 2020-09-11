@@ -38,10 +38,10 @@ else
     echo "Adding user [ $USER_NAME ] with UID [ $USER_ID ] to the container."
 
     adduser --home /home/$USER_NAME \
-	    --shell /bin/bash \
-	    --uid $USER_ID \
-	    --gecos "" \
-	    --disabled-password $USER_NAME > /dev/null || exit 1
+            --shell /bin/bash \
+            --uid $USER_ID \
+            --gecos "" \
+            --disabled-password $USER_NAME > /dev/null || exit 1
 
     echo "Adding sudo ability for $USER_NAME"
     adduser $USER_NAME sudo > /dev/null || exit 1
@@ -56,6 +56,51 @@ else
     chown $USER_NAME /home/$USER_NAME/.bashrc
 fi
 
+
+# If you expect to do development in the container, these are useful.
+EDITORS="vim emacs-nox magit"
+
+# if this is a Debian 8 container, this isn't easily available.
+DEBIAN_RELEASE=$( grep "Debian GNU/Linux" /etc/issue | awk '{print$3}')
+
+#
+# Note - only Debian releases are supported, not Ubuntu or anything else, yet.
+#
+case $DEBIAN_RELEASE in
+    "8" )
+        echo "Debian 8: Skipping Secure boot packages, sbsigntool and python-sphinx"
+        DEBIAN_8_PACKAGES="realpath"
+        ;;
+
+    "9" )
+        # These packages are available in Debian 9
+        DEBIAN_9_PACKAGES="sbsigntool realpath"
+
+        # Packages used for secure boot (amd64 hard code is fine as this is Intel only)
+        #linux-headers-amd64?
+        SECURE_BOOT=" qemu-utils ovmf gnu-efi libfile-slurp-perl "
+        ;;
+
+    "10" )
+        DEBIAN_10_PACKAGES="sbsigntool unzip tree python3.7-dev python3-distutils"
+
+        # Packages used for secure boot (amd64 hard code is fine as this is Intel only)
+        #linux-headers-amd64?
+        SECURE_BOOT=" qemu-utils ovmf gnu-efi libfile-slurp-perl "
+
+        # make sure this is in a container
+        if [ -e /.dockerenv ];then
+            # Debian 10 does not need stretch-backports
+            echo "Deleting Debian 10 container's apt references to stretch-backports."
+            rm /etc/apt/sources.list.d/stretch-backports.list
+        fi
+        ;;
+
+    * )
+        echo "ERROR! Failed to get ONIE Debian release type. Exiting."
+        exit 1
+        ;;
+esac
 #
 # apt-get install development packages
 # Note at this stage, any changes to the container's sources.list
@@ -66,82 +111,67 @@ fi
 apt-get update
 
 
-# If you expect to do development in the container, these are useful.
-EDITORS="vim emacs-nox magit"
-
-# if this is a Debian 8 container, this isn't easily available.
-DEBIAN_RELEASE=$( grep "Debian GNU/Linux" /etc/issue | awk '{print$3}')
-
-if [ "$DEBIAN_RELEASE" = "8" ];then
-    echo "Debian 8: Skipping Secure boot packages, sbsigntool and python-sphinx"
-
-else
-	# These packages are available in Debian 9
-    DEBIAN_9_PACKAGES="sbsigntool"
-    
-    # Packages used for secure boot (amd64 hard code is fine as this is Intel only)
-    #linux-headers-amd64?    
-    SECURE_BOOT=" qemu-utils ovmf gnu-efi libfile-slurp-perl "
-fi
 DEBIAN_FRONTEND=noninteractive \
-			   apt-get install \
-			   --assume-yes \
-			   --no-install-recommends \
-	openssh-server \
-	sudo \
-	autoconf \
-	automake \
-	bc \
-	bison \
-	bsdmainutils \
-	build-essential \
-	ca-certificates \
-	cpio \
-	curl \
-	device-tree-compiler \
-	dosfstools \
-	fakeroot \
-	flex \
-	gawk \
-	git \
-	gperf \
-	help2man \
-	libefivar-dev \
-	libexpat1 \
-	libexpat1-dev \
-	libfreetype6-dev \
-	libncurses5 \
-	libncurses5-dev \
-	libnss3-dev \
-	libnss3-tools \
-	libpopt-dev \
-	libssl-dev \
-	libtool \
-	libtool-bin \
-	mtools \
-	pkg-config \
-	openssl \
-	python-all-dev \
-	realpath \
-	rst2pdf \
-	rsync \
-	stgit \
-	texinfo \
-	u-boot-tools \
-	util-linux \
-	uuid-dev \
-	uuid-runtime \
-	wget \
-	x11-xkb-utils \
-	equivs \
-	xorriso \
-	vim \
-	telnet \
-	tmux \
-	$DEBIAN_9_PACKAGES \
-	$EDITORS \
-	$SECURE_BOOT \
-	locales-all || exit 1
+               apt-get install \
+               --assume-yes \
+               --no-install-recommends \
+               openssh-server \
+               sudo \
+               autoconf \
+               automake \
+               bc \
+               bison \
+               bsdmainutils \
+               build-essential \
+               ca-certificates \
+               cpio \
+               curl \
+               device-tree-compiler \
+               dosfstools \
+               fakeroot \
+               flex \
+               gawk \
+               git \
+               gperf \
+               help2man \
+               libefivar-dev \
+               libexpat1 \
+               libexpat1-dev \
+               libfreetype6-dev \
+               libncurses5 \
+               libncurses5-dev \
+               libnss3-dev \
+               libnss3-tools \
+               libpopt-dev \
+               libssl-dev \
+               libtool \
+               libtool-bin \
+               mtools \
+               pkg-config \
+               openssl \
+               python-all-dev \
+               rst2pdf \
+               rsync \
+               stgit \
+               texinfo \
+               u-boot-tools \
+               util-linux \
+               uuid-dev \
+               uuid-runtime \
+               wget \
+               x11-xkb-utils \
+               equivs \
+               xorriso \
+               vim \
+               telnet \
+               tmux \
+               tree \
+               $DEBIAN_8_PACKAGES \
+               $DEBIAN_9_PACKAGES \
+               $DEBIAN_10_PACKAGES \
+               $EDITORS \
+               $SECURE_BOOT \
+               locales-all || exit 1
 
 
 #
@@ -179,25 +209,25 @@ git config --global user.email "oniebuild@localhost"
 # without it ( or change the initial check below to include it.
 
 if [ "$DEBIAN_RELEASE" != "" ];then
-	if [ "$DEBIAN_RELEASE" = "8" ];then
-		echo "Not installing python-sphinx. You'll have to get creative."
-	else
+    if [ "$DEBIAN_RELEASE" = "8" ];then
+        echo "Not installing python-sphinx. You'll have to get creative."
+    else
 
-		if [ "$DEBIAN_RELEASE" = "9" ];then
-			echo "Installing backports versions of sphinx packages"	
-			SPHINX_STRETCH_BACKPORTS=" -t stretch-backports "
-		fi
+        if [ "$DEBIAN_RELEASE" = "9" ];then
+            echo "Installing backports versions of sphinx packages"
+            SPHINX_STRETCH_BACKPORTS=" -t stretch-backports "
+        fi
 
-		# Get it
-		DEBIAN_FRONTEND=noninteractive \
-					   apt-get install \
-					   --assume-yes \
-					   --no-install-recommends \
-					   $SPHINX_STRETCH_BACKPORTS \
-					   sphinx-common \
-					   python-sphinx \
-					   libjs-sphinxdoc
-	fi
+        # Get it
+        DEBIAN_FRONTEND=noninteractive \
+                       apt-get install \
+                       --assume-yes \
+                       --no-install-recommends \
+                       $SPHINX_STRETCH_BACKPORTS \
+                       sphinx-common \
+                       python-sphinx \
+                       libjs-sphinxdoc
+    fi
 fi
 
 #
@@ -223,17 +253,17 @@ rm -rf hub-linux-amd64-${HUB_VERSION}*
 # Efi tools. Available in Debian Buster, but not earlier.
 #
 if [ "$SECURE_BOOT" != "" ];then
-	
-	EFI_TOOLS_VERSION="1.9.2"
-	EFI_TOOLS_URL="https://git.kernel.org/pub/scm/linux/kernel/git/jejb/efitools.git/snapshot/efitools-${EFI_TOOLS_VERSION}.tar.gz"
-	echo "Downloading efi tools."
-	wget $EFI_TOOLS_URL || exit 1
-	tar -xvf efitools-${EFI_TOOLS_VERSION}.tar.gz || exit 1
-	cd efitools-${EFI_TOOLS_VERSION}
-	echo "Building efi tools"
-	make || exit 1
-	echo "Installing *efi in /usr/local/bin"
-	sudo make install || exit 1
+
+    EFI_TOOLS_VERSION="1.9.2"
+    EFI_TOOLS_URL="https://git.kernel.org/pub/scm/linux/kernel/git/jejb/efitools.git/snapshot/efitools-${EFI_TOOLS_VERSION}.tar.gz"
+    echo "Downloading efi tools."
+    wget $EFI_TOOLS_URL || exit 1
+    tar -xvf efitools-${EFI_TOOLS_VERSION}.tar.gz || exit 1
+    cd efitools-${EFI_TOOLS_VERSION}
+    echo "Building efi tools"
+    make || exit 1
+    echo "Installing *efi in /usr/local/bin"
+    sudo make install || exit 1
 
 fi
 
