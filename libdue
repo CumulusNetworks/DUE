@@ -1,4 +1,4 @@
-#!/bin/bash
+# /bin/bash  syntax
 # SCRIPT_PURPOSE: A function library for Dedicated User Environment (DUE)
 
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
