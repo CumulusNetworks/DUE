@@ -2,7 +2,12 @@
 
 DUE is a wrapper for Docker to create easy to use build environments.  
 
-**TIP** to package DUE for Debian, start with the debian/master branch.
+## Type the following to configure DUE to build as a Debian package:  
+1. `git checkout master`  
+2. `make orig.tar`  
+3. `git checkout debian/master`  
+...and use a Debian build environment to build. If you need one, see:  
+**./docs/GettingStarted.md** to have DUE create one for you.  
 
 ## The TL:DR
 
