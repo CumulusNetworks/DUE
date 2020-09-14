@@ -288,12 +288,19 @@ function fxnPreProcessDockerFile()
 {
     local destDir="$1"
     local useQEMU="$2"
+    local domainName
     # If there is an existing copy, do not overwrite.
     # user may have custom modifications.
 
     if [ -e  "$destDir"/Dockerfile.create ];then
         fxnPP "Not creating $destDir/Dockerfile.create as it exists"
     else
+
+        domainName=$( dnsdomainname )
+        if [ "$domainName" = "" ];then
+            # Sometimes this comes back empty.
+            domainName="no-domain-name"
+        fi
         fxnPP "Creating $destDir/Dockerfile.create from [ $USE_TEMPLATE_PATH ]"
         cp "${USE_TEMPLATE_PATH}"/Dockerfile.template "$destDir"/Dockerfile.create
 
@@ -301,14 +308,14 @@ function fxnPreProcessDockerFile()
         if [ "$FROM_IMAGE_TYPE" != "" ];then
             sed -i "s#REPLACE_IMAGE_FROM\$#$FROM_IMAGE_TYPE#g"                          "$destDir"/Dockerfile.create
             sed -i "s#REPLACE_DUE_IMAGE_TYPE_LABEL\$#$DUE_IMAGE_TYPE_LABEL#g"           "$destDir"/Dockerfile.create
-			# if the maintainer/organization is still set to the default, change it to the current user.
-			sed -i "s/yourmaintainer@your-organization.org/$(whoami)@$(dnsdomainname)/" "$destDir"/Dockerfile.create
+            # if the maintainer/organization is still set to the default, change it to the current user.
+            sed -i "s/yourmaintainer@your-organization.org/$(whoami)@${domainName}/" "$destDir"/Dockerfile.create
 
-			# Embed description of the image
+            # Embed description of the image
             sed -i "s#REPLACE_IMAGE_DESCRIPTION#\"$IMAGE_DESCRIPTION\"#g" "$destDir"/Dockerfile.create
-			
-			# Log the version of DUE that created this container.
-			sed -i "s/REPLACE_DUE_CREATION_VERSION/${DUE_VERSION}/"                     "$destDir"/Dockerfile.create
+
+            # Log the version of DUE that created this container.
+            sed -i "s/REPLACE_DUE_CREATION_VERSION/${DUE_VERSION}/"                     "$destDir"/Dockerfile.create
             # If qemu is to be installed, uncomment the copy of it
             if [ "$useQEMU" != "" ];then
                 fxnPP "Configuring Dockerfile to copy in qemu as the first step."
