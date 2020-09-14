@@ -6,6 +6,9 @@
 #
 #  SPDX-License-Identifier:     MIT
 
+# Have last command in a pipe to fail return error code.
+# This prevents use of tee from hiding fails.
+set -o pipefail
 
 # Set top level directory to be where we are now
 if [ "$gTOP_DIR" = "" ];then
@@ -81,22 +84,21 @@ function fxnMSG ()
 
 function fxnHelp()
 {
-    echo "Usage  : $(basename "$0"): [--cbuild|--source --type-arch-debs --type-all-debs ] <name>"
-    echo "  This script mimics sbuild with a few additional arguments."
+    echo "Usage  : $(basename "$0"): [options] [--cbuild | --default | --build-command <args> ]"
+    echo "  Script to support building for the container's target."
     echo ""
     echo "  Build targets:"
     echo "   -c|--cbuild <args>          Default container build REPLACE_THIS build instructions"
 	echo "                               <args> is a list of additional build commands. Must be last argument."
 	echo "      --default                Try to build with default settings."
+    echo "      --build-command <args>   Do environment prep and run <args>. Must be last argument on the line."
+    echo "      --help-build-targets     More detailed description of the above options."	
     echo ""
     echo "  Build options:"
-    echo "   -j|--jobs <#>               Number of parallel builds to use."
-    echo "   --build-attempts <times>    Try to build this many times. Default is [ $BUILD_ATTEMPTS ]"	
+    echo "   -j|--jobs <#>               Number of parallel builds to use. Defaults to the number of CPU cores."
     echo "   --use-directory <dir>       cd to <dir> before trying to build."
     echo "   --prebuild-script <scr>     Run script at container path <scr> before starting build. Pass 'NONE' to ignore."
-    echo "   --version                   Print version"
     echo "   --script-debug              Enable -x if passed as first argument."
-
     echo ""
     echo ""
     echo "  More information:"
@@ -104,9 +106,41 @@ function fxnHelp()
     echo "   --verbose                  More info."
     echo "   --help                     This message"
     echo "   --help-examples            Print possible configurations."
+    echo "   --version                  Version of this script."
     echo ""
 }
 
+#
+# A more detailed breakdown on what exactly gets run with which option.
+#
+function fxnHelpBuildTargets()
+{
+    echo ""
+    echo "duebuild use examples for specifying how to build REPLACE_WITH_TARGET"
+    echo ""
+	echo "In all these examples, duebuild will:"
+	echo " - REPLACE WITH ANY PRECONFIGURATION"
+	echo " - And then apply the build command."
+	echo ""
+	echo " Examples"
+    echo "  DUE command:   due --build"
+    echo "  duebuild runs: duebuild --default"
+    echo "  Build command: REPLACE"
+    echo ""
+    echo "  DUE command:   due --build --cbuild"
+    echo "  duebuild runs: duebuild --cbuild"
+    echo "  Build command: REPLACE"
+    echo ""
+    echo "  DUE command:   due --build --cbuild REPLACE WITH EXAMPLE ARGUMENTS"
+    echo "  duebuild runs: duebuild --cbuild REPLACE WITH EXAMPLE ARGUMENTS"
+    echo "  Build command: REPLACE"
+    echo ""
+    echo "  DUE command:   due --build --build-command make all"
+    echo "  duebuild runs: duebuild --build-command make all"
+    echo "  Build command: make all"
+    echo ""
+	
+}	
 # Demonstrate cases of script usage
 function fxnHelpExamples()
 {
@@ -153,6 +187,11 @@ function fxnPrintConfig()
     echo "| Invoked with:      $INVOKED_WITH"
     if [ "$DO_DEFAULT" != "" ];then
         echo "| Building with default settings"
+    fi
+    if [ "$RAW_BUILD_COMMAND" != "" ];then
+        echo "| build command:     $RAW_BUILD_COMMAND"
+    else
+        echo "| build command:      REPLACE"
     fi	
     echo "|"
     echo "| Build dir            [ $(pwd) ]"
@@ -170,7 +209,7 @@ function fxnPrintConfig()
 
 
 
-# Function to replace sbuild
+# Function to build whatever the target is
 function fxnDoBuild()
 {
 
@@ -181,6 +220,20 @@ function fxnDoBuild()
         echo ""
 
         # And BUILD_ARGS was set
+
+		if [ "$RAW_BUILD_COMMAND" != "" ];then
+            failMsg="$RAW_BUILD_COMMAND failed with error "
+            fxnMSG "Building in [ $(pwd) ] with [ $RAW_BUILD_COMMAND ].  Attempt [ $BUILD_ATTEMPTS ]. "
+			# Run a non-default build command after setup
+            echo "bash -c  $RAW_BUILD_COMMAND"
+            bash -c " $RAW_BUILD_COMMAND"
+        else
+            failMsg="dpkg-buildpackage $BUILD_ARGS failed with error "
+            fxnMSG "Building in [ $(pwd) ] with [ $BUILD_ARGS ].  Attempt [ $BUILD_ATTEMPTS ]. "
+            # And ADDITIONAL_BUILD_ARGS was set
+            echo "bash -c  'default build command goes here'"
+			#  bash -c " default build command "
+        fi
 
         bash -c " echo 'Build command goes here in duebuild script.'"
         result="$?"
@@ -203,7 +256,6 @@ function fxnDoBuild()
 
 
     fxnMSG "Built [ $BUILD_TARGET_DIR_NAME ] - list follows:"
-    # use grep to avoid errors when no .debs found
 
     echo ""
 }
@@ -237,6 +289,10 @@ if [ "$#" = "0" ];then
     fxnHelp
     exit 0
 fi
+
+# Track this. --jobs and -j* by themselves don't count as a non-default
+#  build command.
+TOTAL_COMMAND_LINE_ARGS="$#"
 
 #
 # Gather arguments and set action flags for processing after
@@ -274,6 +330,20 @@ do
 			fi
             ;;
 
+        --build-command )
+            # Default to build everything in container context
+            DO_BUILD="TRUE"
+            if [ "$2" != "" ];then
+                # More arguments?
+                # skip over --build-command
+                shift
+                # The rest of the arguments passed should be given verbatim to
+                # whatever the build command is.
+                RAW_BUILD_COMMAND="$*"
+            fi
+            break
+            ;;
+		
 		--default )
 			DO_DEFAULT="TRUE"
 			# --default is an exported hook that can be be called by DUE 
@@ -288,6 +358,11 @@ do
         -j* )
             # number of build job threads
             BUILD_JOBS="${term#-j}"
+            # If only jobs were specified, do default build
+            if [ "$TOTAL_COMMAND_LINE_ARGS" = 1 ];then
+                DO_DEFAULT="TRUE"
+                DO_BUILD="TRUE"
+            fi
             ;;
 
         --jobs )
@@ -296,6 +371,11 @@ do
             if [ "$2" = "" ];then
                 fxnERR "--jobs requires a #"
                 exit 1
+            fi
+            # If only jobs were specified, do default build
+            if [ "$TOTAL_COMMAND_LINE_ARGS" = 2 ];then
+                DO_DEFAULT="TRUE"
+                DO_BUILD="TRUE"
             fi
             shift
             ;;
@@ -338,11 +418,19 @@ do
             exit 0
             ;;
 
+        --help-build-targets)
+            # Examples of what gets invoked for each build option.
+            fxnHelpBuildTargets
+            exit 0
+            ;;
+
         --verbose )
+            # Unused for now
             DO_VERBOSE="TRUE"
             ;;
 
         --quiet )
+            # Unused for now
             DO_QUIET="TRUE"
             ;;
 
@@ -368,7 +456,8 @@ fi
 if [ "$DO_BUILD" = "TRUE" ];then
 
     if [ "$ADDITIONAL_BUILD_ARGS" != "" ];then
-        # User is overriding defaults to dpkg-buildpackage
+        # User is overriding defaults.
+        # take it literally with no defaults.
         BUILD_ARGS="$ADDITIONAL_BUILD_ARGS"
     fi
 
@@ -411,11 +500,20 @@ if [ "$DO_BUILD" = "TRUE" ];then
 
     fxnPP "Building with dev version $DEV_PACKAGE_VERSION"
     fxnDoBuild  2>&1 | tee -a  "$BUILD_LOG_FILE"
-    
+fi    
 
-    # Preserve exit code through exit trap
-    RETURN_CODE=${PIPESTATUS[0]}
+# Preserve exit code through exit trap
+RETURN_CODE=${PIPESTATUS[0]}
 
-    exit "$RETURN_CODE"
 
-fi
+
+
+if [ "$RETURN_CODE" = "0" ];then
+        fxnPP "Success"
+		# Add post build actions
+        fxnPP "Build finished at [ $(date) ]"
+else
+    fxnERR "Build FAILED with return code [ $RETURN_CODE ] at [ $(date) ]"
+
+
+exit "$RETURN_CODE"

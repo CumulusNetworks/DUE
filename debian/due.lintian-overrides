@@ -1,13 +1,13 @@
 # templates contain #!/bin/bash, but are not executable
 # as they should not be executed on their own.
 # They get processed into scripts that are executable
-#  Test with: lintian --info --verbose ../due_1.6.0_all.deb
-#  Test with: lintian --info --verbose ../due_1.6.0_amd64.changes 
+#  Test with: lintian --info --verbose ../due_2.0.0-1_all.deb
+#  Test with: lintian --info --verbose ../due_2.0.0-1_amd64.changes 
 #  See examples in /usr/share/lintian/overrides
 
+# libdue gets included, but is not executed on it's own
 due: script-not-executable usr/lib/libdue
+# The template for the library does not get executed.
 due: script-not-executable usr/share/due/templates/common-templates/install-config-common-lib.template
-
-
-
-
+# This one seems to be a false positive
+due: shell-script-fails-syntax-check usr/share/due/templates/common-templates/filesystem/usr/local/bin/duebuild

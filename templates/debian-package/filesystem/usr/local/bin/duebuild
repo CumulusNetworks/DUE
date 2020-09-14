@@ -85,19 +85,28 @@ function fxnMSG ()
 
 function fxnHelp()
 {
-    echo "Usage  : $(basename "$0"): [--cbuild|--source --type-arch-debs --type-all-debs ] <name>"
-    echo "  This script mimics sbuild with a few additional arguments."
+    echo""
+    echo "Usage  : $(basename "$0"): [--default|--cbuild|--build-dsc|--build-command] <name>"
+    echo "  This script is a default run target for due --build."
+    echo "  It performs build environment configuration before running one of the "
+    echo "  build target commands. "
     echo ""
-    echo "  Build targets:"
-    echo "   -c|--cbuild <args>          <args> takes the rest of the command line and passes it"
-    echo "                               to dpkg-buildpackage. Must be the last argument on the line."
-    echo "      --build-dsc <.dsc file>  Build from debian source control file .dsc and associated tar.gz"
-    echo "      --default                Try to build with default settings."
+    echo "  Build target commands."
+    echo "      --default                Build with default settings: dpkg-buildpackage -uc -us -j<max>"
+    echo "   -c|--cbuild <args>          Supply <args> to dpkg-buildpackage. If no args, build with defaults."
+    echo "                               This must be the last argument on the line as everything after is passed."
     echo "      --build-command <args>   Do environment prep and run <args>. Must be last argument on the line."
+    echo "      --help-build-targets     More detailed description of the above options."
+    echo "      --build-dsc <.dsc file>  Build from debian source control file .dsc and associated tar.gz."
     echo ""
     echo "  Build options:"
-    echo "   -j|--jobs <#>               Number of parallel builds to use."
-    echo "   --skip-tests                define DEB_BUILD_OPTIONS=nocheck before build."
+    echo "   -j|--jobs <#>               Number of parallel builds to use. Defaults to the number of CPU cores."
+    echo "   --use-directory <dir>       cd to <dir> before trying to build."
+    echo "   --prebuild-script <scr>     Run script at container path <scr> before starting build. Pass 'NONE' to ignore."
+    echo "   --script-debug              Enable -x if passed as first argument."
+    echo ""
+    echo "  Debian package build options:"
+    echo "   --skip-tests                Define DEB_BUILD_OPTIONS=nocheck before build."
     echo "   --deb-build-option <opt>    Add 'opt' to DEB_BUILD_OPTIONS. Use once per option."
     echo "   --build-attempts <times>    Try to build this many times. Default is [ $BUILD_ATTEMPTS ]"
     echo "   --dev-version <vers>        Insert string into changelog package version for pre-release builds."
@@ -105,33 +114,66 @@ function fxnHelp()
     echo "   --just-dev-version          Exit after --dev-version applies"
     echo "   --set-git-hash              If building type Git, do not autodiscover, use passed hash."
     echo "   --source-date-epoch <d>     Force the creation time of files, via date +%s. Otherwise defaults to now."
-
     echo "   --source-format-one         Clear git source history from package and set source to build as 1.0"
     echo "   --install-debs-dir <dir>    Install all debs from <absolute path in container dir> before build."
-    echo "   --use-directory <dir>       cd to <dir> before trying to build."
-
-
-    echo "   --prebuild-script <scr>     Run script at container path <scr> before starting build. Pass 'NONE' to ignore."
     echo "   --add-sources-list <file>   Container relative path to include sources.list in build dir."
     echo "   --use-local-repo <repo>     Create a local package repository named <repo> to store and serve packages."
-    echo "   --version                   Print version"
-    echo "   --script-debug              Enable -x if passed as first argument."
-
-    echo ""
+    echo "                                If <repo> starts with a '/' it will be treated as a container-relative"
+    echo "                                path for the location of the repository. Otherwise it defaults to the"
+    echo "                                directory above the build area."
     echo ""
     echo "  More information:"
     echo "   --quiet                    Suppress output."
     echo "   --verbose                  More info."
     echo "   --help                     This message"
     echo "   --help-examples            Print possible configurations."
+    echo "   --version                  Version of this script."
     echo ""
 }
 
+#
+# A more detailed breakdown on what exactly gets run with which option.
+#
+function fxnHelpBuildTargets()
+{
+    echo ""
+    echo "duebuild use examples for specifying how to build Debian packages."
+    echo ""
+    echo "In all these examples, duebuild will:"
+    echo " - Upgrade the container's packages."
+    echo " - Install the package's build dependencies."
+    echo " - And then apply the build command."
+    echo ""
+    echo " Examples:"
+    echo "  DUE command:   due --build"
+    echo "  duebuild runs: duebuild --default"
+    echo "  Build command: dpkg-buildpackage -uc -us -j<max>"
+    echo "  Note: to get the same outcome from the command line, run:"
+    echo "    due --run --command sudo apt-get update \; sudo apt-get upgrade \; sudo mk-build-deps --install --remove ./debian/control --tool 'apt-get -y' \; dpkg-buildpackage -uc -us -j<max>"
+
+    echo ""
+    echo "  DUE command:   due --build --cbuild"
+    echo "  duebuild runs: duebuild --cbuild"
+    echo "  Build command: dpkg-buildpackage-uc -us -j<max>"
+    echo ""
+    echo "  DUE command:   due --build --cbuild -b"
+    echo "  duebuild runs: duebuild --cbuild -b"
+    echo "  Build command: dpkg-buildpackage-b -j<max>"
+    echo ""
+    echo "  DUE command:   due --build --build-command make all"
+    echo "  duebuild runs: duebuild --build-command make all"
+    echo "  Build command: make all"
+    echo ""
+    echo ""
+
+
+}
 # Demonstrate cases of script usage
 function fxnHelpExamples()
 {
     echo ""
-    echo " Examples:"
+    echo "duebuild examples of Debian package build options."
+    echo ""
     echo "  --cbuild passes whatever args are after it directly to dpkg-buildpackage."
     echo "  The following pulls from the dpkg-buildpackage man pages for two different versions."
     echo ""
@@ -162,16 +204,18 @@ function fxnHelpExamples()
     echo "  Set DEB_BUILD_OPTIONS values:"
     echo "   $0 --cbuild --deb-build-option debug --deb-build-option nostrip "
     echo ""
-    echo "  Store build products in a repository for future builds"
+    echo "  Store build products in a repository above the build directory for future builds"
     echo "  (i.e. building things that need other things built to build...)"
     echo "   $0 --cbuild --use-local-repo myLocalRepo "
+    echo "   Or specify that repository with an absolute (container relative) path:"
+    echo "   $0 --cbuild --use-local-repo /path/to/myLocalRepo "
     echo ""
     echo "  Do environmental setup and run dpkg-buildpackage -uc -us -j8"
     echo "   $0 --build-command dpkg-buildpackage -uc -us -j8"
     echo ""
     echo "  Examples from DUE:"
     echo "   Build package with 'nostrip' and 'debug' options, "
-    echo "   unsigned source, unsinged changes file, build binary, 5 jobs,"
+    echo "   unsigned source, unsigned changes file, build binary, 5 jobs,"
     echo "   and reference local package repository 'myLocalRepo'"
     echo "     due --build --jobs 5 --deb-build-option nostrip "
     echo "     --deb-build-option debug --use-local-repo myLocalRepo "
@@ -416,12 +460,21 @@ function fxnUseLocalPackageRepository()
         useArchitecture=$( dpkg-architecture --query DEB_TARGET_ARCH )
     fi
 
-    LOCAL_PACKAGE_REPOSITORY_PATH=$( realpath "${BUILD_DIR}/.." )
-    echo "Using path $LOCAL_PACKAGE_REPOSITORY_PATH"
+    #
+    # Is the repository given as an absolute path?
+    # (it starts with a '/' ?)
+    if [[ $repoName == /* ]];then
+        # An absolute path
+        LOCAL_PACKAGE_REPOSITORY_PATH=$( realpath "${repoName}/.." )
+        LOCAL_PACKAGE_REPOSITORY_ROOT="${repoName}"
+        echo "Using ABSOLUTE  path to repository $LOCAL_PACKAGE_REPOSITORY_ROOT"
+    else
+        # A relative path. Drop it local.
+        LOCAL_PACKAGE_REPOSITORY_PATH=$( realpath "${BUILD_DIR}/.." )
+        LOCAL_PACKAGE_REPOSITORY_ROOT="${LOCAL_PACKAGE_REPOSITORY_PATH}/${repoName}"
+        echo "Using RELATIVE path to repository $LOCAL_PACKAGE_REPOSITORY_ROOT"
+    fi
 
-    LOCAL_PACKAGE_REPOSITORY_DIR=$( realpath "${BUILD_DIR}/.." )
-    echo "Using path $LOCAL_PACKAGE_REPOSITORY_DIR"
-    LOCAL_PACKAGE_REPOSITORY_ROOT="${LOCAL_PACKAGE_REPOSITORY_DIR}/${repoName}"
 
     poolDir="${LOCAL_PACKAGE_REPOSITORY_ROOT}/pool"
     debsDir="${LOCAL_PACKAGE_REPOSITORY_ROOT}/debs"
@@ -563,13 +616,18 @@ function fxnDoDebianBuild()
     fi
     sudo apt-get update || fxnWARN "apt-get update failed. Continuing with local index."
 
-    fxnPP "Upgrading local packages so that any already installed build dependencies are up to date."
-    sudo apt-get upgrade --assume-yes || fxnWARN "apt-get upgrade failed. Continuing with local index."
+    fxnPP "Upgrading local packages so that any already installed build dependencies are up to date. Keeping existing config files."
+    # stick with existing configurations if asked. Not entirely sure this is good in all cases.
+    export DEBIAN_FRONTEND=noninteractive
+    sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade \
+         -o Dpkg::Options::="--force-confdef" \
+         -o Dpkg::Options::="--force-confold" \
+         --assume-yes || fxnWARN "apt-get upgrade failed. Continuing with local index."
 
     # Make sure the environment has the tools to configure the environment.
     if [ ! -e /usr/bin/mk-build-deps ];then
         fxnPP "Failed to find mk-build-deps. Installing devscripts and equivs."
-        fxnEC sudo apt-get install --assume-yes equivs devscripts || exit 1
+        fxnEC sudo DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes equivs devscripts || exit 1
     fi
 
 
@@ -578,6 +636,10 @@ function fxnDoDebianBuild()
     # remove the .deb after to keep git from FREAKING OUT!
     sudo mk-build-deps --install --remove ./debian/control --tool "apt-get -y"
     errorCode="$?"
+    if [ "$errorCode" = "25" ];then
+        fxnWARN "mk-build-deps finds no dependencies? Well, let's see where this goes...."
+        errorCode=0
+    fi
     if [ "$errorCode" != "0" ];then
         #note that an error was hit in case it's not a lack of dependencies.
         fxnERR "Hit error [ $errorCode ] in : sudo mk-build-deps --install ./debian/control --tool apt-get -y"
@@ -609,7 +671,7 @@ function fxnDoDebianBuild()
     #
     rm -f due-build-deps_*.buildinfo
     rm -f due-build-deps_*.changes
-    
+
     #
     # If setting source to 1.0 for universal rebuild
     #
@@ -889,8 +951,8 @@ do
             shift
             ;;
 
-		# take --build as it tends to get typed in container
-		# --cbuild is clearer when invoking from outside the container
+        # take --build as it tends to get typed in container
+        # --cbuild is clearer when invoking from outside the container
         -c | --cbuild | --build )
             # Default to build everything in container context
             DO_BUILD="TRUE"
@@ -1055,13 +1117,19 @@ do
             exit 0
             ;;
 
+        --help-build-targets)
+            # Examples of what gets invoked for each build option.
+            fxnHelpBuildTargets
+            exit 0
+            ;;
+
         --verbose )
-	    # Unused for now
+            # Unused for now
             DO_VERBOSE="TRUE"
             ;;
 
         --quiet )
-	    # Unused for now
+            # Unused for now
             DO_QUIET="TRUE"
             ;;
 
@@ -1091,9 +1159,9 @@ if [ "$version" != "" ];then
     fxnMSG "Jessie era dpkg detected. Updating arguments."
     USE_JESSIE_DPKG="TRUE"
 
-	# Jessie apt has a bug where it tries to close 100K plus files in the shell.
-	# Set bash ulimit to max at 10000 to speed this up.
-	ulimit -n 10000
+    # Jessie apt has a bug where it tries to close 100K plus files in the shell.
+    # Set bash ulimit to max at 10000 to speed this up.
+    ulimit -n 10000
 fi
 
 # Arguments passed to the dpkg build. This gets
