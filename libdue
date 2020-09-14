@@ -1831,3 +1831,13 @@ function fxnSetContainerSpecificArgs()
     esac
 
 }
+
+######################################################################
+# Editor hints for sh syntax interpretation
+# Append as necessary.
+######################################################################
+
+# For Emacs
+# Local Variables:
+# mode: sh
+# End:
