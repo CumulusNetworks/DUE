@@ -1,4 +1,4 @@
-#!/bin/bash
+# /bin/bash syntax
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0  
 # SCRIPT_PURPOSE: Run configuration inside the docker container, after package install.
 # Bash should be installed at this point.
@@ -119,3 +119,13 @@ function fxnInstallAptKeys()
 		ls -l ${CONF_DIR}/etc/apt/trusted.gpg.d/	
 	fi
 }
+
+######################################################################
+# Editor hints for sh syntax interpretation
+# Append as necessary.
+######################################################################
+
+# For Emacs
+# Local Variables:
+# mode: sh
+# End:
