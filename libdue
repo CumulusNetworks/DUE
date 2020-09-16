@@ -43,6 +43,8 @@ KNOWN_IMAGES="
  debian:10
  ubuntu:18.04
  arm32v5/debian:jessie
+ arm32v7/debian:10
+ arm64v8/debian:10
  ppc64le/debian:10
 "
 
@@ -563,10 +565,17 @@ function fxnMakeNewDockerImage()
         #
         # Take advantage of a naming convention to figure out which qemu-<arch>-static to copy.
         #
-        if [ "$HOST_ARCH" != "$imageArchitecture" ];then
-            # If this is an x86 system, building an armel container...
-            fxnPP "Image architecture [ $imageArchitecture ] does not match host's [ $HOST_ARCH ]. Copying qemu-${imageArchitecture}-static in for emulation."
 
+        if [ "$HOST_ARCH" != "$imageArchitecture" ];then
+            #
+			# ...although the naming convention doesn't always match.
+			# start stacking exceptions here for clarity.
+			case $imageArchitecture in
+				arm64 )
+					imageArchitecture="aarch64"
+					;;
+			esac
+            fxnPP "Image architecture [ $imageArchitecture ] does not match host's [ $HOST_ARCH ]. Copying qemu-${imageArchitecture}-static in for emulation."
             # Have qemu-*-static in there so it can run
             fxnPP "Adding qemu-${imageArchitecture}-static to $imageName/filesystem/usr/bin/qemu-${imageArchitecture}-static."
             if [ ! -e /usr/bin/qemu-"${imageArchitecture}"-static ];then
