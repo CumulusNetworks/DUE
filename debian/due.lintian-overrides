@@ -3,5 +3,5 @@
 #  Test with: lintian --info --verbose ../due_2.0.0-1_amd64.changes 
 #  See examples in /usr/share/lintian/overrides
 
-# This one seems to be a false positive
+# a false positive, a `bash` script gets syntax check with `sh -n`
 due: shell-script-fails-syntax-check usr/share/due/templates/common-templates/filesystem/usr/local/bin/duebuild
