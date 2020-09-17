@@ -24,4 +24,3 @@ Description: Dedicated User Environment: manage build environments in Docker con
  version or architecture of any Debian release, and provides a launcher
  application to reduce complexity and let the developer 'just build it',
  whatever 'it' may happen to be.
- 

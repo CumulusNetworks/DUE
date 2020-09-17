@@ -19,7 +19,7 @@ MAN_PAGE = docs/due.1
 
 # Discover any template builds before make targets
 # Forces wildcard cache to be up to date
-build: 
+build:
 
 # Build
 %:
@@ -76,4 +76,3 @@ endif
 
 # Execute Debian clean
 	dh_clean
-
