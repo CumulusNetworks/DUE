@@ -6,8 +6,8 @@ Build-Depends: debhelper (>= 10),
 	       git
 Standards-Version: 4.3.0
 Homepage: https://github.com/CumulusNetworks/DUE
-Vcs-Browser: https://github.com/CumulusNetworks/DUE
-Vcs-Git: https://github.com/ehdoyle/DUE.git
+Vcs-Browser: https://github.com/CumulusNetworks/DUE/tree/debian/master
+Vcs-Git: https://github.com/ehdoyle/DUE.git -b debian/master
 
 Package: due
 Architecture: all
