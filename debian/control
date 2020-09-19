@@ -1,6 +1,6 @@
 Source: due
 Maintainer: Alex Doyle <alexddoyle@gmail.com>
-Section: admin
+Section: devel
 Priority: optional
 Build-Depends: debhelper (>= 10),
 	       git
