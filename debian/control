@@ -1,5 +1,6 @@
 Source: due
 Maintainer: Alex Doyle <alexddoyle@gmail.com>
+Uploaders: Geert Stappers <stappers@debian.org>
 Section: devel
 Priority: optional
 Build-Depends: debhelper (>= 10),

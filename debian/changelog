@@ -1,5 +1,9 @@
 due (2.0.0-1) unstable; urgency=medium
 
+  [ Alex Doyle ]
   * Initial upload. Closes: #931617
 
- -- Alex Doyle <alexddoyle@gmail.com>  Fri, 21 Aug 2020 21:53:56 -0700
+  [ Geert Stappers ]
+  * Uploader
+
+ -- Alex Doyle <alexddoyle@gmail.com>  Sat, 19 Sep 2020 22:39:58 +0200
