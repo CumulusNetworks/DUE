@@ -1,3 +1,17 @@
+due (2.0.0-3) unstable; urgency=medium
+
+  * Three times should be a charm, closes: #961371.
+
+ -- Geert Stappers <stappers@debian.org>  Sun, 27 Sep 2020 10:45:53 +0200
+
+due (2.0.0-2) unstable; urgency=medium
+
+  * Source only upload, to allow migrate to testing.
+  * Mention of the correct ITP, closes: #963171.
+  * Consolidation of git repositories.
+
+ -- Geert Stappers <stappers@debian.org>  Sun, 27 Sep 2020 09:43:19 +0200
+
 due (2.0.0-1) unstable; urgency=medium
 
   [ Alex Doyle ]
