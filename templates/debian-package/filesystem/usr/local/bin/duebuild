@@ -636,34 +636,39 @@ function fxnDoDebianBuild()
     # remove the .deb after to keep git from FREAKING OUT!
     sudo mk-build-deps --install --remove ./debian/control --tool "apt-get -y"
     errorCode="$?"
-    if [ "$errorCode" = "25" ];then
-        fxnWARN "mk-build-deps finds no dependencies? Well, let's see where this goes...."
-        errorCode=0
-    fi
+    echo ""
     if [ "$errorCode" != "0" ];then
-        #note that an error was hit in case it's not a lack of dependencies.
-        fxnERR "Hit error [ $errorCode ] in : sudo mk-build-deps --install ./debian/control --tool apt-get -y"
+        if [ "$errorCode" = "1" ];then
+            # Failed to find dependencies
 
-        # Sometimes this gets thrown by prior <pkg>-build-deps*deb files,
-        # so try it clean.
+            # Print what was trying to be installed
+            fxnPrintMissingBuildDependencies
 
-        # Print what was trying to be installed
-        fxnPrintMissingBuildDependencies
+            fxnPP "Running apt-get update to make sure package lists are up to date."
+            sudo apt-get update
 
-        fxnPP "Running apt-get update to make sure package lists are up to date."
+            # Go through the list. Since any one failure will break the installation of everything,
+            # try installing one at a time to figure out what will install, and reduce debug down
+            # to those packages that are truly broken.
+            fxnIsolatePackageDependencies
 
-        sudo apt-get update
+            # Things should be as fixed as possible by this point, so run it again to highlight the errors,
+            # or continue if everything fixed itself
+            fxnIsolatePackageDependencies || exit 1
 
-        # Go through the list. Since any one failure will break the installation of everything,
-        # try installing one at a time to figure out what will install, and reduce debug down
-        # to those packages that are truly broken.
 
-        fxnIsolatePackageDependencies
-
-        # Things should be as fixed as possible by this point, so run it again to highlight the errors,
-        # or continue if everything fixed itself
-        fxnIsolatePackageDependencies || exit 1
-    fi
+        elif [ "$errorCode" = "25" ];then
+            fxnWARN "mk-build-deps error [ $errorCode ] finds no dependencies? Well, let's see where this goes...."
+            errorCode=0
+        elif [ "$errorCode" = "29" ];then
+            fxnERR "mk-build-deps error [ $errorCode ] found dependencies but they failed to install properly. Your packages may be in an unstable state. Exiting."
+            exit 1
+        else
+            #note that an error was hit in case it's not a lack of dependencies.
+            fxnERR "mk-build-deps error [ $errorCode ] in : sudo mk-build-deps --install ./debian/control --tool apt-get -y."
+            exit 1
+        fi
+    fi # errorCode non zero
     echo ""
 
     #
@@ -1338,6 +1343,7 @@ if [ "$DO_BUILD" = "TRUE" ];then
 
         packageName=$( basename "${BUILD_SOURCE_DSC_FILE%%_*}" )
 
+        packageName=$( basename "${BUILD_SOURCE_DSC_FILE%%_*}" )
 
         # list most recent directory
         buildDir=$( ls -1rd -- */ | grep "$packageName" | tail -n 1)
