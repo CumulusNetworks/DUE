@@ -1,3 +1,16 @@
+due (2.1.0-1) unstable; urgency=medium
+
+  * debian-package: duebuild now builds binaries by default, not source as well.
+  * debian-package: fixed incorrect examples in help-examples.
+  * debian-package: --use-local-repo now usues due-manage-local-repo.sh.
+  * debian-package: added due-manage-local-repo.sh to let the user add/remove local pacakges.o
+  * debian-package: README.md - updated with due-manage-local-repo.sh documentation.
+  * debian-package: duebuild - better error handling on dependency install fails.
+  * common-templates: c-add-docker-user script will add user to docker group, if it exists
+  * onie: Initial support for a Debian 10 build environment
+
+ -- Alex Doyle <adoyle@nvidia.com>  Fri, 27 Nov 2020 17:00:00 -0700
+
 due (2.0.0-1) unstable; urgency=medium
 
   * Initial upload. Closes: #931617
