@@ -182,7 +182,14 @@ function fxnAddUserInContainer()
             # Do not require password to become root via 'sudo su'
             echo "$USER_NAME       ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
 
-
+            # If this container has Docker installed and will be using it.
+            if [ "$HOST_DOCKER_GID" != "" ];then
+                # Make sure the user a member of the docker group.
+                if grep -q "docker:" /etc/group ; then
+                    fxnPP "| Adding user to docker group "
+                    fxnEC adduser "$USER_NAME" docker > /dev/null || exit 1
+                fi
+            fi
 
             if [ -e /etc/due-bashrc ];then
                 echo "|___________________________________________________________________________|"

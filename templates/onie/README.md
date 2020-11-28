@@ -5,7 +5,7 @@ Create ONIE build environments using a Debian 8 (Jessie) or Debian 9 (Stretch) i
 Currently Debian 10 (and related releases) aren't supported by ONIE.  
 
 ## ONIE build environment creation example:
-Create the latest default ONIE build environment with: ./due --create --from debian:10  --description "ONIE Build Debian 10" --name onie-build-debian-10 --prompt ONIE-10 --tag onie --use-template onie
+Create the latest default ONIE build environment with: ./due --create --from debian:10 --description "ONIE Build Debian 10" --name onie-build-debian-10 --prompt ONIE-10 --tag onie --use-template onie
 **OR**
 Create the latest default ONIE build environment with: ./due --create --from debian:9  --description "ONIE Build Debian 9" --name onie-build-debian-9 --prompt ONIE-9 --tag onie --use-template onie  
 **OR**  

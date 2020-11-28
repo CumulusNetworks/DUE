@@ -12,8 +12,8 @@ Create default Debian 10 build environment with: ./due --create --from debian:10
   * Set the prompt in container to be PGKD10 so the context is (more) obvious
   * Merge in the files from ./templates/debian-package when creating the configuration directory
 
-## Debian 10 armel build environment creation example
-Create default Debian 10 build environment with: ./due --create --from arm32v5/debian:10    --description "Package Build for arm32v5/Debian 10" --name package-armel-debian-10 --prompt PKGD10-arm --tag package-armel-debian-10 --use-template debian-package  
+## Debian 10 armel build environment creation example:
+Create default Debian 10 Debian package build environment with: ./due --create --from arm32v5/debian:10    --description "Package Build for arm32v5/Debian 10" --name pkg-armel-debian-10 --prompt PKGD10-arm --tag pkg-armel-debian-10 --use-template debian-package  
 
 ## Debian Sid (unstable)  build environment image creation example:
 Create default Debian Sid  Debian package build environment with: ./due --create --from debian:sid   --description "Package Build for Debian Unstable" --name pkg-sid --prompt PKGSid --tag pkg-sid --use-template debian-package
@@ -45,6 +45,10 @@ In the case of the **debian-package** duebuild script, `due --build` will:
   
 For additional options, you can run the duebuild help for a container with:  
 `due --help --duebuild <select container> `
+
+## /usr/local/bin/due-manage-local-repo.sh
+A script for managing a local package repository. See its command line help for details, and  
+**`Building a package that depends on previously built packages`** below.
 
 
 # Use
@@ -96,13 +100,13 @@ a bit of abstraction so as to not bother the user with the details of the build.
 **Description:** This will run `duebuild` to:  
 1. Upgrade all packages in the container.
 2. Resolve and install all build dependencies for the package being built
-3. Execute a `dpkg-buildpackage -uc -us` to produce deb(s) in the directory above the one where the build is being run.  
+3. Execute a `dpkg-buildpackage -b -us` to produce deb(s) in the directory above the one where the build is being run.  
 
 **Example:** due --run --build --default
 
 #### Build a Debian package from source using a .dsc file
 Given a compressed tar file and a Debian Source Code (dsc) file, DUE will configure the source directories and attempt to build.
-**Example:** due --run --build --build-dsc foo.dsc
+**Example:** due --run-image due-package-debian-10 --build-dsc foo.dsc
 **Example:** due --duebuild --build-dsc foo.dsc
 
 #### Using `--build --cbuild`
@@ -120,48 +124,57 @@ It's just another way of arriving at the final makefile invocation, however.
 
 ### Adding `DEB_BUILD_OPTIONS`
 **Purpose** Passing options that change the build, like `debug` or `nostrip`  
-**Example** `due --build --deb-build-option debug --deb-build-option nostrip`__
+**Example** `due --build --deb-build-option debug --deb-build-option nostrip`
 
 Specify one argument per `--deb-build-option` to have the duebuild script 
 set the `DEB_BUILD_OPTIONS=` prior to running dpkg-buildpackage. You can confirm what 
 was set by checking the build log output for the header that describes how 
 dpkg-buildpackage was run.
 
-### Building a package that depends on previously built packages  
+### Building a package that depends on previously built packages
 **Purpose** use a local package repository to store and serve built packages.  
 **Example** ``due --run --build --use-local-repo myRepo``  
 Or:  
-**Example** ``due --run --image due-package-debian-10 --build --use-local-repo myRepo``  
+**Example** ``due --run--image due-package-debian-10 --build --use-local-repo myRepo``  
+Or:  
+**Example** ``due --run-image due-package-debian-10 --build --use-local-repo myRepo --cbuild --build=binary --unsigned-changes``  
 
-The ``--use-local-repo`` option will create a local Debian package repository in the
-directory above the build directory, and the DUE container will use packages from 
-it at the start of build, and add all built packages to it at the end of build.  
+
+If just a repository name is passed, the ``--use-local-repo`` option will create a local
+Debian package repository in the directory above the build directory.
+If an absoulte path and name are passed, the repository will be created at that location as seen from the **container**.
+Either way, this repository will get an entry in the container's sources.list.d/ and will have the highest priority.
+If it does not already exist, duebuild will create it at the start of build, and add all built packages to it at the end of build.  
     
 This is incredibly helpful when building packages that depend on other packages to have already been built.  
     
-For Example - if package B depends on files supplied by package A  
+**For Example** - if package B depends on files supplied by package A  
 
 `cd package-A`  
 
 Now use a previously built Debian 10 image by default, and name the repository myRepo.  
-`due --run --build --image due-package-debian-10 --build --use-local-repo myRepo`  
+`due --run--image due-package-debian-10 --build --use-local-repo myRepo`  
 
-The duebuild script in the container  looks for `myRepo`, fails to find it, creates it, and then accesses it,
-resulting in a few warnings because the repository isn't populated.  
+The duebuild script in the container  looks for `myRepo`, fails to find it, creates it, adds an /etc/apt/sources.list.d entry, 
+and then accesses it, resulting in a few warnings because the repository isn't populated.  
 
-The build completes and the *.debs are put in `myRepo`  
+The build completes and the package-A *.debs are put in `myRepo`  
 
 `cd package-B`  
 
-`due --run --build --image due-package-debian-10 --build --use-local-repo myRepo`  
-The duebuild script adds `myRepo` as a high priority repository and creates a
-sources.list entry for it.  
+`due --run--image due-package-debian-10 --build --use-local-repo myRepo`  
+The duebuild script sees the exising local package repository `myRepo` as a high priority repository and references it on apt-update.
 The build proceeds, with the package-A *.debs being accessed.  
 The build completes, and package-B debs are added to `myRepo`
 
-*Caveats*: There is some overlap here with the `--install-debs-dir` option.  
-Also this has only been tested with .debs of a single architecture. Using source tar files
-and multiple architectures may not work.
+For additional information about managing a local package repository,  
+see the command line help for `/usr/local/bin/due-manage-local-repo.sh.`  
+
+**Caveats**:
+1 - If you supply an absolute path to the repository when invoking builds from outside
+     the container, make sure that path exists from the **container's** execution context.	 
+2 - There is some overlap here with the `--install-debs-dir` option.  
+3 - Also this has only been tested with .debs of a single architecture. Using source tar files and multiple architectures may not work.
 
 ### Doing dependency install and running your own build command  
 **Purpose** a finer level of control over dpkg-buildpackage, or anything else  
@@ -174,11 +187,26 @@ Note that `--build-command` must be the last argument, as everything after that
 is passed through...and you may have to escape quote terms, as illustrated above.
 
 ## Debugging
-Or, a descriptive collection of ways things have failed. Expect this list to grow.  
+If you get a build error that contains:
+ `dpkg-source: aborting due to unexpected upstream changes`
+ ... you have an existing source tar file above your build directory and you are trying ot build source
+ - Override the default build configuration by adding `--cbuild --build=binary --unsigned-changes`
+Ex: `due --run-image due-pkg-sid --build --cbuild --build=binary --unsigned-changes`
+ 
+
+due --run-image due-pkg-sid --build --use-local-repo trepo --cbuild --build=binary -j8
+
+due --run-image due-pkg-sid --build --use-local-repo trepo --cbuild --build=binary --unsigned-changes
 
 ### Enable debug in the duebuild script.
 **Purpose** See exactly how the script in the container is interpreting things, without getting into it.  
 **Example** due --duebuild --script-debug --cbuild  
 
 #  Additional notes:
-None.
+
+The `duebuild` script now defaults to just building unsigned package binaries, on the assumption that most users
+downloading source will just want to build the binaries and be about their day.  
+Previously it defaulted to building source as well, but this can fail if the original tar files are around,
+and no changes have been made, breaking the objective of the default configuration to just produce soemthing useful.
+
+

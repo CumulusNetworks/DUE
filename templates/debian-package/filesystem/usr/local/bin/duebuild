@@ -86,13 +86,13 @@ function fxnMSG ()
 function fxnHelp()
 {
     echo""
-    echo "Usage  : $(basename "$0"): [--default|--cbuild|--build-dsc|--build-command] <name>"
+    echo "Usage  : $(basename "$0"): [Deb build options] [--default|--cbuild|--build-dsc|--build-command] <name>"
     echo "  This script is a default run target for due --build."
     echo "  It performs build environment configuration before running one of the "
     echo "  build target commands. "
     echo ""
     echo "  Build target commands."
-    echo "      --default                Build with default settings: dpkg-buildpackage -uc -us -j<max>"
+    echo "      --default                Build with default settings: dpkg-buildpackage -b -uc -j<max>"
     echo "   -c|--cbuild <args>          Supply <args> to dpkg-buildpackage. If no args, build with defaults."
     echo "                               This must be the last argument on the line as everything after is passed."
     echo "      --build-command <args>   Do environment prep and run <args>. Must be last argument on the line."
@@ -105,7 +105,7 @@ function fxnHelp()
     echo "   --prebuild-script <scr>     Run script at container path <scr> before starting build. Pass 'NONE' to ignore."
     echo "   --script-debug              Enable -x if passed as first argument."
     echo ""
-    echo "  Debian package build options:"
+    echo "  Debian package build options (use before --cbuild):"
     echo "   --skip-tests                Define DEB_BUILD_OPTIONS=nocheck before build."
     echo "   --deb-build-option <opt>    Add 'opt' to DEB_BUILD_OPTIONS. Use once per option."
     echo "   --build-attempts <times>    Try to build this many times. Default is [ $BUILD_ATTEMPTS ]"
@@ -199,16 +199,16 @@ function fxnHelpExamples()
     echo "   $0 --cbuild "
     echo ""
     echo "  Insert a string into the version"
-    echo "   $0 --cbuild --dev-version ~1234"
+    echo "   $0 --dev-version ~1234 --cbuild"
     echo ""
     echo "  Set DEB_BUILD_OPTIONS values:"
-    echo "   $0 --cbuild --deb-build-option debug --deb-build-option nostrip "
+    echo "   $0 --deb-build-option debug --deb-build-option nostrip --cbuild "
     echo ""
     echo "  Store build products in a repository above the build directory for future builds"
     echo "  (i.e. building things that need other things built to build...)"
-    echo "   $0 --cbuild --use-local-repo myLocalRepo "
+    echo "   $0 --use-local-repo myLocalRepo --cbuild "
     echo "   Or specify that repository with an absolute (container relative) path:"
-    echo "   $0 --cbuild --use-local-repo /path/to/myLocalRepo "
+    echo "   $0 --use-local-repo /path/to/myLocalRepo --cbuild "
     echo ""
     echo "  Do environmental setup and run dpkg-buildpackage -uc -us -j8"
     echo "   $0 --build-command dpkg-buildpackage -uc -us -j8"
@@ -448,12 +448,7 @@ function fxnUseLocalPackageRepository()
     local useArchitecture="$2"
     local addContentsDir="$3"
 
-    local repositoryDistribution="local-due-repo"
-    local repositoryComponent="main"
-    local sourcesListFile="local-build-repo.list"
-    local aptPreferencesFile="/etc/apt/preferences.d/10local-build-repo"
-    local poolDir
-    local debsDir
+    local repoPath=""
 
     if [ "$useArchitecture" = "default" ];then
         # Use target arch as that represents the end build product.
@@ -465,131 +460,22 @@ function fxnUseLocalPackageRepository()
     # (it starts with a '/' ?)
     if [[ $repoName == /* ]];then
         # An absolute path
-        LOCAL_PACKAGE_REPOSITORY_PATH=$( realpath "${repoName}/.." )
-        LOCAL_PACKAGE_REPOSITORY_ROOT="${repoName}"
-        echo "Using ABSOLUTE  path to repository $LOCAL_PACKAGE_REPOSITORY_ROOT"
+        repoPath="$repoName"
     else
         # A relative path. Drop it local.
-        LOCAL_PACKAGE_REPOSITORY_PATH=$( realpath "${BUILD_DIR}/.." )
-        LOCAL_PACKAGE_REPOSITORY_ROOT="${LOCAL_PACKAGE_REPOSITORY_PATH}/${repoName}"
-        echo "Using RELATIVE path to repository $LOCAL_PACKAGE_REPOSITORY_ROOT"
+        repoPath="$( realpath "${BUILD_DIR}/.." )/${repoName}"
     fi
+    echo "$repoPath"
 
-
-    poolDir="${LOCAL_PACKAGE_REPOSITORY_ROOT}/pool"
-    debsDir="${LOCAL_PACKAGE_REPOSITORY_ROOT}/debs"
-
-    # Location of binary specific section within the local repo
-    repositoryBinDir=${LOCAL_PACKAGE_REPOSITORY_ROOT}/dists/${repositoryDistribution}/${repositoryComponent}/binary-${useArchitecture}
-
-
-    if [ ! -e "$LOCAL_PACKAGE_REPOSITORY_ROOT" ];then
-        fxnPP "Creating directories for local Debian package repository at: $LOCAL_PACKAGE_REPOSITORY_PATH"
-        fxnEC mkdir "$LOCAL_PACKAGE_REPOSITORY_ROOT" || exit 1
-        fxnPP "Creating $debsDir"
-        fxnEC mkdir "$debsDir" || exit 1
-        fxnPP "Creating $poolDir"
-        fxnEC mkdir "$poolDir" || exit 1
-        fxnPP "Creating $repositoryBinDir"
-        fxnEC mkdir -p "$repositoryBinDir" || exit 1
-    else
-        # add contents may be empty in the case of the repository getting created,
-        # or if this call was to just update the sources.list
-        if [ "$addContentsDir" != "" ];then
-            # only update if there is stuff to update.
-            if [ ! -e "$addContentsDir" ];then
-                fxnERR "Failed to find directory of debs to add at [ $addContentsDir ]. NOT modifying local repository."
-                exit 1
-            fi
-
-            fxnPP "Local package repository already exists at: $LOCAL_PACKAGE_REPOSITORY_PATH"
-            # If this is an initialization, Packages won't exist as the repository is empty
-            if [ -e "${repositoryBinDir}/Packages" ];then
-                # Otherwise clean them out to get updated
-                fxnPP "Removing Package index files before update."
-                fxnEC rm "${repositoryBinDir}/Packages"    || exit 1
-                fxnEC rm "${repositoryBinDir}/Packages.gz" || exit 1
-            fi
-        fi
+    if [ ! -e "$repoPath" ];then
+        # create the repository if it does not exist
+        fxnEC /usr/local/bin/due-manage-local-repo.sh  --name "$repoPath" --architecture "$useArchitecture" --create-repo || exit 1
     fi
-
-    # if there are any *.debs in this directory, add them.
-    # TODO: add source
 
     if [ "$addContentsDir" != "" ];then
-        fxnPP "Copying *.deb from $addContentsDir to $poolDir"
-        fxnEC cp -f "$addContentsDir"/*.deb "$poolDir" || exit 1
-        curDir=$(pwd)
-
-        cd "$LOCAL_PACKAGE_REPOSITORY_ROOT" || exit 1
-
-        fxnPP "Updating local repository at $LOCAL_PACKAGE_REPOSITORY_PATH"
-        #   fxnEC apt-ftparchive --arch $useArchitecture  packages pool |
-        fxnEC apt-ftparchive packages pool | \
-            tee "${repositoryBinDir}"/Packages | \
-            gzip > "${repositoryBinDir}"/Packages.gz  || exit 1
-
-        # Options to supply to the release file
-        optionList=" -o APT::FTPArchive::Release::Origin=DUE-duebuild \
--o APT::FTPArchive::Release::Label=localPackageRepository \
--o APT::FTPArchive::Release::Suite=local-repo \
--o APT::FTPArchive::Release::Version=1.0 \
--o APT::FTPArchive::Release::Codename=local-due-repo \
--o APT::FTPArchive::Release::Architectures=$useArchitecture \
--o APT::FTPArchive::Release::Description=LocalPackageRepository \
--o APT::FTPArchive::Release::Components=main"
-
-        # release under dists/local-due-repo/main/binary-amd64
-        fxnPP "Creating Release file under ${repositoryBinDir}"
-        apt-ftparchive release "${repositoryBinDir}" > \
-                       "${repositoryBinDir}"/Release
-
-        # Top level release file under dists/local-due-repo
-        fxnPP "Creating Release file under ${LOCAL_PACKAGE_REPOSITORY_ROOT}/dists/${repositoryDistribution}"
-        apt-ftparchive $optionList release "${LOCAL_PACKAGE_REPOSITORY_ROOT}/dists/${repositoryDistribution}/" > \
-                       "${LOCAL_PACKAGE_REPOSITORY_ROOT}/dists/${repositoryDistribution}/Release"
-
-        cd "$curDir" || exit 1
-
-    fi # if contents to add
-
-    # Update the sources.list file
-    localRepoSourcesList="${LOCAL_PACKAGE_REPOSITORY_ROOT}/${sourcesListFile}"
-    if [ ! -e /etc/apt/sources.list.d/${sourcesListFile} ];then
-        fxnPP "Creating sources.list file for local repository as: [ $localRepoSourcesList ]"
-
-        echo "# Created by $(whoami) using $0 building from $(pwd) on $(date)" > "$localRepoSourcesList"
-        echo "deb [arch=$useArchitecture trusted=yes] copy:${LOCAL_PACKAGE_REPOSITORY_ROOT}/ $repositoryDistribution $repositoryComponent" >> "$localRepoSourcesList"
-        fxnPP "Adding local repository sources.list to local /etc/apt/sources.list.d"
-        fxnEC sudo cp "$localRepoSourcesList" /etc/apt/sources.list.d/ || exit 1
-    else
-        fxnPP "Local sources.list exists at /etc/apt/sources.list.d/${sourcesListFile}"
-    fi # If no local sources list file
-
-
-    # Pin the local packages to a higher than normal priority
-    # View with: apt-cache policy
-    # If making changes, force a refresh as follows:
-    #   remove the entry under /etc/apt/sources.list.d/
-    #   apt-get update
-    #   restore the entry under /etc/apt/sources.list.d/
-    if [ ! -e "$aptPreferencesFile" ];then
-        fxnPP "Setting local repository priority high with: $aptPreferencesFile"
-        # Note that this only works if there is a Release file in the repo
-        cat <<EOF > /tmp/apt-pref
-# Created by $(whoami) using $0 building from $(pwd) on $(date)
-Package: *
-Pin: release n=local-due-repo
-Pin-Priority: 990  >
-EOF
-        fxnEC sudo mv /tmp/apt-pref "$aptPreferencesFile" || exit 1
-    else
-        fxnPP "Local repository has high priority with add of $aptPreferencesFile"
+        # if passed a directory full of debs, add them.
+        fxnEC /usr/local/bin/due-manage-local-repo.sh  --name "$repoPath" --architecture "$useArchitecture" --add "$addContentsDir" || exit 1
     fi
-
-    fxnPP "Updating..."
-    sudo apt-get update
-
 }
 
 # Function to replace sbuild
@@ -636,34 +522,39 @@ function fxnDoDebianBuild()
     # remove the .deb after to keep git from FREAKING OUT!
     sudo mk-build-deps --install --remove ./debian/control --tool "apt-get -y"
     errorCode="$?"
-    if [ "$errorCode" = "25" ];then
-        fxnWARN "mk-build-deps finds no dependencies? Well, let's see where this goes...."
-        errorCode=0
-    fi
+    echo ""
     if [ "$errorCode" != "0" ];then
-        #note that an error was hit in case it's not a lack of dependencies.
-        fxnERR "Hit error [ $errorCode ] in : sudo mk-build-deps --install ./debian/control --tool apt-get -y"
+        if [ "$errorCode" = "1" ];then
+            # Failed to find dependencies
 
-        # Sometimes this gets thrown by prior <pkg>-build-deps*deb files,
-        # so try it clean.
+            # Print what was trying to be installed
+            fxnPrintMissingBuildDependencies
 
-        # Print what was trying to be installed
-        fxnPrintMissingBuildDependencies
+            fxnPP "Running apt-get update to make sure package lists are up to date."
+            sudo apt-get update
 
-        fxnPP "Running apt-get update to make sure package lists are up to date."
+            # Go through the list. Since any one failure will break the installation of everything,
+            # try installing one at a time to figure out what will install, and reduce debug down
+            # to those packages that are truly broken.
+            fxnIsolatePackageDependencies
 
-        sudo apt-get update
+            # Things should be as fixed as possible by this point, so run it again to highlight the errors,
+            # or continue if everything fixed itself
+            fxnIsolatePackageDependencies || exit 1
 
-        # Go through the list. Since any one failure will break the installation of everything,
-        # try installing one at a time to figure out what will install, and reduce debug down
-        # to those packages that are truly broken.
 
-        fxnIsolatePackageDependencies
-
-        # Things should be as fixed as possible by this point, so run it again to highlight the errors,
-        # or continue if everything fixed itself
-        fxnIsolatePackageDependencies || exit 1
-    fi
+        elif [ "$errorCode" = "25" ];then
+            fxnWARN "mk-build-deps error [ $errorCode ] finds no dependencies? Well, let's see where this goes...."
+            errorCode=0
+        elif [ "$errorCode" = "29" ];then
+            fxnERR "mk-build-deps error [ $errorCode ] found dependencies but they failed to install properly. Your packages may be in an unstable state. Exiting."
+            exit 1
+        else
+            #note that an error was hit in case it's not a lack of dependencies.
+            fxnERR "mk-build-deps error [ $errorCode ] in : sudo mk-build-deps --install ./debian/control --tool apt-get -y."
+            exit 1
+        fi
+    fi # errorCode non zero
     echo ""
 
     #
@@ -948,6 +839,9 @@ do
                 exit 1
             fi
             LOCAL_REPO_NAME="$2"
+            # Local repo only applies if building, so keep defaults until told
+            # otherwise and build.
+            DO_BUILD="TRUE"
             shift
             ;;
 
@@ -1166,11 +1060,20 @@ fi
 
 # Arguments passed to the dpkg build. This gets
 # appended by fxnParseBuildArgs
+
+# Default to not building source packages, just the binaries
+#  This assumes that the user usually doesn't care about changing the source,
+#  and if they are at that level, they'll add the additional arguments.
 if [ "$DO_BUILD" = "TRUE" ];then
     if [ "$USE_JESSIE_DPKG" = "TRUE" ];then
-        BUILD_ARGS=" -uc -us "
+        BUILD_ARGS=" -b  -uc  "
+        # Build source and binaries
+        #BUILD_ARGS=" -us  -uc  "
+
     else
-        BUILD_ARGS="  --unsigned-changes --unsigned-source "
+        BUILD_ARGS=" --build=binary  --unsigned-changes "
+        # Build source and binaries
+        #BUILD_ARGS=" --unsigned-source  --unsigned-changes "
     fi
 
     if [ "$ADDITIONAL_BUILD_ARGS" != "" ];then
@@ -1338,6 +1241,7 @@ if [ "$DO_BUILD" = "TRUE" ];then
 
         packageName=$( basename "${BUILD_SOURCE_DSC_FILE%%_*}" )
 
+        packageName=$( basename "${BUILD_SOURCE_DSC_FILE%%_*}" )
 
         # list most recent directory
         buildDir=$( ls -1rd -- */ | grep "$packageName" | tail -n 1)
