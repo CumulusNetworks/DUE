@@ -4,7 +4,7 @@ Create ONIE build environments using a Debian 8 (Jessie), Debian 9 (Stretch) or 
 **Note** Most targets build using Debian 9. Debian 10 support is in beta testing.
 
 ## ONIE build environment creation example:  
-Create default Debian 10 build environment with: ./due --create --from debian:10 --description "ONIE Build Debian 10" --name onie-build-debian-10 --prompt ONIE-10 --tag onie --use-template onie`  
+Create default Debian 10 build environment with: ./due --create --from debian:10 --description "ONIE Build Debian 10" --name onie-build-debian-10 --prompt ONIE-10 --tag onie --use-template onie  
 **OR**  
 Create default Debian 9 build environment with: ./due --create --from debian:9  --description "ONIE Build Debian 9" --name onie-build-debian-9 --prompt ONIE-9 --tag onie --use-template onie  
 **OR**   
@@ -130,7 +130,7 @@ Mounting the host's `/dev` directory is only suggested for certian workflows tha
 Note that there are usually alternative workflows where loopback mount operations can take place outside of the container, if running privileged is undesirable.
 
 ### Running --privileged containers  
-Certain ONIE workflows, such as building the KVM target for secure boot, can take advantage of access to the host system's /dev directory to loopback mount filesystems and reduce the amount of required user interaction in a build. 
+Certain ONIE workflows, such as building the KVM target for secure boot, can take advantage of access to the host system's /dev directory to loopback mount filesystems and reduce the amount of required user interaction in a build.  
 **Example:** due --run --dockerarg --privileged  
 **Example:** due --run-image due-onie-build-debian-10 --dockerarg --privileged  
 

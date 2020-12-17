@@ -24,11 +24,11 @@ The easiest was to do this is to:
 **NOTE** Using the leading `./` has DUE parse all the README.md files in the local templates directory to get examples.  
 Without the `./` the version of DUE installed in your system will be used instead (if it has been installed.)  
   
-##Example  Create a Debian package build container
-Run:  
+## Example:  Create a Debian package build container  
+**Run:**  
 `./due --create --from debian:10    --description "Package Build for Debian 10" --name package-debian-10 --prompt PKGD10 --tag package-debian-10 --use-template debian-package`  
   
-This:  
+**This:**  
 1. Uses the `debian:10` Docker image file from DockerHub as a starting point.  
 2. Implicitly adds in the contents of the **common-templates** directory to the image to provide features like the script that creates a user account in the contianer on login.  
 3. Uses the contents of the **debian-package** template directory to configure the image.  
