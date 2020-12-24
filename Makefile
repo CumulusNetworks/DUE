@@ -16,15 +16,57 @@ MERGE_DIR = due-build-merge
 # Path to install of Pandoc.
 PANDOC_PRESENT = /usr/bin/pandoc
 
+# Detect if in Debian build area
+DEBIAN_BUILD_BRANCH = ./debian
+
 # Manual page is generated from manpage-due-1.md via Pandoc
 MAN_PAGE = docs/due.1
 MAN_PAGE_SOURCE = docs/manpage-due-1.md
 MASTER_CHANGE_LOG = ChangeLog
 
-# common packages required for DUE
+# Common packages required to run DUE
+# Rsync is used in merging template directories
+# jq and curl get used to browse docker registries
+# pandoc gets used to turn markdown into man pages, and is optional
 DUE_DEPENDENCIES = git rsync jq curl
 
-.PHONY: docs depends install test
+#
+# Set V=1 to echo out Makefile commands
+#
+# Unless set, V is 0
+V ?= 0
+# Q is set to '@' to NOT echo Makefile output
+Q = @
+ifneq ($V,0)
+# If V is not 0, then Q is not '@' and the command is echoed.
+	Q = 
+endif
+
+#
+# Store phony build targets in a variable so they can be
+# printed as part of help.
+#
+PHONY = help docs depends host-install uninstall orig.tar debian-package test no-make-default
+
+# ...and use them as real .PHONY targets
+.PHONY: $(PHONY)
+
+# If doing a Debian package build  dh_auto_build will execute the first target
+#  in a found Makefile. It is already executing debian/rules, so just print a
+#  a message and continue on.
+no-make-default:
+	$(Q) echo "No default Makefile actions. Try 'make help'."
+
+# Print our targets
+help:
+	$(Q) echo ""
+	$(Q) echo "Dedicated User Environment make help."
+	$(Q) echo "----------------------------------------"
+	$(Q) echo " Make with V=1 for makefile debug."
+	$(Q) echo ""
+	$(Q) echo " Makefile targets:"
+	$(Q) for I in $(sort $(PHONY)); do echo "    $$I"; done
+	$(Q) echo ""
 
 docs: $(MAN_PAGE)
 # Docs will not automatically rebuild.
@@ -43,18 +85,18 @@ ifneq ($(wildcard $(PANDOC_PRESENT)),)
 	@echo "#                                                                     #"	
 	@echo "# Pandoc detected: updating documentation "
 	@echo "# Removing existing $(MAN_PAGE) "
-	rm $(MAN_PAGE)
+	$(Q)  rm $(MAN_PAGE)
 
 	@echo "# Setting version to [ $(DUE_VERSION) ] in docs/manpage-due-1.md "
-	sed -i 's/DUE(1) Version.*|/DUE(1) Version $(DUE_VERSION) |/' $(MAN_PAGE_SOURCE)
+	$(Q)  sed -i 's/DUE(1) Version.*|/DUE(1) Version $(DUE_VERSION) |/' $(MAN_PAGE_SOURCE)
 
 	@echo "# Setting version to [ $(DUE_VERSION) ] in ChangeLog "
-	sed -i '0,/due (.*-1) / s/due (.*-1) /due ($(DUE_VERSION)-1) /' $(MASTER_CHANGE_LOG)
+	$(Q)  sed -i '0,/due (.*-1) / s/due (.*-1) /due ($(DUE_VERSION)-1) /' $(MASTER_CHANGE_LOG)
 
 	@echo "# Generating new man page from docs/manpage-due-1.md "
-	pandoc --standalone --to man docs/manpage-due-1.md -o $(MAN_PAGE)
+	$(Q)  pandoc --standalone --to man docs/manpage-due-1.md -o $(MAN_PAGE)
 	@echo ""
-	/bin/ls -lrt ./docs
+	$(Q)  /bin/ls -lrt ./docs
 
 	@echo "#                                                                    #"	
 	@echo "#######################################################################"
@@ -63,11 +105,11 @@ else
 	@echo ""
 	@echo "#######################################################################"
 	@echo "# Pandoc is not installed. NOT regenerating due.1 man page            #"
-	@echo "#                                                                    #"
+	@echo "#                                                                     #"
 	@echo "# If you want to update the man pages:                                #"
 	@echo "#    apt-get install pandoc                                           #"
 	@echo "# ...and retry this make -f debian/control docs                       #"
-	@echo "#                                                                    #"
+	@echo "#                                                                     #"
 	@echo "#######################################################################"
 	@echo ""
 endif
@@ -81,10 +123,7 @@ depends:
 	@echo "#                                                                    #"
 	@echo "######################################################################"
 	@echo ""
-# Rsync is used in merging template directories
-# jq and curl get used to browse docker registries
-# pandoc gets used to turn markdown into man pages, and is optional
-	@ if [ -f /etc/redhat-release ]; then \
+	$(Q) if [ -f /etc/redhat-release ]; then \
 		echo "Installing dependencies for Red Hat Linux" ;\
 		sudo dnf install $(DUE_DEPENDENCIES) docker ;\
 	else \
@@ -130,9 +169,29 @@ uninstall:
 	sudo rm -rf   /usr/share/due
 
 orig.tar:
-	git archive --format=tar.gz --prefix=due_$(DUE_VERSION)/  -o ../due_$(DUE_VERSION).orig.tar.gz  master
+ifneq ($(wildcard $(DEBIAN_BUILD_BRANCH)),)
+	@echo "Check out the master branch to create orig.tar."
+else
+	$(Q) git archive --format=tar.gz --prefix=due_$(DUE_VERSION)/  -o ../due_$(DUE_VERSION).orig.tar.gz  master
 	@echo "Produced tar file in parent directory."
-	ls -lrt ../*.gz 
+	$(Q) ls -lrt ../*.gz
+endif
+
+debian-package: orig.tar
+	@echo "######################################################################"
+	@echo "#                                                                    #"
+	@echo "# Building DUE Debian installer package.                             #"
+	@echo "#                                                                    #"
+	@echo "######################################################################"
+	@echo ""
+	@echo "# Checking out debian/master branch."
+	$(Q) git checkout debian/master
+	@echo ""
+	@echo "# Select a Debian package build container."
+	$(Q) ./due --build
+	@echo ""
+	@echo "# Checking out master branch."
+	$(Q) git checkout master
 
 test:
 	@echo "Due version $(DUE_VERSION)"
