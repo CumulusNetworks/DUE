@@ -66,7 +66,9 @@ function fxnPostInstallCommon()
 	#
 	echo ""
 	echo "$0 Copying files in container $CONF_DIR into /"
-	cp -ar ${CONF_DIR}/* /
+	
+	# Using --update gets around files being busy, like qemu-static
+	cp -ar --update  ${CONF_DIR}/* /
 	if [ $? != 0 ];then
 		echo "$0 ERROR! Failed to copy over existing file system files. Exiting."
 		exit 1

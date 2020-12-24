@@ -85,6 +85,26 @@ DUE_IMAGE_TYPE_LABEL="default-type"
 # Put build steps here
 BUILD_MERGE_DIR="$(pwd)/due-build-merge"
 
+#
+# Red Hat uses a different package manager, so abstract that out.
+# Ex: sudo $PACKAGE_UPDATE  ; sudo $PACKAGE_INSTALL rsync
+#
+if [ -e /etc/redhat-release ];then
+    OS_TYPE="RedHat"
+    PACKAGE_UPDATE=" dnf check-update"
+    PACKAGE_INSTALL=" dnf install "
+    #
+    # Defaults for Red Hat systems have nosuid set when Docker runs,
+    # preventing the mount of the user's home directory.
+    # There may be a better work around, but for now,
+    #  default to running --privileged
+    #
+    DOCKER_SPECIFIC_ARGS=" --privileged "
+else
+    OS_TYPE="Debian"
+    PACKAGE_UPDATE=" apt-get update "
+    PACKAGE_INSTALL=" apt-get install "
+fi
 ######################################################################
 # Common utility functions
 ######################################################################
@@ -493,9 +513,9 @@ function fxnMakeNewDockerImage()
             fxnERR "Docker not found, but you are already running in a container."
         else
             fxnERR "Docker not found! You should:"
-            echo "1 - Install with:                      sudo apt update ; sudo apt install $REQUIRED_PACKAGES "
+            echo "1 - Install with:                      sudo $PACKAGE_UPDATE ; sudo $PACKAGE_INSTALL $REQUIRED_PACKAGES "
             echo "2 - Add yourself to the docker group:  sudo /usr/sbin/usermod -a -G docker $(whoami)"
-            echo "3 - Consider the recommended packages: sudo apt install $RECOMMENDED_PACKAGES "
+            echo "3 - Consider the recommended packages: sudo $PACKAGE_INSTALL $RECOMMENDED_PACKAGES "
             echo "4 - Activate docker group membership:  log yourself out and log in again."
             echo "Exiting."
         fi
@@ -526,7 +546,7 @@ function fxnMakeNewDockerImage()
         fxnHeader "Creating directory to be used for container build at: [ $imageName ]"
         fxnPP "Copying non-template files from [ $USE_TEMPLATE_PATH ] to [ $imageName ]"
         if [ ! -e /usr/bin/rsync ];then
-            fxnERR "rsync is not installed. Try: sudo apt update; sudo apt install rsync"
+            fxnERR "rsync is not installed. Try: sudo $PACKAGE_UPDATE; sudo $PACKAGE_INSTALL rsync"
             exit 1
         fi
         fxnEC rsync \
@@ -542,8 +562,18 @@ function fxnMakeNewDockerImage()
         # These can be run in emulation if they have QEMU as part of the container
         # Currently only supporting armel, but more can be added.
 
-        # This will return amd64 on a x86_64 system (tip: uname -m gets you that)
-        HOST_ARCH=$( dpkg --print-architecture )
+        # Map host architecture names to Docker names. Expect to add here as testable
+        # cases show up.
+        HOST_ARCH=$( uname -m )
+        case $HOST_ARCH in
+            "x86_64" )
+                HOST_ARCH="amd64"
+                ;;
+            * )
+                fxnERR "Cannot map [ $HOST_ARCH ] to a Docker contianer type. Exiting."
+                exit 1
+                ;;
+        esac
 
         # expect this to be amd64, arm, etc
         # Super convenient that qemu arm seems to handle all the variants (armhf, arm64, armel...)
@@ -568,21 +598,30 @@ function fxnMakeNewDockerImage()
 
         if [ "$HOST_ARCH" != "$imageArchitecture" ];then
             #
-			# ...although the naming convention doesn't always match.
-			# start stacking exceptions here for clarity.
-			case $imageArchitecture in
-				arm64 )
-					imageArchitecture="aarch64"
-					;;
-			esac
+            # ...although the naming convention doesn't always match.
+            # start stacking exceptions here for clarity.
+            case $imageArchitecture in
+                arm64 )
+                    imageArchitecture="aarch64"
+                    ;;
+            esac
+
             fxnPP "Image architecture [ $imageArchitecture ] does not match host's [ $HOST_ARCH ]. Copying qemu-${imageArchitecture}-static in for emulation."
             # Have qemu-*-static in there so it can run
             fxnPP "Adding qemu-${imageArchitecture}-static to $imageName/filesystem/usr/bin/qemu-${imageArchitecture}-static."
-            if [ ! -e /usr/bin/qemu-"${imageArchitecture}"-static ];then
-                fxnERR "Host system must have qemu-${imageArchitecture}-static to run an ${imageArchitecture} container. sudo apt install qemu-user-static."
+            # qemu-user
+            if [ ! -e /usr/bin/qemu-"${imageArchitecture}"-static ] || [ ! -e /usr/bin/qemu-system-"${imageArchitecture}" ];then
+                fxnERR "Host system must have qemu-${imageArchitecture}-static and qemu-system-${imageArchitecture} to run an ${imageArchitecture} container. Try: sudo $PACKAGE_INSTALL qemu-user-static qemu-system-${imageArchitecture}"
+                # Clean this up so that a re-run does not report success despite not having the emulation support.
+                echo "Deleting partially built image at: ${BUILD_MERGE_DIR}/${imageName}"
+                rm -rf "${BUILD_MERGE_DIR}/${imageName}"
                 exit 1
             fi
 
+            if [ ! -e /proc/sys/fs/binfmt_misc/qemu-${imageArchitecture} ];then
+                fxnERR "Faied to find qemu-${imageArchitecture} under /proc/sys/fs/binfmt_misc. Packages may have to be installed or a restart is required."
+                #               exit 1
+            fi
             # Copy the host system's QEMU for image architecture to a location where it will be
             # installed in the container.
             if [ ! -e "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin ];then
@@ -1364,7 +1403,6 @@ function fxnDoLogin()
         # The container's Dockerfile.config would have a:
         #   LABEL DUEMountHostDirectories=/path1,/path2,/path3, etc to mount
         #
-
         MountHostDirectories=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirectories}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
         if [ "$MountHostDirectories" != "<no value>" ];then
             # Save the current field separator (probably return)
@@ -1378,7 +1416,12 @@ function fxnDoLogin()
                 if [ -d "$dir" ];then
                     fxnPP "Mounting host directory [ $dir ] in container, as suggested by container."
                     ADDITIONAL_MOUNTS+=" --volume $dir:$dir "
+                elif [ -S "$dir" ];then
+					# The Docker socket is a less obvious mount case...
+                    fxnPP "Mounting host Socket [ $dir ] in container, as suggested by container."
+                    ADDITIONAL_MOUNTS+=" --volume $dir:$dir "
                 else
+
                     # host system doesn't have a directory the container wants to
                     # mount. Warn and proceed.
                     fxnWarn "Host system does not have directory [ $dir ] requested by container. Continuing..."
@@ -1387,6 +1430,7 @@ function fxnDoLogin()
             # restore the field separator to what it was.
             IFS=$saveIFS
         fi
+
         if [ "$CONTAINER_MOUNT_DIR" = "" ];then
             # Specify where the host directory is mounted in the container
             CONTAINER_MOUNT_DIR="$DEFAULT_CONTAINER_MOUNT_BUILD_DIR"
@@ -1439,6 +1483,7 @@ function fxnDoLogin()
         else
             imname="${USE_HOSTNAME}"
         fi
+
 
         # Note that any variables here that are not set will evaluate to
         # blank space and not be parsed as arguments.

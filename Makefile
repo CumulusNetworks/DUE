@@ -21,6 +21,9 @@ MAN_PAGE = docs/due.1
 MAN_PAGE_SOURCE = docs/manpage-due-1.md
 MASTER_CHANGE_LOG = ChangeLog
 
+# common packages required for DUE
+DUE_DEPENDENCIES = git rsync jq curl
+
 .PHONY: docs depends install test
 
 docs: $(MAN_PAGE)
@@ -81,9 +84,16 @@ depends:
 # Rsync is used in merging template directories
 # jq and curl get used to browse docker registries
 # pandoc gets used to turn markdown into man pages, and is optional
-	sudo apt-get install bsdutils git rsync docker.io jq curl
+	@ if [ -f /etc/redhat-release ]; then \
+		echo "Installing dependencies for Red Hat Linux" ;\
+		sudo dnf install $(DUE_DEPENDENCIES) docker ;\
+	else \
+		echo "Installing dependencies for Debian Linux" ; \
+		sudo apt-get install $(DUE_DEPENDENCIES ) bsdutils docker.io ; \
+	fi
+	@ echo "Done installing dependencies."
 
-install:
+install: depends
 	@echo "######################################################################"
 	@echo "#                                                                    #"
 	@echo "# Installing DUE                                                     #"
@@ -102,7 +112,7 @@ install:
 	sudo cp -r   ./templates /usr/share/due
 	sudo cp -r   ./README.md /usr/share/due
 
-	@echo "Finally, add yourself to the user group with: sudo /usr/sbin/usermod -a -G docker $(shell whoami)"
+	@ echo "Finally, add yourself to the user group with: sudo /usr/sbin/usermod -a -G docker $(shell whoami)"
 	@echo ""
 
 uninstall:
