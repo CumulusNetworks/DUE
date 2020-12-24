@@ -1,17 +1,17 @@
 # Open Network Install Environment
 
-Create ONIE build environments using a Debian 8 (Jessie) or Debian 9 (Stretch) image.  
-**Note** The Debian 9 version is recommended for new platforms.
-Currently Debian 10 (and related releases) aren't supported by ONIE.  
+Create ONIE build environments using a Debian 8 (Jessie), Debian 9 (Stretch) or Debian 10 (Buster) image.  
+**Note** Most targets build using Debian 9. Debian 10 support is in beta testing.
 
-## ONIE build environment creation example:
-Create the latest default ONIE build environment with: ./due --create --from debian:10 --description "ONIE Build Debian 10" --name onie-build-debian-10 --prompt ONIE-10 --tag onie --use-template onie
-**OR**
-Create the latest default ONIE build environment with: ./due --create --from debian:9  --description "ONIE Build Debian 9" --name onie-build-debian-9 --prompt ONIE-9 --tag onie --use-template onie  
+## ONIE build environment creation example:  
+Create default Debian 10 build environment with: ./due --create --from debian:10 --description "ONIE Build Debian 10" --name onie-build-debian-10 --prompt ONIE-10 --tag onie --use-template onie  
 **OR**  
-Create Debian 8 ONIE build environment with: ./due --create --from debian:8  --description "ONIE Build Debian 8" --name onie-build-debian-8 --prompt ONIE-8 --tag onie-8 --use-template onie
+Create default Debian 9 build environment with: ./due --create --from debian:9  --description "ONIE Build Debian 9" --name onie-build-debian-9 --prompt ONIE-9 --tag onie --use-template onie  
+**OR**   
+Create default Debian 8 build environment with: ./due --create --from debian:8  --description "ONIE Build Debian 8" --name onie-build-debian-8 --prompt ONIE-8 --tag onie-8 --use-template onie  
+
 ### Explanation of the first example:
-  * Use a Debian 9 image
+  * Use a Debian 10 image
   * Name it onie-build
   * Tag it as onie-build
   * Set the user's PS1 prompt in the image to be ONIE so the context is (more) obvious
@@ -35,7 +35,7 @@ it changes the oniebuild account in the container to match the user ID
 of the invoking user.
 
 ### Python-sphinx
-...Is installed only in Debian 9 (Stretch) based images to update ONIE documentation, as it is the configuration
+...Is installed only in Debian 9 (Stretch) and 10 (Buster) based images to update ONIE documentation, as it is the configuration
 used for ONIE quarterly releases. Users can add/remove this by editing the `post-install-config.sh.template`
 prior to image creation.
 
@@ -49,6 +49,7 @@ You can use `due --run`  and select the image built in the previous step, which 
 2.  Create an account for you in the container, with your username and user ID.
 3.  Source a .bashrc, and allow access to any other . files.
 4.  ...and now you can navigate to the onie directory, to build from the command line.  
+
 
 ## Build without interaction
 
@@ -101,6 +102,39 @@ It's just another way of arriving at the final makefile invocation, however.
 
 **Example:** due --run --build --jobs 4 --machine kvm_x86_64 --build-targets all demo recovery-iso  
 **Example:** due --run --build --jobs 4 --machine accton_as7112_54x --build-targets all demo recovery-iso  
+
+## Mounting host directories
+The ONIE container will try to mount the following directories from the host system. Failure to do so may result in an error (if operations absolutely cannot proceed) or a warning just to let the user know what is happening.
+
+#### /home/*username*
+**If missing:** Error.  
+**Used for:** Access to the user's default environment and configuration. The invoking user's home directory is always mounted.  
+
+#### Current Working Directory
+**If missing** Error.  
+**Used for:** When the container is created to just run a command, rather than support an interactive login, the current working directory will always be mounted.
+ 
+#### /var/cache/onie  
+**If missing:** Warning.  
+**Used for:** Download cache.  
+Rather than having to always download source packages from their original sites, or the [OpenCompute Mirror](http://mirror.opencompute.org/onie),
+ONIE can search for source packages in `/var/cache/onie/downloads`, provided `make` is invoked with `ONIE_USE_SYSTEM_DOWNLOAD_CACHE=TRUE` set.  If this directory exists on the host system, all running ONIE containers will have access to it, saving time and bandwidth. While populating the directory is left as an exercise for the system administrator, running  
+`wget –recursive –cut-dirs=2 –no-host-directories –no-parent –reject “index.html” http://mirror.opencompute.org/onie/`  
+...might be a good starting point.
+
+
+#### /dev
+**If missing:** Warning.  
+**Used for:** Loopback mounting filesystems.  
+Mounting the host's `/dev` directory is only suggested for certian workflows that require loop back mounting a filesystem. As the host system's `/dev` directory can be modified by actions in the container, the container must be run with Docker's `--privileged` option set to mount this (see below).  
+Note that there are usually alternative workflows where loopback mount operations can take place outside of the container, if running privileged is undesirable.
+
+### Running --privileged containers  
+Certain ONIE workflows, such as building the KVM target for secure boot, can take advantage of access to the host system's /dev directory to loopback mount filesystems and reduce the amount of required user interaction in a build.  
+**Example:** due --run --dockerarg --privileged  
+**Example:** due --run-image due-onie-build-debian-10 --dockerarg --privileged  
+
+
 
 ## Debugging
 Or, a descriptive collection of ways things have failed. Expect this list to grow.  

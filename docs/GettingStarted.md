@@ -6,8 +6,13 @@ are start and end with back ticks like `this`. If you are using a Markdown viewe
 **The point**  
 If you cut and paste from this file, do not copy the `s
 
+# Installing from a .deb
+If you have a .deb file of DUE that was installed with Apt, skip to **A Practical Example** below.  
+If it is just a deb file, `sudo dpkg -i due_*deb` and resolve missing dependencies using Apt.
 
-# Install DUE's software dependencies
+# Installing from a Git checkout
+
+## Install DUE's software dependencies
 To run DUE from the source directory, you will need to install the following
 packages:  
   *  docker.io  (docker.ce works as well)  
@@ -18,36 +23,41 @@ packages:
   *  curl  
   *  and maybe pandoc, if you plan on updating the man pages.
 
-From the Master Git branch, you can also run `make install` as root and it will try to install these packages.
+Running `make install` from the `master` Git branch as root will attepmpt to install these packages for both Debian and Red Hat Linux.
 
-If you are using a Debian based Linux, like Ubuntu `sudo apt-get update; sudo apt-get install git docker.io` will handle this.  
+## Add yourself to the Docker group 
 Once Docker is installed, add yourself to the docker group with:
 
 `sudo /usr/sbin/usermod -a -G docker $(whoami)`
 
 You will probably have to log out and back in for your new membership to take effect.
 
-If you have downloaded DUE as source from it's GitHub page (https://github.com/CumulusNetworks/DUE) you can run it by invoking it with a ./  
+## Run DUE locally with ./due
+If DUE is invoked with a ./, it will use the copy of `due` in the local directory (as expected) and use the template files that are under the local directory. This allows users to try it out without installing it on their systems.  
+  
 **Ex:** `./due`
 
+## Installing DUE
+The preferred method of installing DUE is to build a .deb of it, using the debian/master branch and install the deb.    
+Alternately, typing `make install` as `root` from the master Git branch will install DUE files in the system, which is currently the easiest way to install DUE in a Red Hat Linux system.
 
 # A Practical Example: create an image and build DUE as a Debian package
 DUE can be used to build itself as a Debian package.
 
 1. Start with DUE's `master` Git branch.
-2. `make orig.tar`
-3. Use Git to check out DUE's debian/master branch  
-   `git checkout debian/master`  
-    You should see that there is now a "debian" directory.  
-4. Create a Debian package build container, using an example from `due --create help`.  
+2. Create a Debian package build container, using an example from `./due --create help`.  
    If you are using Ubuntu, this might look like:  
    `./due --create --from ubuntu:18.04 --description "Package Build for Ubuntu 18.04" --name pkg-u-18.04 --prompt PKGU1804 --tag pkg-ubuntu-18.04 --use-template debian-package`  
    **TIP** `--filter` term  can be used with `due --create --help` to limit the output to entries that match the term.  
-5. Once image creation has finished,  tell DUE to run a build, and pick your Debian package build container.  
-  `due --build`  <- Will let you choose your image, if there is more than one.  
-Or specify the image to use with:  
-`due --run-image due-pkg-u-18.04:pkg-ubuntu-18.04 --build` <- build using `due-pkg-u-18.04` image with tag `pkg-ubuntu-18.04`  
-  
+3. At this point you can type `make debian-package`and the makefile will:
+3a. `make orig.tar`  
+3b. `git checkout debian/master`  
+3c. `due --build`  
+3d. Ask you to choose the image to build with, if you have more than one.  
+3e. Build the .deb, leaving it in the parent directory of DUE.  
+3f. ...and check out the `master` Git branch again.  
+...or you can run those steps individually.
+
 Once the build completes, there should be a due*.deb in the directory above where you just built. This can be installed with:  
 `sudo dpkg -i due_*all.deb`
 
@@ -77,6 +87,9 @@ the role of the container, as this may not be obvious. The Ubuntu package build 
 
 ..And that's the basics of using DUE to create and run containers.
 
+ 
+**TIP** You can specify the image to use with `--run-image`:  
+**Ex:** `due --run-image due-pkg-u-18.04:pkg-ubuntu-18.04 --build` <- build using `due-pkg-u-18.04` image with tag `pkg-ubuntu-18.04`  
 
 The rest of this document will get in to using specific types of containers, and how you can create and debug your own.  
 **TIP** Take a look at the README.md files under the `./templates` directory as well.

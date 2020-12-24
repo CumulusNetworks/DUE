@@ -24,22 +24,25 @@ The easiest was to do this is to:
 **NOTE** Using the leading `./` has DUE parse all the README.md files in the local templates directory to get examples.  
 Without the `./` the version of DUE installed in your system will be used instead (if it has been installed.)  
   
-##Example  Create a Debian package build container
-Run  
+## Example:  Create a Debian package build container  
+**Run:**  
 `./due --create --from debian:10    --description "Package Build for Debian 10" --name package-debian-10 --prompt PKGD10 --tag package-debian-10 --use-template debian-package`  
   
-This:  
+**This:**  
 1. Uses the `debian:10` Docker image file from DockerHub as a starting point.  
 2. Implicitly adds in the contents of the **common-templates** directory to the image to provide features like the script that creates a user account in the contianer on login.  
 3. Uses the contents of the **debian-package** template directory to configure the image.  
 4. Sets the image name, tag and description.  
 5. Sets the default shell prompt in the container to be `PKGD10` as a hint at runtime to let the user know they are in a package build container for Debian 10.  
 
-### Base image of Debian 10  
+### To look at those steps from a different perspective:
 
-#### + Plus +
+### Start with:  
+A **base image** of Debian 10, downloaded from Dockerhub
 
-### Contents of the common templates directory:
+### Then add:
+The contents of the **common** templates directory:
+
 ├── Dockerfile.config    *<-- Docker Labels to provide hints for running the container*  
 ├── Dockerfile.template  *<--framework of steps in image creation*  
 ├── filesystem  
@@ -54,22 +57,20 @@ This:
 ├── post-install-config.sh.template        *<-- run after file copy to image *  
 └── pre-install-config.sh.template         *<-- run before any files have been copied to the image*
 
-#### + Plus +
+### Then add:
+The contents of the **debian-package** template directory:
 
-### Contents of the debian-package template directory:  
 ├── Dockerfile.config  *<-- runtime hints (mount parent directory when running container)*  
 ├── filesystem  
 │.. └── usr  
 │...... └── local  
 │........ └── bin  
 │........... └── duebuild  *<-- script DUE runs to build by default *  
-├── post-install-config.sh.template  *<-- install Debain build specific packages *
+├── post-install-config.sh.template  *<-- install Debain build specific packages *  
 └── README.md  *<-- describe container and its duebuild script*  
 
-
-#### = Equals =
-
-### Debian 10 package build environment.
+### Which creates:
+A Debian 10 package **build image** for Docker.
 
 
 # Create your own templates
