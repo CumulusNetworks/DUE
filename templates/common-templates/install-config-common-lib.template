@@ -1,5 +1,5 @@
 # /bin/bash syntax
-# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0  
+# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 # SCRIPT_PURPOSE: Run configuration inside the docker container, after package install.
 # Bash should be installed at this point.
 
@@ -66,7 +66,7 @@ function fxnPostInstallCommon()
 	#
 	echo ""
 	echo "$0 Copying files in container $CONF_DIR into /"
-	
+
 	# Using --update gets around files being busy, like qemu-static
 	cp -ar --update  ${CONF_DIR}/* /
 	if [ $? != 0 ];then
@@ -98,9 +98,9 @@ function fxnInstallSourcesList()
 	fi
 
 	if [ -e ${CONF_DIR}/etc/apt/sources.list.d/ ];then
-		echo "$0 Adding additional sources.list file(s) to /etc/apt/sources.list.d"	
+		echo "$0 Adding additional sources.list file(s) to /etc/apt/sources.list.d"
 		cp ${CONF_DIR}/etc/apt/sources.list.d/* /etc/apt/sources.list.d/
-		ls -l  ${CONF_DIR}/etc/apt/sources.list.d/* 
+		ls -l  ${CONF_DIR}/etc/apt/sources.list.d/*
 	fi
 }
 
@@ -112,13 +112,13 @@ function fxnInstallAptKeys()
 {
 	if [ -e "${CONF_DIR}/etc/apt/trusted.gpg.d" ];then
 		echo "$0 Adding new gpg keys to apt. This may be slow."
-		cp ${CONF_DIR}/etc/apt/trusted.gpg.d/* /etc/apt/trusted.gpg.d/	
+		cp ${CONF_DIR}/etc/apt/trusted.gpg.d/* /etc/apt/trusted.gpg.d/
 		apt-key add ${CONF_DIR}/etc/apt/trusted.gpg.d/*
 		if [ $? != 0 ];then
 			echo "$0 ERROR! Failed running apt-key add of $(	ls -l ${CONF_DIR}/etc/apt/trusted.gpg.d/ )"
 			exit 1
 		fi
-		ls -l ${CONF_DIR}/etc/apt/trusted.gpg.d/	
+		ls -l ${CONF_DIR}/etc/apt/trusted.gpg.d/
 	fi
 }
 
