@@ -1,12 +1,12 @@
 due (2.2.0-1) unstable; urgency=medium
 
   * Version bump to 2.2.0
-  * debian/master debian/changelog set from master ChangeLog
   * libdue: Initial support to run under Red Hat Linux
   * Makefile: debian package build target, help
   * README.md: installation update
+  * ChangeLog: Lintian cleanup.
 
- -- Alex Doyle <adoyle@nvidia.com>  Sun, 21 Dec 2020 21:21:21 -0700
+ -- Alex Doyle <adoyle@nvidia.com>  Fri, 25 Dec 2020 07:07:07 -0700
 
 due (2.1.0-1) unstable; urgency=medium
 
