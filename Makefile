@@ -193,5 +193,10 @@ debian-package: orig.tar
 	@echo "# Checking out master branch."
 	$(Q) git checkout master
 
+debian: orig.tar
+	@ echo "Building DUE Debian installer package."
+	@ git checkout debian/master
+	@ ./due --build
+
 test:
 	@echo "Due version $(DUE_VERSION)"

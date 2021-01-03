@@ -20,6 +20,13 @@
 #      Handy for 'just building something' without having to log into the
 #      container.
 
+# Default to Debian, unless otherwise specified.
+OS_TYPE="Debian"
+
+if [ -e /etc/redhat-release ];then
+    OS_TYPE="RedHat"
+fi
+
 function fxnPP()
 {
     echo "$@"
@@ -167,17 +174,34 @@ function fxnAddUserInContainer()
             fi
             # Don't create home directory - we presume it is getting mounted
             # use --gecos "" to supply blank data for Full Name, Room number, etc
-            fxnEC adduser --home /home/"$USER_NAME" \
-                  $makeHomeDir \
-                  --shell /bin/bash \
-                  --uid "$USER_ID" \
-                  $addGroupID \
-                  --gecos "" \
-                  --disabled-password "$USER_NAME" > /dev/null || exit 1
+            if [ "$OS_TYPE" = "RedHat" ];then
+				if [ ! -d /home/"$USER_NAME" ];then
+					# useradd throws warnings if this already exists
+					makeHomeDir=" --home-dir /home/ $USER_NAME" 
+				fi
+                useradd $makeHomeDir \
+                        --gid "$GROUP_ID" \
+                        --shell /bin/bash \
+                        --uid "$USER_ID" \
+                        "$USER_NAME"
+                # Allow this user to become root
+                fxnPP "| $USER_NAME : adding to sudoers file."
+                usermod -aG wheel "$USER_NAME"
 
-            # Allow this user to become root
-            fxnPP "| $USER_NAME : adding to sudoers file."
-            fxnEC adduser "$USER_NAME" sudo > /dev/null || exit 1
+            else
+                fxnEC adduser --home /home/"$USER_NAME" \
+                      $makeHomeDir \
+                      --shell /bin/bash \
+                      --uid "$USER_ID" \
+                      $addGroupID \
+                      --gecos "" \
+                      --disabled-password "$USER_NAME" > /dev/null || exit 1
+
+                # Allow this user to become root
+                fxnPP "| $USER_NAME : adding to sudoers file."
+                fxnEC adduser "$USER_NAME" sudo > /dev/null || exit 1
+
+            fi
 
             # Do not require password to become root via 'sudo su'
             echo "$USER_NAME       ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
@@ -244,8 +268,16 @@ function fxnRunAsUser()
         echo "| Container log in text follows:                                            |"
         echo "|___________________________________________________________________________|"
         echo ""
-        # Log in interactively with no password as new user
-        login -p -f  "${USER_NAME}"
+
+        if [ "$OS_TYPE" = "RedHat" ];then
+			# Login behaves differently here, but su and cd _seem_ to be equivalent...
+			cd "$(sudo -u $USER_NAME sh -c 'echo $HOME')"
+            su "${USER_NAME}"
+
+        else
+            # Log in interactively with no password as new user
+            login -p -f  "${USER_NAME}"
+        fi
     fi
 }
 
