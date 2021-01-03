@@ -1,5 +1,5 @@
 #!/bin/sh
-# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0  
+# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 # SCRIPT_PURPOSE: Script to run configuration inside the docker container before
 # package install.
 # CONTEXT: runs inside the container at creation time.
@@ -16,16 +16,16 @@
 
 
 echo " ___________________________________________________________________________ "
-echo "|" 
-echo "| Running REPLACE_IMAGE_NAME pre install configuration."                          
+echo "|"
+echo "| Running REPLACE_IMAGE_NAME pre install configuration."
 echo "|___________________________________________________________________________"
 
 
 
 if [ ! -e /build ];then
-	echo "$0 Creating a /build directory as a common build mount point."
-	mkdir /build
-	chmod a+w /build
+    echo "$0 Creating a /build directory as a common build mount point."
+    mkdir /build
+    chmod a+w /build
 fi
 
 #
@@ -34,31 +34,62 @@ fi
 # The important package here is gnupg, as it is needed for
 # any package repository key additions
 
-apt-get update
-if [ $? != 0 ];then
-	echo "$0 ERROR! Failed apt-get update. Exiting."
-	exit 1
+BASE_PACKAGES="\
+    wget \
+    bash \
+    sudo \
+	procps \
+    gnupg "
+
+if [ -e /etc/redhat-release ];then
+    dnf check-update
+    case $? in
+        100 )
+            echo "Updates are available."
+            ;;
+        0 )
+            echo "No updates are available."
+            ;;
+        * )
+            echo "$0 ERROR! Failed dnf check-update. Exiting."
+            exit 1
+            ;;
+    esac
+
+    # /usr/bin/find is apparently not present in RedHat images?
+    # /usr/bin/hostname
+    # /usr/bin/pgrep
+    dnf install --assumeyes findutils hostname procps $BASE_PACKAGES
+    if [ $? != 0 ];then
+        echo "$0 ERROR! Failed dnf install. Exiting."
+        exit 1
+    fi
+
+else
+
+    apt-get update
+    if [ $? != 0 ];then
+        echo "$0 ERROR! Failed apt-get update. Exiting."
+        exit 1
+    fi
+
+    #
+    # APT install just these packages.
+    # Don't ask questions.
+    # Don't get clever.
+    #
+    DEBIAN_FRONTEND=noninteractive \
+                   apt-get install \
+                   --assume-yes \
+                   --no-install-recommends \
+                   $BASE_PACKAGES
+
+    if [ $? != 0 ];then
+        echo "$0 ERROR! Failed apt-get install. Exiting."
+        exit 1
+    fi
+
 fi
-
-#
-# APT install just these packages.
-# Don't ask questions.
-# Don't get clever.
-#
-DEBIAN_FRONTEND=noninteractive \
-			   apt-get install \
-			   --assume-yes \
-			   --no-install-recommends \
-			   wget \
-			   bash \
-			   sudo \
-			   gnupg 
-
-if [ $? != 0 ];then
-	echo "$0 ERROR! Failed apt-get install. Exiting."
-	exit 1
-fi
-
 #
 # Add any additional initial configuration here
 #
