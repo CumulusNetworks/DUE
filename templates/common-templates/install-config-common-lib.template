@@ -7,11 +7,50 @@
 #
 #  SPDX-License-Identifier:     MIT
 
+#
+# Red Hat uses a different package manager, so abstract that out.
+# Ex: sudo $PACKAGE_UPDATE  ; sudo $PACKAGE_INSTALL rsync
+#
+if [ -e /etc/redhat-release ];then
+    OS_TYPE="RedHat"
+    PACKAGE_UPDATE=" dnf check-update"
+    PACKAGE_INSTALL=" dnf install "
+    #
+    # Defaults for Red Hat systems have nosuid set when Docker runs,
+    # preventing the mount of the user's home directory.
+    # There may be a better work around, but for now,
+    #  default to running --privileged
+    #
+    DOCKER_SPECIFIC_ARGS=" --privileged "
+else
+    OS_TYPE="Debian"
+    PACKAGE_UPDATE=" apt-get update "
+    PACKAGE_INSTALL=" apt-get install "
+fi
 
 # expect files to install into the container to be found here
 # the Dockerfile.create should have made /due-configuration and copied
 # files into it.
 CONF_DIR="/due-configuration/filesystem"
+
+# Some functions are Debian only
+function fxnFailIfNotDebian()
+{
+	if [ "$OS_TYPE" != "Debian" ];then
+		echo "ERROR! trying Debian operations on non-Debian system"
+		exit 1
+	fi
+}
+
+# Some functions are Red Hat only
+function fxnFailIfNotRedHat()
+{
+	if [ "$OS_TYPE" != "RedHat" ];then
+		echo "ERROR! trying Red Hat operations on non-Red Hat system"
+		exit 1
+	fi
+}
+
 
 # Common post install functions are provided as a sourceable function
 # to reduce copy-paste in overriding scripts, and allow the option for
@@ -32,7 +71,7 @@ function fxnPostInstallCommon()
 
 	# List DUE files to be copied onto the filesystem,
 	# and delete leading . to get absolute paths
-	FILES=$( find ./ -type f | sed -e 's#^\.##g' )
+	FILES=$( /usr/bin/find ./ -type f | sed -e 's#^\.##g' )
 
 	#
 	# Preserve original container files before overwrite
@@ -86,10 +125,12 @@ function fxnPostInstallCommon()
 
 
 #
-# Add sources.list files
+# Add sources.list files to specify package repositories
 #
 function fxnInstallSourcesList()
 {
+	fxnFailIfNotDebian
+	
 	if [ -e ${CONF_DIR}/etc/apt/sources.list ];then
 		echo "$0 Moving existing sources.list to original-sources.list"
 		mv /etc/apt/sources.list /etc/apt/original-sources.list
@@ -105,11 +146,13 @@ function fxnInstallSourcesList()
 }
 
 #
-# add apt keys
+# add apt keys to access Debian packge repositories.
 #
 # Add the keys first so they are available for update
 function fxnInstallAptKeys()
 {
+	fxnFailIfNotDebian
+	
 	if [ -e "${CONF_DIR}/etc/apt/trusted.gpg.d" ];then
 		echo "$0 Adding new gpg keys to apt. This may be slow."
 		cp ${CONF_DIR}/etc/apt/trusted.gpg.d/* /etc/apt/trusted.gpg.d/
