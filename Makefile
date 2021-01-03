@@ -169,13 +169,9 @@ uninstall:
 	sudo rm -rf   /usr/share/due
 
 orig.tar:
-ifneq ($(wildcard $(DEBIAN_BUILD_BRANCH)),)
-	@echo "Check out the master branch to create orig.tar."
-else
 	$(Q) git archive --format=tar.gz --prefix=due_$(DUE_VERSION)/  -o ../due_$(DUE_VERSION).orig.tar.gz  master
 	@echo "Produced tar file in parent directory."
 	$(Q) ls -lrt ../*.gz
-endif
 
 debian-package: orig.tar
 	@echo "######################################################################"
