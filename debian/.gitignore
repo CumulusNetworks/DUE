@@ -1,0 +1,7 @@
+# git, please ignore these generated files:
+.debhelper/
+.gitignore
+debhelper-build-stamp
+due.substvars
+due/
+files
