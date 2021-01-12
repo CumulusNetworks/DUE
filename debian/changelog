@@ -1,33 +1,8 @@
 due (2.3.0-1) unstable; urgency=medium
 
-  * Version bump to 2.3.0
-  * Red Hat image support in libdue and container scripts.
-  * ChangeLog: Lintian cleanup.
+  * New upstream release
 
- -- Alex Doyle <adoyle@nvidia.com>  Sat, 02 Jan 2021 06:06:06 -0700
-
-due (2.2.0-1) unstable; urgency=medium
-
-  * Version bump to 2.2.0
-  * libdue: Initial support to run under Red Hat Linux
-  * Makefile: debian package build target, help
-  * README.md: installation update
-  * ChangeLog: Lintian cleanup.
-
- -- Alex Doyle <adoyle@nvidia.com>  Fri, 25 Dec 2020 07:07:07 -0700
-
-due (2.1.0-1) unstable; urgency=medium
-
-  * debian-package: duebuild now builds binaries by default, not source as well.
-  * debian-package: fixed incorrect examples in help-examples.
-  * debian-package: --use-local-repo now usues due-manage-local-repo.sh.
-  * debian-package: added due-manage-local-repo.sh to let the user add/remove local pacakges.
-  * debian-package: README.md - updated with due-manage-local-repo.sh documentation.
-  * debian-package: duebuild - better error handling on dependency install fails.
-  * common-templates: c-add-docker-user script will add user to docker group, if it exists
-  * onie: Initial support for a Debian 10 build environment
-
- -- Alex Doyle <adoyle@nvidia.com>  Fri, 27 Nov 2020 17:00:00 -0700
+ -- Alex Doyle <adoyle@nvidia.com>  Tue, 12 Jan 2021 08:08:08 -0700
 
 due (2.0.0-3) unstable; urgency=medium
 
