@@ -20,7 +20,7 @@ Depends: ${misc:Depends},
 	 jq,
 	 curl
 Recommends: binfmt-support, qemu, qemu-user-static
-Description: Dedicated User Environment: manage build environments in Docker containers.
+Description: Dedicated User Environment: manage build environments in Docker containers
  DUE uses templates to generate target specific build images based on any
  version or architecture of any Debian release, and provides a launcher
  application to reduce complexity and let the developer 'just build it',
