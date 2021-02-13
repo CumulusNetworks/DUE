@@ -5,6 +5,7 @@
 # CONTEXT: runs inside the container at creation time.
 # Note - this is /bin/sh as /bin/bash may not be available.
 
+# Copyright 2021 NVIDIA Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
@@ -19,8 +20,6 @@ echo " _________________________________________________________________________
 echo "|"
 echo "| Running REPLACE_IMAGE_NAME pre install configuration."
 echo "|___________________________________________________________________________"
-
-
 
 if [ ! -e /build ];then
     echo "$0 Creating a /build directory as a common build mount point."
@@ -38,7 +37,7 @@ BASE_PACKAGES="\
     wget \
     bash \
     sudo \
-	procps \
+    procps \
     gnupg "
 
 if [ -e /etc/redhat-release ];then
@@ -89,9 +88,31 @@ else
         exit 1
     fi
 
+    #
+    # Check for any local software to install.
+    # This code is responsible for being smart enough to handle
+    # the format of whatever is found.
+    #
+    if [ -d /due-configuration/pre-install-local ];then
+        echo "Pre installing local software:"
+        cd /due-configuration/pre-install-local
+        ls -l
+        # Install packages (expect dependency errors)
+        sudo dpkg -i *.deb
+        # Resolve dependency errors with --fix-broken
+        apt-get install --assume-yes --fix-broken || exit 1
+        echo "Pre installing local software: DONE"
+    fi
 fi
 #
 # Add any additional initial configuration here
 #
+
+echo " ___________________________________________________________________________ "
+echo "|"
+echo "| DONE running REPLACE_IMAGE_NAME pre install configuration."
+echo "|___________________________________________________________________________"
+
+
 exit 0
 

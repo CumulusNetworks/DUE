@@ -24,6 +24,11 @@ Create default Ubuntu 20.04 Debian package build environment with: ./due --creat
 ## Additional configuration
 In addition to the the expectedly unique `duebuild` and install scripts, there is a script for managing local package repositories: `due-manage-local-package-repo.sh`. See below.
 
+### Adding files at build time
+As of the 2.4.x release, the common-template supports the install of packages from the local filesystem, and this is shared by all other templates.
+See the `pre-install-local` directory, for local packages to be added when the `pre-install-config.sh` script executes,  
+and the `post-install-local` directory for local packages to be added when the `post-install-config.sh` script executes.  
+
 
 # Architecture  
 

@@ -3,6 +3,7 @@
 # Bash should be installed at this point.
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 
+# Copyright 2021 NVIDIA Corporation.  All rights reserved.
 # Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
@@ -34,16 +35,16 @@ apt-get update
 #
 
 DEBIAN_FRONTEND=noninteractive \
-			   apt-get install \
-			   --assume-yes \
-			   --no-install-recommends \
-			   python 2>/dev/null
+               apt-get install \
+               --assume-yes \
+               --no-install-recommends \
+               python 2>/dev/null
 if [ $? != 0 ];then
-	DEBIAN_FRONTEND=noninteractive \
-			   apt-get install \
-			   --assume-yes \
-			   --no-install-recommends \
-			   python3
+    DEBIAN_FRONTEND=noninteractive \
+               apt-get install \
+               --assume-yes \
+               --no-install-recommends \
+               python3
 fi
 # Packages for kernel build, but not essential for Debian packaging
 KERNEL_BUILD_PACKAGES=" build-essential python-six rsync gcc bc bison cpio flex kmod quilt u-boot-tools "
@@ -58,25 +59,45 @@ LINTIAN_PACKAGES=" lintian "
 # If you expect to do development in the container, these are useful.
 EDITORS="vim emacs-nox"
 
+# Any packages that you always use
+NICE_TO_HAVE=" tree "
+
 #
 # Packages included by variables are optional.
 # They can be removed and packages should still build, if storage
 # space is a concern.
 #
 DEBIAN_FRONTEND=noninteractive \
-			   apt-get install \
-			   --assume-yes \
-			   --no-install-recommends \
-			   	openssh-server \
-				iputils-ping \
-				devscripts \
-				git \
-				x11-xkb-utils \
-				equivs \
-				$KERNEL_BUILD_PACKAGES \
-				$LINTIAN_PACKAGES \
-				$EDITORS \
-				apt-utils \
-				dpkg-dev  || exit 1
+               apt-get install \
+               --assume-yes \
+               --no-install-recommends \
+                openssh-server \
+                iputils-ping \
+                devscripts \
+                git \
+                x11-xkb-utils \
+                equivs \
+                $KERNEL_BUILD_PACKAGES \
+                $LINTIAN_PACKAGES \
+                $EDITORS \
+                $NICE_TO_HAVE \
+                apt-utils \
+                dpkg-dev  || exit 1
+
+#
+# Check for any local software to install.
+# This code is responsible for being smart enough to handle
+# the format of whatever is found.
+#
+if [ -d /due-configuration/post-install-local ];then
+    echo "Post installing local software:"
+    cd /due-configuration/post-install-local
+    ls -l
+    # Install packages (expect dependency errors)
+    sudo dpkg -i *.deb
+    # Resolve dependency errors with --fix-broken
+    noninteractive apt-get install --assume-yes --fix-broken || exit 1
+    echo "Post installing local software: DONE"
+fi
 
 echo "Done $0"

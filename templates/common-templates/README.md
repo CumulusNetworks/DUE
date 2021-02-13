@@ -15,7 +15,9 @@ Starting Docker image + **common-templates** + role specific configuration templ
 │...... └── local  
 │.........└── bin  
 │............└── container-create-user.sh  *<-- create user account in container that matches host. Also used for running commands without login.*  
-├── install-config-common-lib.template     *<-- DUE image assembly utilities*    
+├── install-config-common-lib.template     *<-- DUE image assembly utilities*   
 ├── post-install-config.sh.template        *<-- run after file copy to image *  
-└── pre-install-config.sh.template         *<-- run before any files have been copied to the image*
+├── post-install-local                     *<-- directory for any local files requring post install (deb, rpm, etc)*  
+└── pre-install-config.sh.template         *<-- run before any files have been copied to the image*  
+└── pre-install-local                      *<-- directory for any local files requring pre install (deb, rpm, etc)*  
 
