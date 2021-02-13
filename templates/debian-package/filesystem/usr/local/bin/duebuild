@@ -2,6 +2,7 @@
 # SCRIPT_PURPOSE: Low-rent version of sbuild. Resolve dependencies. Build a debian package, and maybe more
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 
+# Copyright 2021 NVIDIA Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
@@ -820,11 +821,12 @@ do
             ;;
 
         --add-sources-list )
-            ADD_SOURCES_LIST="$2"
-            if [ ! -e "$ADD_SOURCES_LIST" ];then
-                fxnERR "Container failed to find additional sources.list file [ $ADD_SOURCES_LIST ]. Exiting."
+            if [ ! -e "$2" ];then
+                fxnERR "Container failed to find additional sources.list file [ $2 ]. Exiting."
                 exit 1
             fi
+            # Allow stacking multiple sources.list files to copy in.
+            ADD_SOURCES_LIST+=" $2 "
             shift
             ;;
 
@@ -1098,21 +1100,26 @@ if [ "$BUILD_JOBS" != "" ];then
     BUILD_ARGS+=" -j${BUILD_JOBS} "
 fi
 
-# use/create local repository to store build products.
-# Process this before adding sources list, as this repository
-# will be searched as well.
+# Add sources.list files and apt-update BEFORE using a local
+# package repository. If the local repo was just created and
+# is empty, it throws errors on apt-get update.
+if [ "$ADD_SOURCES_LIST" != "" ];then
+    for srcfile in $ADD_SOURCES_LIST ; do
+        fxnPP "Copying $srcfile to /etc/apt/sources.list.d"
+        fxnEC sudo cp "$srcfile" /etc/apt/sources.list.d  || exit 1
+    done
+    # If any added sources.list file is bad, fail immediately.
+    fxnEC sudo apt-get update || exit 1
+
+fi
+
+# Use/create local repository to store build products.
+# May be empty at start, expecting build products to be added.
+# NOTE: it will cause errors if apt-get is run while it is empty.
 if [ "$LOCAL_REPO_NAME" != "" ];then
     # Leave last parameter out as there are no packages, but
     # the repository references should be added.
     fxnUseLocalPackageRepository "$LOCAL_REPO_NAME" "default"
-fi
-
-if [ "$ADD_SOURCES_LIST" != "" ];then
-    fxnPP "Copying $ADD_SOURCES_LIST to /etc/apt/sources.list.d"
-    fxnEC sudo cp "$ADD_SOURCES_LIST" /etc/apt/sources.list.d  || exit 1
-    # If the added sources.list is bad, fail immediately.
-    fxnEC sudo apt-get update || exit 1
-
 fi
 
 
