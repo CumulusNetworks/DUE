@@ -3,7 +3,7 @@
 
 # DUE_VERSION_COMPATIBILITY_TRACKING=2.0.0
 
-# Copyright 2020 NVIDIA Corporation. All rights reserved.
+# Copyright 2020,2021 NVIDIA Corporation. All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
 
@@ -30,15 +30,18 @@ function fxnHelp()
     echo " OPTIONS:"
     echo "   --name <reponame>          Specify repo name to use."
     echo "   --create-repo              Create empty local repository."
-    echo "     --architecture <arch>    Architecture type for repository. Default: [ $USE_ARCHITECTURE]"
+    echo "     --architecture <arch>    Architecture type for repository. Default: [ $USE_ARCHITECTURE ]"
     echo "   --delete-repo              Remove all traces of --name <repo>"
+    echo "   --update-repo              Rebuild index of current repo contents."
     echo ""
     echo "   --add <deb or dir of debs> Add deb file or directory holding debs to repository."
+    echo "                               For multiple single debs, repeat --add."
+    echo "                                Ex: --add foo.deb --add bar.deb"
     echo "   --delete-package <term>    Remove <term> from repo."
     echo "                               If '<term>' wildcards can be passed. See --help-examples."
     echo ""
-    echo "   --disable-repo             Remove apt files referencing repo, keep repo dir."
-    echo "   --enable-repo              Add apt files to reference existing repo dir."
+    echo "   --disable-repo             Remove apt files referencing <reponame>, but keep the repository."
+    echo "   --enable-repo              Set apt files to reference <reponame>."
     echo "   --no-apt-update            Skip default behavior of apt-updating on exit."
     echo ""
     echo " Information:"
@@ -53,22 +56,28 @@ function fxnHelp()
 # Examples of use
 function fxnHelpExamples()
 {
+    local userIs="$(whoami)"
+
     echo "Examples:"
     echo ""
     echo " Create repository foo:"
-    echo "   $0 --name /home/$(whoami)/foo --create-repo"
+    echo "   $0 --name /home/${userIs}/foo --create-repo"
     echo ""
-    echo " Add a package or directory of packages:"
-    echo "   $0 --name /home/$(whoami)/foo -add foo.deb"
-    echo "   $0 --name /home/$(whoami)/foo -add ./mydebs/"
+    echo " Create repository foo using packages in ~/pkgdir... "
+    echo "   ...and make it active with  /etc/apt/sources.list.d/${LOCAL_REPO_SOURCES_LIST}:"
+    echo "   $0 --name /home/${userIs}/foo --create-repo --add /home/${userIs}/pkgdir --enable-repo"
+    echo ""
+    echo " Add a package(s) or directory of packages:"
+    echo "   $0 --name /home/${userIs}/foo -add foo.deb --add bar.deb"
+    echo "   $0 --name /home/${userIs}/foo -add ./mydebs/"
     echo ""
     echo " Delete package bar.deb from repository:"
-    echo "   $0 --name /home/$(whoami)/foo --delete-package bar.deb"
+    echo "   $0 --name /home/${userIs}/foo --delete-package bar.deb"
     echo " Delete all packages starting with baz (note the single quotes!):"
-    echo " $0 --name /home/$(whoami)/foo --delete-package 'baz*'"
+    echo "   $0 --name /home/${userIs}/foo --delete-package 'baz*'"
     echo ""
     echo " Delete repository foo:"
-    echo "   $0 --name /home/$(whoami)/foo --delete-repo"
+    echo "   $0 --name /home/${userIs}/foo --delete-repo"
     echo""
 
 }
@@ -117,27 +126,32 @@ function fxnAddRepositoryPackage()
 {
     local toAdd="$1"
 
-    if [ ! -e "$toAdd" ];then
-        fxnERR "Failed to find [ $toAdd ] to add to local repository. Exiting."
-        exit 1
-    fi
+    for debFile in $toAdd ; do
+        if [ ! -e "$debFile" ];then
+            fxnERR "Failed to find [ $debFile ] to add to local repository. Exiting."
+            exit 1
+        fi
 
-    if [ -d "$1" ];then
-        fxnPP "Copying ${toAdd}/*.deb to $REPO_POOL_DIR"
-        fxnEC cp -f "${toAdd}/"*.deb "$REPO_POOL_DIR" || exit 1
-    elif [ -f "$1" ];then
-        fxnPP "Copying [ $toAdd ] to $REPO_POOL_DIR"
-        fxnEC cp -f "$toAdd" "$REPO_POOL_DIR" || exit 1
+        if [ -d "$debFile" ];then
+            fxnPP "Copying ${debFile}/*.deb to $REPO_POOL_DIR"
+            fxnEC cp -f "${debFile}/"*.deb "$REPO_POOL_DIR" || exit 1
+        elif [ -f "$debFile" ];then
+            fxnPP "Copying [ $debFile ] to $REPO_POOL_DIR"
+            fxnEC cp -f "$debFile" "$REPO_POOL_DIR" || exit 1
 
-    else
-        fxnERR "Could not find [ $1 ] to add to local package repository."
-        exit 1
-    fi
-
+        else
+            fxnERR "Could not find [ $debFile ] to add to local package repository."
+            exit 1
+        fi
+    done
     # refresh Package files
     fxnUpdateRepository
 
     fxnListRepoPool
+
+    # With packages in, apt updates are safe.
+    DO_APT_UPDATE="TRUE"
+
 
 }
 
@@ -189,7 +203,7 @@ function fxnUpdateRepository()
 
     cd "$LOCAL_PACKAGE_REPOSITORY_ROOT" || exit 1
 
-    fxnPP "Updating local repository at $LOCAL_PACKAGE_REPOSITORY_PATH"
+    fxnPP "Updating local repository at [ $LOCAL_PACKAGE_REPOSITORY_PATH ]"
     #   fxnEC apt-ftparchive --arch $USE_ARCHITECTURE  packages pool |
     fxnEC apt-ftparchive packages pool | \
         tee "${LOCAL_REPOSITORY_BIN_DIR}"/Packages | \
@@ -228,7 +242,28 @@ function fxnManageAPTConfig()
 
     local localRepoSourcesList=""
 
+    #
+    # Sanity check that a valid reposiory was passed.
+    #
+    if [  -e "$LOCAL_PACKAGE_REPOSITORY_ROOT" ];then
+        if [  ! -e "$REPO_DEBS_DIR" ] || \
+               [ ! -e "$REPO_POOL_DIR" ] || \
+               [ ! -e "$LOCAL_REPOSITORY_BIN_DIR" ];then
+            echo -e "\nFailed to find one of:\n [ $REPO_DEBS_DIR ]\n [ $REPO_POOL_DIR ]\n [ $LOCAL_REPOSITORY_BIN_DIR ]\n"
+            fxnERR "Invalid repository [ $LOCAL_PACKAGE_REPOSITORY_ROOT ]"
+            exit 1
+        fi
+    else
+        fxnERR "Failed to find local repository at [ $LOCAL_PACKAGE_REPOSITORY_ROOT ] "
+        exit 1
+    fi
+
     if [ "$1" = "ENABLE" ];then
+        #
+        # Always start clean. Could be a new enable for a new repo.
+        #
+        fxnManageAPTConfig "DISABLE" > /dev/null
+
         # Update the sources.list file
         localRepoSourcesList="${LOCAL_PACKAGE_REPOSITORY_ROOT}/${LOCAL_REPO_SOURCES_LIST}"
         if [ ! -e /etc/apt/sources.list.d/"${LOCAL_REPO_SOURCES_LIST}" ];then
@@ -272,7 +307,8 @@ EOF
         else
             fxnPP "Skipping APT update as no packages have been added yet, and 'Failed to stat' errors will be seen."
             fxnPP "Use $0 --name $LOCAL_REPO_NAME --add <deb or directory of debs> to add packages."
-            # Exit at this point, having set up the sources.list and apt preferences files to
+            DO_APT_UPDATE="FALSE"
+            # At this point the sources.list and apt preferences files are set up to
             # reference and prioritize the local repository.
         fi
 
@@ -389,15 +425,7 @@ function fxnCreateLocalPackageRepository()
 #                                                #
 ##################################################
 
-
-if [ "$#" = "0" ];then
-    # Require an argument for action.
-    # Always trigger help messages on no action.
-    fxnHelp
-    exit 0
-fi
-
-# Default to local architecture
+# Default to local architecture (set here as help uses it )
 USE_ARCHITECTURE=$( dpkg-architecture --query DEB_TARGET_ARCH )
 
 LOCAL_REPOSITORY_DISTRIBUTION="local-due-repo"
@@ -406,6 +434,14 @@ LOCAL_REPO_SOURCES_LIST="local-build-repo.list"
 LOCAL_APT_PREFERENCES_FILE="/etc/apt/preferences.d/10local-build-repo"
 # unless specified otherwise, always update apt.
 DO_APT_UPDATE="TRUE"
+
+if [ "$#" = "0" ];then
+    # Require an argument for action.
+    # Always trigger help messages on no action.
+    fxnHelp
+    exit 0
+fi
+
 #
 # Gather arguments and set action flags for processing after
 # all parsing is done. The only functions that should get called
@@ -447,11 +483,12 @@ do
             ;;
 
         --add )
-            ADD_TO_REPO="$2"
+            # add a package to a list of packages to add
             if [ ! -e "$2" ];then
                 fxnERR "Failed to find [ $ADD_TO_REPO ] to add to local repository. Exiting."
                 exit 1
             fi
+            ADD_TO_REPO+=" $2 "
             shift
             ;;
 
@@ -487,9 +524,9 @@ do
             exit 0
             ;;
 
-        --repo-update )
-            fxnUpdateRepository
-            exit
+        --update-repo )
+            # Rebuild package files and update the repository. Put Apt files under /etc
+            DO_UPDATE_REPOSITORY="TRUE"
             ;;
 
         -h|--help)
@@ -530,6 +567,10 @@ fi
 # a chance to make the repository before we sanity check for it's existence.
 #
 fxnSetPaths "$LOCAL_REPO_NAME"
+
+if [ "$DO_UPDATE_REPOSITORY" = "TRUE" ];then
+    fxnUpdateRepository
+fi
 
 if [ "$ENABLE_APT_CONFIG" = "TRUE" ];then
     # Add local sources.list references

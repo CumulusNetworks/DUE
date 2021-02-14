@@ -9,11 +9,11 @@ to support defined by `common-templates/filesystem/usr/local/bin/duebuild`
 # Workflow
 
 This script is invoked by using the `--build` argument when running `due`.  
-**Example:** build package foo from source
-`cd ./foo`
-`due --build`
+**Example:** build package foo from source  
+`cd ./foo`  
+`due --build`  
 
-**Example:** build package foo from foo.dsc
+**Example:** build package foo from foo.dsc  
 `due --build --build-dsc foo.dsc`
 
 # Script help
@@ -58,6 +58,7 @@ To print the duebuild help for any build container without logging in to it, run
                                 If (repo) starts with a '/' it will be treated as a container-relative  
                                 path for the location of the repository. Otherwise it defaults to the  
                                 directory above the build area.  
+
   
   **More information:**  
    `--quiet`                    Suppress output.  
@@ -130,12 +131,21 @@ duebuild examples of additional build options.
   Set DEB_BUILD_OPTIONS values:  
    `./duebuild --cbuild --deb-build-option debug --deb-build-option nostrip`  
   
-  Store build products in a repository above the build directory for future builds  
-  (i.e. building things that need other things built to build...)  
-   `./duebuild --cbuild --use-local-repo myLocalRepo`  
-   Or specify that repository with an absolute (container relative) path:  
-   `./duebuild --cbuild --use-local-repo /path/to/myLocalRepo`   
+**Local package repository**  
 
+  This option lets a developer store build products in a repository above the build directory for future builds. This is particularly useful when building packages that need previously built packages to build...)  
+The container's `/usr/local/bin/due-manage-local-repo.sh` script is responsible for managing the local repository. See its `--help` for ways to add .debs or directories of .debs to the local repository.  
+  *NOTE* The path to the local repository must be under the host path that was mounted for it to be accessible in the container.  
+  
+  If not, you will need to run DUE with a `--mount-dir hostPath:containerPath` to make it available.  
+   `./duebuild --use-local-repo myLocalRepo --cbuild`  
+   Or specify that repository with an absolute (container relative) path:  
+   `./duebuild --use-local-repo /path/to/myLocalRepo --cbuild`   
+   Or use a local repository and add sources list files s1.list and s2.list for other repositories:  
+   `./duebuild --add-sources-list s1.list --add-sources-list s2.list --use-local-repo /path/to/myLocalRepo --cbuild`  
+    Or pre populate the repository with a directory of *.debs and a particular .deb when doing a build from outside the container:  
+   ./duebuild --add-sources-list s1.list --add-sources-list s2.list --use-local-repo /path/to/myLocalRepo --cbuild`
+  
   Do environmental setup and run dpkg-buildpackage -uc -us -j8  
    `./duebuild --build-command dpkg-buildpackage -uc -us -j8`  
 

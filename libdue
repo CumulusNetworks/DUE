@@ -13,7 +13,7 @@
 shopt -s extglob
 
 # Documentation and changelog builds get the official version from here.
-DUE_VERSION="2.3.0"
+DUE_VERSION="2.4.0"
 
 # Debian packages required for DUE to run
 REQUIRED_PACKAGES=" docker.io rsync bsdutils git"
