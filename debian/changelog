@@ -1,3 +1,9 @@
+due (2.4.0~1) unstable; urgency=medium
+
+  * Development version to accumulate changes until the next release to Debian.
+
+ -- Alex Doyle <adoyle@nvidia.com>  Sun, 24 Jan 2021 16:10:00 -0700
+
 due (2.3.0-1) unstable; urgency=medium
 
   * New upstream release
