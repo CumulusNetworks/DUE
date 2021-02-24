@@ -4,6 +4,12 @@ due (2.4.0~1) unstable; urgency=medium
 
  -- Alex Doyle <adoyle@nvidia.com>  Sun, 24 Jan 2021 16:10:00 -0700
 
+due (2.3.0-2) unstable; urgency=medium
+
+  * Source only upload for migration to testing
+
+ -- Geert Stappers <stappers@debian.org>  Tue, 16 Feb 2021 21:59:06 +0100
+
 due (2.3.0-1) unstable; urgency=medium
 
   * New upstream release
