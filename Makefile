@@ -3,6 +3,9 @@
 # Set the version in libdue as the source of truth
 DUE_VERSION := $(shell /bin/sh -c "grep -o 'DUE_VERSION=\".*\"' ./libdue | sed -e 's/DUE_VERSION=//g' | tr -d \\\" " )
 
+# The source tarball
+DUE_ORIG_TAR="due_$(DUE_VERSION).orig.tar.gz"
+
 # Uncomment the following to enable more makefile output
 #export DH_VERBOSE = 1
 
@@ -169,9 +172,16 @@ uninstall:
 	sudo rm -rf   /usr/share/due
 
 orig.tar:
-	$(Q) git archive --format=tar.gz --prefix=due_$(DUE_VERSION)/  -o ../due_$(DUE_VERSION).orig.tar.gz  master
-	@echo "Produced tar file in parent directory."
+	@echo "######################################################################"
+	@echo "#                                                                    #"
+	@echo "# Building DUE source tar file: $(DUE_ORIG_TAR)                #"
+	@echo "#                                                                    #"
+	@echo "######################################################################"
+	@echo ""
+	$(Q) git archive --format=tar.gz --prefix=due_$(DUE_VERSION)/  -o ../$(DUE_ORIG_TAR)  master
+	@echo "  Produced tar file [ $(DUE_ORIG_TAR) ]in parent directory."
 	$(Q) ls -lrt ../*.gz
+	@echo ""
 
 debian-package: orig.tar
 	@echo "######################################################################"
@@ -180,6 +190,8 @@ debian-package: orig.tar
 	@echo "#                                                                    #"
 	@echo "######################################################################"
 	@echo ""
+	@echo "# Stashing any local Git changes."
+	$(Q) git stash
 	@echo "# Checking out debian/master branch."
 	$(Q) git checkout debian/master
 	@echo ""
@@ -188,6 +200,9 @@ debian-package: orig.tar
 	@echo ""
 	@echo "# Checking out master branch."
 	$(Q) git checkout master
+	@echo "# Applying any local master branch stash changes with git stash pop."
+	$(Q) git stash pop
+
 
 debian: orig.tar
 	@ echo "Building DUE Debian installer package."
