@@ -96,7 +96,7 @@ if [ -d /due-configuration/post-install-local ];then
     # Install packages (expect dependency errors)
     sudo dpkg -i *.deb
     # Resolve dependency errors with --fix-broken
-    noninteractive apt-get install --assume-yes --fix-broken || exit 1
+    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --fix-broken || exit 1
     echo "Post installing local software: DONE"
 fi
 
