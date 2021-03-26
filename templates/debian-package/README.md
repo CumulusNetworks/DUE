@@ -19,7 +19,7 @@ Create default Debian 10 Debian package build environment with: ./due --create -
 Create default Debian Sid  Debian package build environment with: ./due --create --from debian:sid   --description "Package Build for Debian Unstable" --name pkg-sid --prompt PKGSid --tag pkg-sid --use-template debian-package
 
 ## Ubuntu 20.04 build environment image creation example:
-Create default Ubuntu 20.04 Debian package build environment with: ./due --create --from ubuntu:20.04 --description "Package Build for Ubuntu 20.04" --name pkg-u-20.04 --prompt PKGU1804 --tag pkg-ubuntu-20.04 --use-template debian-package
+Create default Ubuntu 20.04 Debian package build environment with: ./due --create --from ubuntu:20.04 --description "Package Build for Ubuntu 20.04" --name pkg-u-20.04 --prompt PKGU2004 --tag pkg-ubuntu-20.04 --use-template debian-package
 
 ## Additional configuration
 In addition to the the expectedly unique `duebuild` and install scripts, there is a script for managing local package repositories: `due-manage-local-package-repo.sh`. See below.
