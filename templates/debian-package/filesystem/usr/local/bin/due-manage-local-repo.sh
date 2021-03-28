@@ -28,7 +28,7 @@ function fxnHelp()
     echo "Usage  : $(basename "$0"): --name <reponame> [OPTIONS]"
     echo ""
     echo " OPTIONS:"
-    echo "   --name <reponame>          Specify repo name to use."
+    echo "   --name <reponame>          Specify repo name to use. New repos should have unique names."
     echo "   --create-repo              Create empty local repository."
     echo "     --architecture <arch>    Architecture type for repository. Default: [ $USE_ARCHITECTURE ]"
     echo "   --delete-repo              Remove all traces of --name <repo>"
@@ -214,7 +214,7 @@ function fxnUpdateRepository()
 -o APT::FTPArchive::Release::Label=localPackageRepository \
 -o APT::FTPArchive::Release::Suite=local-repo \
 -o APT::FTPArchive::Release::Version=1.0 \
--o APT::FTPArchive::Release::Codename=local-due-repo \
+-o APT::FTPArchive::Release::Codename=$RELEASE_NAME \
 -o APT::FTPArchive::Release::Architectures=$USE_ARCHITECTURE \
 -o APT::FTPArchive::Release::Description=LocalPackageRepository \
 -o APT::FTPArchive::Release::Components=main"
@@ -241,7 +241,6 @@ function fxnManageAPTConfig()
 {
 
     local localRepoSourcesList=""
-
     #
     # Sanity check that a valid reposiory was passed.
     #
@@ -249,13 +248,17 @@ function fxnManageAPTConfig()
         if [  ! -e "$REPO_DEBS_DIR" ] || \
                [ ! -e "$REPO_POOL_DIR" ] || \
                [ ! -e "$LOCAL_REPOSITORY_BIN_DIR" ];then
-            echo -e "\nFailed to find one of:\n [ $REPO_DEBS_DIR ]\n [ $REPO_POOL_DIR ]\n [ $LOCAL_REPOSITORY_BIN_DIR ]\n"
+            echo -e "\nFailed to find one of:\n [ $REPO_DEBS_DIR ]\n [ $REPO_POOL_DIR ]\n [ $LOCAL_REPOSITORY_BIN_DIR ]\n Try deleting and re-creating the repository? \n"
             fxnERR "Invalid repository [ $LOCAL_PACKAGE_REPOSITORY_ROOT ]"
             exit 1
         fi
     else
         fxnERR "Failed to find local repository at [ $LOCAL_PACKAGE_REPOSITORY_ROOT ] "
-        exit 1
+		if [ "$1" = "ENABLE" ];then
+			# Cannot activate what is not there
+			exit 1
+		fi
+		# Disable, however, is still possible if this is cleaning up a broken configuration.
     fi
 
     if [ "$1" = "ENABLE" ];then
@@ -290,7 +293,7 @@ function fxnManageAPTConfig()
             cat <<EOF > /tmp/apt-pref
 # Created by $(whoami) using $0 building from $(pwd) on $(date)
 Package: *
-Pin: release n=local-due-repo
+Pin: release n=$RELEASE_NAME
 Pin-Priority: 990  >
 EOF
             fxnEC sudo mv /tmp/apt-pref "$LOCAL_APT_PREFERENCES_FILE" || exit 1
@@ -341,7 +344,7 @@ function fxnSetPaths()
 {
     local repoName="$1"
 
-    if [ "$2" != "SKIP_CHECK" ];then
+    if [ "$2" != "SKIP_REPO_EXISTS_CHECK" ];then
         # Repo creation code calls this, so do not exit before
         # it has had a chance to create the directory.
         if [ ! -e "$repoName" ];then
@@ -398,7 +401,7 @@ function fxnCreateLocalPackageRepository()
 
     # Set paths and disable checking for the lack of a repository,
     # as we are about to address that...
-    fxnSetPaths "$LOCAL_REPO_NAME" "SKIP_CHECK"
+    fxnSetPaths "$LOCAL_REPO_NAME" "SKIP_REPO_EXISTS_CHECK"
 
     if [ ! -e "$LOCAL_PACKAGE_REPOSITORY_ROOT" ];then
         fxnPP "Creating directories for local Debian package repository at: $LOCAL_PACKAGE_REPOSITORY_PATH"
@@ -425,13 +428,6 @@ function fxnCreateLocalPackageRepository()
 #                                                #
 ##################################################
 
-# Default to local architecture (set here as help uses it )
-USE_ARCHITECTURE=$( dpkg-architecture --query DEB_TARGET_ARCH )
-
-LOCAL_REPOSITORY_DISTRIBUTION="local-due-repo"
-LOCAL_REPOSITORY_COMPONENT="main"
-LOCAL_REPO_SOURCES_LIST="local-build-repo.list"
-LOCAL_APT_PREFERENCES_FILE="/etc/apt/preferences.d/10local-build-repo"
 # unless specified otherwise, always update apt.
 DO_APT_UPDATE="TRUE"
 
@@ -460,6 +456,8 @@ do
         --name )
             # specify name of repository to reference
             LOCAL_REPO_NAME="$2"
+			# Create a name for the release from the name of the repository.
+			RELEASE_NAME=$( basename $LOCAL_REPO_NAME )			
             shift
             ;;
 
@@ -553,6 +551,18 @@ do
 done
 
 #
+# Set repository values based on any user input
+#
+
+
+# Default to local architecture (set here as help uses it )
+USE_ARCHITECTURE=$( dpkg-architecture --query DEB_TARGET_ARCH )
+LOCAL_REPOSITORY_DISTRIBUTION="${RELEASE_NAME}"
+LOCAL_REPOSITORY_COMPONENT="main"
+LOCAL_REPO_SOURCES_LIST="due-local-${RELEASE_NAME}-repo.list"
+LOCAL_APT_PREFERENCES_FILE="/etc/apt/preferences.d/10due-local-${RELEASE_NAME}-repo"
+
+#
 # As all other commands require the existence of a repository,
 # the first option is to create one.
 #
@@ -560,6 +570,27 @@ if [ "$CREATE_LOCAL_REPO" = "TRUE" ];then
     fxnCreateLocalPackageRepository "$LOCAL_REPO_NAME" "$USE_ARCHITECTURE"
 fi
 
+
+if [ "$DELETE_LOCAL_REPO" = "TRUE" ];then
+	# Delete takes a slightly different set paths
+	# Generate repo file names. Do not check for validity as
+	# the repo may be gone, but apt config files still exist.
+	fxnSetPaths "$LOCAL_REPO_NAME" "SKIP_REPO_EXISTS_CHECK"
+	
+    fxnPP "Removing local package repository [ $LOCAL_REPO_NAME ] and associated files."
+    if [ -e "$LOCAL_REPO_NAME" ];then
+        fxnPP "Deleting [ $LOCAL_REPO_NAME ]"
+        rm -rf "$LOCAL_REPO_NAME"
+    else
+        # Print as message, not error as this has been handled.
+        fxnPP "Done. No repository directory at  [ $LOCAL_REPO_NAME ]."
+    fi
+    # Clean up apt preferences/sources.list in case the repo
+    # directory was manually deleted but these weren't.
+    fxnManageAPTConfig "DISABLE"
+
+	exit
+fi
 
 #
 # Set paths to various locations and sanity check for this repository.
@@ -595,19 +626,6 @@ if [ "$DO_LIST_REPO" = "TRUE" ];then
     fxnListRepoPool
 fi
 
-if [ "$DELETE_LOCAL_REPO" = "TRUE" ];then
-    fxnPP "Removing local package repository [ $LOCAL_REPO_NAME ] and associated files."
-    if [ -e "$LOCAL_REPO_NAME" ];then
-        fxnPP "Deleting [ $LOCAL_REPO_NAME ]"
-        rm -rf "$LOCAL_REPO_NAME"
-    else
-        # Print as message, not error as this has been handled.
-        fxnPP "Done. No repository directory at  [ $LOCAL_REPO_NAME ]."
-    fi
-    # Clean up apt preferences/sources.list in case the repo
-    # directory was manually deleted but these weren't.
-    fxnManageAPTConfig "DISABLE"
-fi
 
 if [ "$DO_APT_UPDATE" = "TRUE" ];then
     fxnPP "Updating APT."
