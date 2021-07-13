@@ -86,7 +86,7 @@ case $DEBIAN_RELEASE in
 
         # Packages used for secure boot (amd64 hard code is fine as this is Intel only)
         #linux-headers-amd64?
-        SECURE_BOOT=" qemu-utils ovmf gnu-efi libfile-slurp-perl "
+        SECURE_BOOT=" qemu-utils ovmf gnu-efi libfile-slurp-perl grub-common psmisc "
 
         # make sure this is in a container
         if [ -e /.dockerenv ];then
@@ -133,6 +133,7 @@ DEBIAN_FRONTEND=noninteractive \
                gawk \
                git \
                gperf \
+			   gnupg2 \
                help2man \
                libefivar-dev \
                libexpat1 \
@@ -146,9 +147,11 @@ DEBIAN_FRONTEND=noninteractive \
                libssl-dev \
                libtool \
                libtool-bin \
+			   monkeysphere \
                mtools \
                pkg-config \
                openssl \
+			   psmisc \
                python-all-dev \
                rst2pdf \
                rsync \
