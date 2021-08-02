@@ -569,6 +569,10 @@ function fxnMakeNewDockerImage()
             "x86_64" )
                 HOST_ARCH="amd64"
                 ;;
+			"aarch64" )
+				HOST_ARCH="arm64"
+				;;
+			
             * )
                 fxnERR "Cannot map [ $HOST_ARCH ] to a Docker contianer type. Exiting."
                 exit 1
