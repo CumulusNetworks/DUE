@@ -82,7 +82,7 @@ case $DEBIAN_RELEASE in
         ;;
 
     "10" )
-        DEBIAN_10_PACKAGES="sbsigntool unzip tree python3.7-dev python3-distutils libelf-dev"
+        DEBIAN_10_PACKAGES="sbsigntool unzip tree python3.7-dev python3-distutils libelf-dev ispell jq"
 
         # Packages used for secure boot (amd64 hard code is fine as this is Intel only)
         #linux-headers-amd64?
