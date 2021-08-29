@@ -1070,9 +1070,15 @@ function fxnSelectContainer()
                     | sed -e 's/^    //g' -e 's/\t/  /g' )
     if [ "$theBody"  = "" ];then
         echo ""
-        echo "  No containers starting with [ $filterByType ] found. "
         if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
-            echo " Results were filtered by [ $userIs ].   Try adding --all to the command ?"
+            echo "  No DUE Docker images were found. "
+            echo "  Howwever, the results were filtered by [ $userIs ]. Add --all to the command to see all Docker images."
+            exit 1
+        fi
+        if [ "$filterByType" = "" ];then
+            echo "  No Docker images were found. Try running [ ./due --create --help ]? "
+        else
+            echo "  No Docker images  starting with [ $filterByType ] found. "
         fi
         echo ""
         exit 0
