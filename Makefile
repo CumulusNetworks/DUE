@@ -131,7 +131,7 @@ depends:
 		sudo dnf install $(DUE_DEPENDENCIES) docker ;\
 	else \
 		echo "Installing dependencies for Debian Linux" ; \
-		sudo apt-get install $(DUE_DEPENDENCIES ) bsdutils docker.io ; \
+		sudo apt-get install $(DUE_DEPENDENCIES) bsdutils docker.io ; \
 	fi
 	@ echo "Done installing dependencies."
 
