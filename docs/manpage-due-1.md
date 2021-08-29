@@ -208,6 +208,34 @@ and re running ./due --create --build-dir ./due-build-merge/debian-package-10
 The final image will hold a /due-configuration directory, which holds everything that went into the image.
 This is very useful for install script debug inside the container.
 
+A list of available default configurations is provided by running:
+due --create --help
+This will parse the README.md files under the ./templates directory looking for specific strings.
+This output can be filtered by using wildcard syntax as follows:
+due --create --help --filter <term>
+
+Advanced image creation
+-------
+
+DUE 2.4.0 introduced hierarchical template parsing, where a template could be a
+combination of files provided by 'sub-type' directories, to reduce file duplication.
+With this, files with identical names and paths will overwrite the ones provided
+by higher directories.
+
+Example:
+Given directory structure:
+due/templates/foo/sub-type/bar/sub-type/baz
+
+Image creation using the 'baz' template will be:
+1 - files from templates/common-templates
+2 - plus files from foo overwriting any files with the same relative path from common-templates
+3 - plus files from bar overwriting foo files the same way
+4 - plus files from baz overwriting bar files the same way.
+
+While not normally needed, this may be useful for supporting a number of Images with minor but important differences.
+See templates/README.md for more information.
+
+
 Creation example
 -------
 

@@ -29,7 +29,6 @@ USER_GROUP_ID=$( id -g )
 USER_GROUP_NAME=$( getent group "$USER_GROUP_ID" | cut -d: -f1 )
 HOST_HOME_DIR=$( realpath ~/)
 # default the login shell
-#LOGIN_SHELL=/bin/bash\ --login
 LOGIN_SHELL="/bin/bash --login"
 
 # Default to restricting results to containers that have been set up.
@@ -46,6 +45,7 @@ KNOWN_IMAGES="
  arm32v7/debian:10
  arm64v8/debian:10
  ppc64le/debian:10
+ arm64v8/debian:11
 "
 
 # Max number of containers per user.
@@ -56,6 +56,10 @@ DUE_USER_CONTAINER_LIMIT=10
 
 # expected directory for template patch files
 SPECIFIC_TEMPLATES_DIR="templates"
+
+#  Template directories may have sub directories that add additional
+# files to the resulting image. These are specified usin sub-type
+TEMPLATE_SUB_TYPE="sub-type"
 
 # If the common-template directory is local to the directory where
 # DUE is being run it will be used rather than the version that is
@@ -154,11 +158,6 @@ function fxnListContainersForCreation()
             echo "$foundExamples"
         fi
         echo ""
-
-        echo "Available image templates from: $SPECIFIC_TEMPLATE_PATH"
-        echo "--------------------------------------------------------------------------------"
-        fxnEC cd "${SPECIFIC_TEMPLATE_PATH}" || exit 1
-        ls -d */
 
     fi
     # filter any template directories
@@ -569,10 +568,10 @@ function fxnMakeNewDockerImage()
             "x86_64" )
                 HOST_ARCH="amd64"
                 ;;
-			"aarch64" )
-				HOST_ARCH="arm64"
-				;;
-			
+            "aarch64" )
+                HOST_ARCH="arm64"
+                ;;
+
             * )
                 fxnERR "Cannot map [ $HOST_ARCH ] to a Docker contianer type. Exiting."
                 exit 1
@@ -1616,6 +1615,15 @@ function fxnGenerateTemplate()
     local name
     local templateName
 
+    # Hold any intermediate directories that are split by having
+    # /templates/ in the path, so their contents can be included too
+    # ex: ./templates/foo-parent/templates/foo-child
+    local subTypeDirPaths=""
+    # Hold a path that contains /templates/
+    local partial="$MERGE_IN_TEMPLATE_PATH"
+    # While still finding /templates/ in the path
+    local parseTemplates="TRUE"
+
     #   name="$( basename "$MERGE_IN_TEMPLATE_PATH" )"
     name="$NEW_IMAGE_NAME"
     templateName="${name}-template-merge"
@@ -1635,23 +1643,48 @@ function fxnGenerateTemplate()
     fxnHeader "Copying $COMMON_TEMPLATE_PATH to ${BUILD_MERGE_DIR}/$templateName"
     # here -template will stick with the directories and get filtered
 
+    # Copy over the common templates all containers have
     # --preserve Keep mode,owner,timestamp, etc
     fxnEC cp  --recursive --preserve "$COMMON_TEMPLATE_PATH" "${BUILD_MERGE_DIR}"/"$templateName" || exit 1
     fxnListDirContents "${BUILD_MERGE_DIR}/$templateName"
 
-    # --dereference  softlinks in the templates directory get resolved to
-    #                their actual files for merge. This allows for things
-    #                like sharing the duebuild file between debian-package
-    #                and frr
 
-    fxnHeader "Merging in [ $name ] specific files from ${MERGE_IN_TEMPLATE_PATH} to ${BUILD_MERGE_DIR}/$templateName"
-    fxnEC cp --dereference --recursive --preserve  "${MERGE_IN_TEMPLATE_PATH}"/* "${BUILD_MERGE_DIR}"/"${templateName}"/ || exit 1
-    fxnListDirContents "${BUILD_MERGE_DIR}/$templateName"
+    while [ "$parseTemplates" = "TRUE" ];do
+        # Since the deepest directory under /templates/ is parsed
+        # first but its contents should be applied last, prepend
+        # the shorter directory paths in the array, so that,
+        # when applied, the files deepest in the tree override
+        # the files above them.
+        # Each directory in the path named 'sub-type' indicates a new
+        # group of files to be copied in. So:
+        #  due/templates/foo/sub-type/bar/sub-type/baz
+        # Results in a final merged directory of files that are:
+        #  common-templates+(files from foo)+(files from bar)+(files from baz)
+        # ..written in that order, so that files from 'baz' will replace
+        #  any identically named files provided by bar, foo, or common-templates.
+        subTypeDirPaths="${partial} ${subTypeDirPaths}"
+        partial=${partial%/${TEMPLATE_SUB_TYPE}/*}
 
-    #
-    # Merge any information from Dockerfile.config into the Dockerfile.create
-    #
-    #   sed -i "/# DUE_INSERT_CONFIG/ r ${BUILD_MERGE_DIR}/${templateName}/Dockerfile.config" ${BUILD_MERGE_DIR}/${templateName}/Dockerfile.template
+        # Out of /sub-type/  yet?
+        if [[ $partial != *${TEMPLATE_SUB_TYPE}* ]];then
+            # No more embedded template directories.
+            parseTemplates="FALSE"
+            # Store the top level directory now that sub-directories
+            # are done.
+            subTypeDirPaths="${partial} ${subTypeDirPaths}"
+        fi
+    done
+
+    for dir in ${subTypeDirPaths[@]}; do
+        fxnHeader "Merging in [ $name ] specific files from ${dir} to ${BUILD_MERGE_DIR}/$templateName"
+        # Copy the data a link points to with --copy-links
+        # preserve permissions, but DON'T copy anything named 'templates'
+        fxnEC rsync --recursive --perms --times --group --owner --copy-links \
+              --exclude "/${TEMPLATE_SUB_TYPE}"  \
+              "${dir}"/* "${BUILD_MERGE_DIR}"/"${templateName}"/ || exit 1
+
+        fxnListDirContents "${BUILD_MERGE_DIR}/$templateName"
+    done
 
     # Rather than pull files from the common-templates to create the
     # configuration directory for the docker image, use this merged one

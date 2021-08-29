@@ -604,12 +604,20 @@ function fxnParseCreateArgs()
                         MERGE_IN_TEMPLATE_PATH="${SPECIFIC_TEMPLATE_PATH}/$2"
                         fxnPP "Setting --use-template path to $MERGE_IN_TEMPLATE_PATH"
                     else
-                        fxnERR "Failed to find template directory [ $2 ] or [ $SPECIFIC_TEMPLATE_PATH ]. Exiting."
-                        echo "Possible choices:"
-                        # give them a hint
-                        ls -1 "$SPECIFIC_TEMPLATE_PATH"
-                        echo ""
-                        exit 1
+                        # The target may be nested under /sub-type/ directories, in
+						# which case the merged template will be the contents of a
+						# series of sub-type directories merged together.
+                        MERGE_IN_TEMPLATE_PATH=$( find "$SPECIFIC_TEMPLATE_PATH" -name $MERGE_IN_TEMPLATE_PATH )
+                        if [ ! -e "$MERGE_IN_TEMPLATE_PATH" ];then
+                            fxnERR "Failed to find template directory [ $2 ] or [ $SPECIFIC_TEMPLATE_PATH ]. Exiting."
+                            echo "Possible choices:"
+                            # give them a hint
+                            ls -1 "$SPECIFIC_TEMPLATE_PATH"
+                            echo ""
+                            exit 1
+                        else
+                            echo "Found $MERGE_IN_TEMPLATE_PATH"
+                        fi
                     fi
                 fi
                 shift
