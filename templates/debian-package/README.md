@@ -2,11 +2,12 @@
 
 Configure the image to build Debian packages.
 
-## Debian 10 build environment creation example
-Create default Debian 10 build environment with: ./due --create --from debian:10    --description "Package Build for Debian 10" --name package-debian-10 --prompt PKGD10 --tag package-debian-10 --use-template debian-package  
+## Debian 11 build environment creation example
+Create default Debian 11 build environment with: ./due --create --from debian:11    --description "Package Build for Debian 11" --name package-debian-11 --prompt PKGD11 --tag package-debian-11 --use-template debian-package  
 
 ### Explanation of the above:
-  * Use a Debian 10 container (though ubuntu:20.04 works nicely as well (see below))
+  * Use a Debian 11 image (though ubuntu:20.04 works nicely as well (see below)) as the starting point.
+  * Note: if the image is not x86 based, other architectures ( arm32v5, arm64v8 )are available.
   * Name it package-debian-10
   * Tag it as package-debian-10
   * Set the prompt in container to be PGKD10 so the context is (more) obvious
@@ -16,7 +17,7 @@ Create default Debian 10 build environment with: ./due --create --from debian:10
 Create default Debian 10 Debian package build environment with: ./due --create --from arm32v5/debian:10    --description "Package Build for arm32v5/Debian 10" --name pkg-armel-debian-10 --prompt PKGD10-arm --tag pkg-armel-debian-10 --use-template debian-package  
 
 ## Debian 11 arm64 build environment creation example:
-Create default Debian 10 Debian package build environment with: ./due --create --from arm64v8/debian:bullseye    --description "Package Build for arm64v8/Debian 11" --name pkg-arm64v8-debian-11 --prompt PKGD11-arm64v8 --tag pkg-arm64v8-debian-11 --use-template debian-package  
+Create default Debian 11 Debian package build environment with: ./due --create --from arm64v8/debian:11    --description "Package Build for arm64v8/Debian 11" --name pkg-arm64v8-debian-11 --prompt PKGD11-arm64v8 --tag pkg-arm64v8-debian-11 --use-template debian-package  
 
 ## Debian Sid (unstable)  build environment image creation example:
 Create default Debian Sid  Debian package build environment with: ./due --create --from debian:sid   --description "Package Build for Debian Unstable" --name pkg-sid --prompt PKGSid --tag pkg-sid --use-template debian-package
