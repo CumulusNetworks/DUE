@@ -614,8 +614,9 @@ function fxnMakeNewDockerImage()
             # Have qemu-*-static in there so it can run
             fxnPP "Adding qemu-${imageArchitecture}-static to $imageName/filesystem/usr/bin/qemu-${imageArchitecture}-static."
             # qemu-user
-            if [ ! -e /usr/bin/qemu-"${imageArchitecture}"-static ] || [ ! -e /usr/bin/qemu-system-"${imageArchitecture}" ];then
-                fxnERR "Host system must have qemu-${imageArchitecture}-static and qemu-system-${imageArchitecture} to run an ${imageArchitecture} container. Try: sudo $PACKAGE_INSTALL qemu-user-static qemu-system-${imageArchitecture}"
+
+            if [ ! -e /usr/bin/qemu-"${imageArchitecture}"-static ];then
+                fxnERR "Host system must have qemu-${imageArchitecture}-static to run an ${imageArchitecture} container. Try: sudo $PACKAGE_INSTALL qemu-user-static."
                 # Clean this up so that a re-run does not report success despite not having the emulation support.
                 echo "Deleting partially built image at: ${BUILD_MERGE_DIR}/${imageName}"
                 rm -rf "${BUILD_MERGE_DIR}/${imageName}"
@@ -626,6 +627,7 @@ function fxnMakeNewDockerImage()
                 fxnERR "Faied to find qemu-${imageArchitecture} under /proc/sys/fs/binfmt_misc. Packages may have to be installed or a restart is required."
                 #               exit 1
             fi
+
             # Copy the host system's QEMU for image architecture to a location where it will be
             # installed in the container.
             if [ ! -e "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin ];then
