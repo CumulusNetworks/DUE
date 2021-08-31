@@ -69,31 +69,42 @@ DEBIAN_RELEASE=$( grep "Debian GNU/Linux" /etc/issue | awk '{print$3}')
 case $DEBIAN_RELEASE in
     "8" )
         echo "Debian 8: Skipping Secure boot packages, sbsigntool and python-sphinx"
-        DEBIAN_8_PACKAGES="realpath"
+        DEBIAN_VERSION_PACKAGES="realpath"
         ;;
 
     "9" )
         # These packages are available in Debian 9
-        DEBIAN_9_PACKAGES="sbsigntool realpath"
+        DEBIAN_VERSION_PACKAGES="sbsigntool realpath"
 
         # Packages used for secure boot (amd64 hard code is fine as this is Intel only)
         #linux-headers-amd64?
         SECURE_BOOT=" qemu-utils ovmf gnu-efi libfile-slurp-perl "
+		SPHINX_NAME=" python-sphinx"
         ;;
 
     "10" )
-        DEBIAN_10_PACKAGES="sbsigntool unzip tree python3.7-dev python3-distutils libelf-dev ispell jq"
+        DEBIAN_VERSION_PACKAGES="sbsigntool unzip tree python3.7-dev python3-distutils libelf-dev ispell jq"
 
         # Packages used for secure boot (amd64 hard code is fine as this is Intel only)
         #linux-headers-amd64?
         SECURE_BOOT=" qemu-utils ovmf gnu-efi libfile-slurp-perl grub-common psmisc "
-
+		SPHINX_NAME=" python-sphinx"
+		
         # make sure this is in a container
         if [ -e /.dockerenv ];then
             # Debian 10 does not need stretch-backports
             echo "Deleting Debian 10 container's apt references to stretch-backports."
             rm /etc/apt/sources.list.d/stretch-backports.list
-        fi
+        fi		
+		;;
+
+    "11" )
+        DEBIAN_VERSION_PACKAGES="sbsigntool unzip tree python3.9-dev python3-distutils libelf-dev ispell jq "
+
+        # Packages used for secure boot (amd64 hard code is fine as this is Intel only)
+        #linux-headers-amd64?
+        SECURE_BOOT=" qemu-utils ovmf gnu-efi libfile-slurp-perl grub-common psmisc "
+		SPHINX_NAME=" python3-sphinx"		
         ;;
 
     * )
@@ -169,9 +180,7 @@ DEBIAN_FRONTEND=noninteractive \
                telnet \
                tmux \
                tree \
-               $DEBIAN_8_PACKAGES \
-               $DEBIAN_9_PACKAGES \
-               $DEBIAN_10_PACKAGES \
+               $DEBIAN_VERSION_PACKAGES \
                $EDITORS \
                $SECURE_BOOT \
                locales-all || exit 1
@@ -213,7 +222,7 @@ git config --global user.email "oniebuild@localhost"
 
 if [ "$DEBIAN_RELEASE" != "" ];then
     if [ "$DEBIAN_RELEASE" = "8" ];then
-        echo "Not installing python-sphinx. You'll have to get creative."
+        echo "Not installing $SPHINX_NAME You'll have to get creative."
     else
 
         if [ "$DEBIAN_RELEASE" = "9" ];then
@@ -228,7 +237,7 @@ if [ "$DEBIAN_RELEASE" != "" ];then
                        --no-install-recommends \
                        $SPHINX_STRETCH_BACKPORTS \
                        sphinx-common \
-                       python-sphinx \
+                       $SPHINX_NAME \
                        libjs-sphinxdoc
     fi
 fi
