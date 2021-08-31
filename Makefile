@@ -33,7 +33,7 @@ MASTER_CHANGE_LOG = ChangeLog
 # pandoc gets used to turn markdown into man pages, and is optional
 DUE_DEPENDENCIES = git rsync jq curl
 
-GIT_STASH_MESSAGE = "Preserving master branch"
+GIT_STASH_MESSAGE = Preserving master branch
 #
 # Set V=1 to echo out Makefile commands
 #
@@ -203,7 +203,7 @@ debian-package: orig.tar
 	@echo "######################################################################"
 	@echo ""
 	@echo "# Stashing any local Git changes."
-	$(Q) git stash -m $(GIT_STASH_MESSAGE)
+	$(Q) git stash push -m "$(GIT_STASH_MESSAGE)"
 	@echo "# Checking out debian/master branch."
 	$(Q) git checkout debian/master
 	@echo ""
