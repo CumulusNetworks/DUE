@@ -45,11 +45,14 @@ ifneq ($V,0)
 	Q = 
 endif
 
+# If no make target specified, print help
+.DEFAULT_GOAL := help
+
 #
 # Store phony build targets in a variable so they can be
 # printed as part of help.
 #
-PHONY = help docs depends host-install uninstall orig.tar debian-package test no-make-default
+PHONY = help docs depends install uninstall orig.tar debian-package test no-make-default
 
 # ...and use them as real .PHONY targets
 .PHONY: $(PHONY)
@@ -65,7 +68,12 @@ help:
 	$(Q) echo ""
 	$(Q) echo "Dedicated User Environment make help."
 	$(Q) echo "----------------------------------------"
-	$(Q) echo " Make with V=1 for makefile debug."
+	$(Q) echo " debian-package  - build DUE as .deb file."
+	$(Q) echo " depends         - install DUE's run time dependencies."
+	$(Q) echo " install         - install DUE and dependencies."
+	$(Q) echo " orig.tar        - create tarball for packaging."
+	$(Q) echo ""
+	$(Q) echo " Make with 'make V=1' for makefile debug."
 	$(Q) echo ""
 	$(Q) echo " Makefile targets:"
 	$(Q) for I in $(sort $(PHONY)); do echo "    $$I"; done
@@ -171,6 +179,7 @@ uninstall:
 	sudo rm -rf   /etc/due
 	sudo rm -rf   /usr/share/due
 
+# Create 'upstream tarball' for use in packaging.
 orig.tar:
 	@echo "######################################################################"
 	@echo "#                                                                    #"
@@ -183,6 +192,8 @@ orig.tar:
 	$(Q) ls -lrt ../*.gz
 	@echo ""
 
+# Create upstream tarball and build DUE .deb file from debian/master branch
+# changing branches as needed.
 debian-package: orig.tar
 	@echo "######################################################################"
 	@echo "#                                                                    #"
