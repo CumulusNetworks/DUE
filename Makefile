@@ -203,7 +203,7 @@ debian-package: orig.tar
 	@echo "######################################################################"
 	@echo ""
 	@echo "# Stashing any local Git changes."
-	$(Q) git stash -m $(GIT_STASH_MESSAGE)
+	$(Q) git stash 
 	@echo "# Checking out debian/master branch."
 	$(Q) git checkout debian/master
 	@echo ""
@@ -214,7 +214,13 @@ debian-package: orig.tar
 	$(Q) git checkout master
 	@echo "# Applying any local master branch stash changes with git stash pop."
 #Use - to ignore errors if nothing pops, and ||: to avoid warnings if nothing to pop.
-	- $(Q) git stash pop ||: 
+	- $(Q) git stash pop ||:
+	@echo "# Parent directory build products:"
+	@echo "# --------------------------------"
+	$(Q) ls -lrt ..
+	@echo ""
+	@echo "# Done."
+	@echo ""
 
 
 debian: orig.tar
