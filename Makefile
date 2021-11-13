@@ -203,7 +203,7 @@ debian-package: orig.tar
 	@echo "######################################################################"
 	@echo ""
 	@echo "# Stashing any local Git changes."
-	$(Q) git stash -m $(GIT_STASH_MESSAGE)
+	$(Q) git stash --message $(GIT_STASH_MESSAGE)
 	@echo "# Checking out debian/master branch."
 	$(Q) git checkout debian/master
 	@echo ""
