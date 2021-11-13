@@ -813,6 +813,7 @@ function fxnDoExport()
     # Now export the saved image
     fxnPP "Saving selected image as [ ${exportImageName}.tar ]"
 	# Use the ID associated with the image
+	# Use 'save' rather than 'export' to save all layers.
 	#    fxnEC ${DOCKER_APP} save  $SELECTED_CONTAINER_ID > ${exportImageName}.tar
     fxnEC ${DOCKER_APP} save  $SELECTED_CONTAINER_ID -o ${exportImageName}.tar	foo:bar
 
@@ -845,14 +846,15 @@ function fxnDoImport()
 
     fxnPP "Importing [ $fileName ] as [ $dueName ]"
 
-    #tar -c "$fileName"  | docker image import - "$dueName"
-	#${DOCKER_APP} load --input $fileName myFoo
-	${DOCKER_APP} import $fileName $dueName
-#    ${DOCKER_APP} pull $fileName	
-    if [ $? != 0 ];then
-        fxnERR "Failed to import $fileName. Exiting."
-        exit 1
-    fi
+	#
+	# Use 'load' as it goes with 'save' - gathering all layers
+	# Do not mix 'import' and 'export' with 'load' and 'save'
+	# The former do not preserve all filesystem layers, and
+	# mixing the two creates failures that only show at run time.
+	# 
+	fxnEC ${DOCKER_APP} load --input $fileName  || exit 1
+	#tar -c "$fileName"  | docker image import - "$dueName"	
+	#${DOCKER_APP} import $fileName $dueName
     # Show the user the result
     ${DOCKER_APP} images | sed -e 's/^[ \t]*//g' | grep "$dueName"
 
