@@ -4,7 +4,7 @@
 DUE_VERSION := $(shell /bin/sh -c "grep -o 'DUE_VERSION=\".*\"' ./libdue | sed -e 's/DUE_VERSION=//g' | tr -d \\\" " )
 
 # The source tarball
-DUE_ORIG_TAR="due_$(DUE_VERSION).orig.tar.gz"
+DUE_ORIG_TAR=due_$(DUE_VERSION).orig.tar.gz
 
 # Uncomment the following to enable more makefile output
 #export DH_VERBOSE = 1
@@ -192,6 +192,7 @@ orig.tar:
 	@echo "  Produced tar file [ $(DUE_ORIG_TAR) ]in parent directory."
 	$(Q) ls -lrt ../*.gz
 	@echo ""
+	$(Q) touch $@
 
 # Create upstream tarball and build DUE .deb file from debian/master branch
 # changing branches as needed.
@@ -207,9 +208,15 @@ debian-package: orig.tar
 	@echo "# Checking out debian/master branch."
 	$(Q) git checkout debian/master
 	@echo ""
+	@echo "# Extracting tarball."
+	$(Q) tar -xvf ../due_*orig.tar.gz --strip-components=1
 	@echo "# Select a Debian package build container."
 	$(Q) ./due --build
 	@echo ""
+	@echo "# Deleting files extracted from tar archive."
+	$(Q) git clean -xdf
+	@echo "# Resetting debian/master branch."
+	$(Q) git reset --hard
 	@echo "# Checking out master branch."
 	$(Q) git checkout master
 	@echo "# Applying any local master branch stash changes with git stash pop."
