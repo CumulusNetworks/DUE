@@ -1,4 +1,4 @@
-% DUE(1) Version 2.4.0 | Dedicated User Environment
+% DUE(1) Version 3.0.0 | Dedicated User Environment
 
 # NAME
 
@@ -33,6 +33,7 @@ Key features include:
  4 - Commands can be run using the container without having to log into it, allowing
      for use in automated build environments.
 
+ 5 - Compatibility with both Docker and Podman for running containers.
 
 Functional Options
 -------
@@ -217,7 +218,7 @@ due --create --help --filter <term>
 Advanced image creation
 -------
 
-DUE 2.4.0 introduced hierarchical template parsing, where a template could be a
+DUE 3.0.0 introduced hierarchical template parsing, where a template could be a
 combination of files provided by 'sub-type' directories, to reduce file duplication.
 With this, files with identical names and paths will overwrite the ones provided
 by higher directories.
@@ -368,6 +369,7 @@ COPYRIGHT
 =========
 SPDX-License-Identifier:     MIT
 
+Copyright (c) 2021 Nivia Corporation.  
 Copyright (c) 2019,2020 Cumulus Networks, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
