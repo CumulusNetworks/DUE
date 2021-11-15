@@ -571,8 +571,13 @@ function fxnMakeNewDockerImage()
             "x86_64" )
                 HOST_ARCH="amd64"
                 ;;
+
             "aarch64" )
                 HOST_ARCH="arm64"
+                ;;
+
+            "i686" )
+                HOST_ARCH="i386"
                 ;;
 
             * )
