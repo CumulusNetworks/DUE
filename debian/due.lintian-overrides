@@ -4,3 +4,7 @@
 #   templates/common-templates/filesystem/usr/local/bin/duebuild: 31: Syntax error: "(" unexpected
 # can be avoided )
 due: shell-script-fails-syntax-check usr/share/due/templates/common-templates/filesystem/usr/local/bin/duebuild
+
+# The usr directory at the end is used by the template for the install path in the container,
+# and is not present on the host system, creating a false positive error.
+due: repeated-path-segment usr usr/share/due/templates/common-templates/filesystem/usr/
