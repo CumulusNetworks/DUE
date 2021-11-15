@@ -175,10 +175,10 @@ function fxnAddUserInContainer()
             # Don't create home directory - we presume it is getting mounted
             # use --gecos "" to supply blank data for Full Name, Room number, etc
             if [ "$OS_TYPE" = "RedHat" ];then
-                if [ ! -d /home/"$USER_NAME" ];then
-                    # useradd throws warnings if this already exists
-                    makeHomeDir=" --home-dir /home/ $USER_NAME" 
-                fi
+				if [ ! -d /home/"$USER_NAME" ];then
+					# useradd throws warnings if this already exists
+					makeHomeDir=" --home-dir /home/ $USER_NAME" 
+				fi
                 useradd $makeHomeDir \
                         --gid "$GROUP_ID" \
                         --shell /bin/bash \
@@ -270,8 +270,8 @@ function fxnRunAsUser()
         echo ""
 
         if [ "$OS_TYPE" = "RedHat" ];then
-            # Login behaves differently here, but su and cd _seem_ to be equivalent...
-            cd "$(sudo -u $USER_NAME sh -c 'echo $HOME')"
+			# Login behaves differently here, but su and cd _seem_ to be equivalent...
+			cd "$(sudo -u $USER_NAME sh -c 'echo $HOME')"
             su "${USER_NAME}"
 
         else

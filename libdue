@@ -13,7 +13,7 @@
 shopt -s extglob
 
 # Documentation and changelog builds get the official version from here.
-DUE_VERSION="2.4.0"
+DUE_VERSION="3.0.0"
 
 # Debian packages required for DUE to run
 REQUIRED_PACKAGES=" docker.io rsync bsdutils git"
@@ -40,12 +40,14 @@ DOCKER_IMAGE_TAG="latest"
 # List of example images
 KNOWN_IMAGES="
  debian:10
+ debian:11
  ubuntu:18.04
+ ubuntu:20.04
  arm32v5/debian:jessie
  arm32v7/debian:10
  arm64v8/debian:10
- ppc64le/debian:10
  arm64v8/debian:11
+ ppc64le/debian:10
 "
 
 # Max number of containers per user.
@@ -257,7 +259,7 @@ function fxnDeleteImage()
 {
     if [ "$DELETE_TERM" = "" ];then
         echo "Existing images"
-        docker images
+        ${DOCKER_APP} images | sed -e 's/^[ \t]*//g' 
         echo ""
         echo "Pass a string to wildcard delete."
     fi
@@ -266,12 +268,13 @@ function fxnDeleteImage()
     echo "# Created by $0 $INVOKED_WITH on $(date)" >> "$DELETE_SCRIPT"
     chmod a+x "$DELETE_SCRIPT"
 
-    docker images \
+    ${DOCKER_APP} images  | sed -e 's/^[ \t]*//g' \
         | grep "$DELETE_TERM" \
-        | awk '{printf "# Delete: %s Tag: %s Image ID %s, Created %s %s %s, Size %s \n docker rmi --force %s \n", $1, $2, $3, $4, $5, $6, $7, $3}' \
+        | awk '{printf "# Delete: %s Tag: %s Image ID %s, Created %s %s %s, Size %s \n REPLACE_DOCKER_APP rmi --force %s \n", $1, $2, $3, $4, $5, $6, $7, $3}' \
               >> "$DELETE_SCRIPT"
-
-
+	# Set the applicatio 
+	sed -i "s/REPLACE_DOCKER_APP/$DOCKER_APP/g" "$DELETE_SCRIPT"
+	
     echo " ________________________________________________________________________"
     echo "|                                                                       "
     echo "| Run [ ./$DELETE_SCRIPT ]                                "
@@ -285,7 +288,7 @@ function fxnDeleteImage()
     {
         echo ""
         # show what's left when the script is run
-        echo "docker images"
+        echo "$DOCKER_APP images | sed -e 's/^[ \t]*//g' "
         echo ""
         # clean up after ourselves
         echo "rm ./$DELETE_SCRIPT"
@@ -507,11 +510,11 @@ function fxnMakeNewDockerImage()
     # Name of image and corresponding tag
     CONFIGURED_NAME_AND_TAG=due-${imageName}:${DOCKER_IMAGE_TAG}
 
-    if [ "$(which docker)" = "" ];then
+    if [ "$(which ${DOCKER_APP})" = "" ];then
         if [ -e /.dockerenv ];then
-            fxnERR "Docker not found, but you are already running in a container."
+            fxnERR "Docker or podman was not found, but you are already running in a container."
         else
-            fxnERR "Docker not found! You should:"
+            fxnERR "Docker or podman was not found! You should:"
             echo "1 - Install with:                      sudo $PACKAGE_UPDATE ; sudo $PACKAGE_INSTALL $REQUIRED_PACKAGES "
             echo "2 - Add yourself to the docker group:  sudo /usr/sbin/usermod -a -G docker $(whoami)"
             echo "3 - Consider the recommended packages: sudo $PACKAGE_INSTALL $RECOMMENDED_PACKAGES "
@@ -581,12 +584,12 @@ function fxnMakeNewDockerImage()
         # expect this to be amd64, arm, etc
         # Super convenient that qemu arm seems to handle all the variants (armhf, arm64, armel...)
         # So, has the image already been pulled?
-        imageArchitecture=$( docker inspect -f '{{.Architecture}}' "${imageFrom}" 2>/dev/null )
+        imageArchitecture=$( ${DOCKER_APP} inspect -f '{{.Architecture}}' "${imageFrom}" 2>/dev/null )
         if [ "$imageArchitecture" = "" ];then
             # Well, get a copy.
             fxnPP "[ $imageFrom ] not found. Pulling an image to check it's architecture before proceeding."
-            fxnEC docker pull "$imageFrom"  || exit 1
-            imageArchitecture=$( docker inspect -f '{{.Architecture}}' "${imageFrom}" )
+            fxnEC ${DOCKER_APP} pull "$imageFrom"  || exit 1
+            imageArchitecture=$( ${DOCKER_APP} inspect -f '{{.Architecture}}' "${imageFrom}" )
             if [ "$imageArchitecture" = "" ];then
                 # If the architecture can't be determined at this point, it is a bad sign,
                 # but maybe not fatal. Continue and see what happens.
@@ -720,21 +723,21 @@ function fxnMakeNewDockerImage()
 
         if [ ! -e /var/run/docker.sock ];then
             fxnERR "Communication error with Docker!"
-            result=$( dpkg -l | grep docker )
+            result=$( dpkg -l | grep ${DOCKER_APP} )
             if [ "$result" != ""  ];then
-                echo "Looks like docker is installed:"
+                echo "Looks like ${DOCKER_APP} is installed:"
                 echo "[ $result ]"
                 fxnERR "Is it running?"
                 exit 1
             else
-                fxnERR "Has Docker been installed?"
+                fxnERR "Has ${DOCKER_APP} been installed?"
                 exit 1
             fi
         fi
         #
         # Create the image based off the contents of ./$imageName
         # This allows the user to test incremental changes without starting from scratch.
-        fxnEC docker build --no-cache=true --tag "${CONFIGURED_NAME_AND_TAG}" --file=./Dockerfile.create . || exit 1
+        fxnEC ${DOCKER_APP} build --no-cache=true --tag "${CONFIGURED_NAME_AND_TAG}" --file=./Dockerfile.create . || exit 1
     fi
 
     # Done.
@@ -759,7 +762,6 @@ function fxnSaveContainer()
 
     # choose from running containers
     fxnSelectContainer "running"
-
     # check for file overwrite
     if [ -e "${exportImageName}".tar ];then
         fxnERR "File: [ ${exportImageName}.tar ] already exists. Not overwriting.Exiting."
@@ -768,15 +770,15 @@ function fxnSaveContainer()
 
     # commit saves the container as an image, so all layers are captured.
     fxnPP "Saving container $SELECTED_CONTAINER_ID as image  ${exportImageName}"
-    fxnEC docker commit  "$SELECTED_CONTAINER_ID"  "${exportImageName}"
+    fxnEC ${DOCKER_APP} commit  "$SELECTED_CONTAINER_ID"  "${exportImageName}"
 
     # Now export the saved image
     fxnPP "Saving selected image as [ ${exportImageName}.tar ]"
-    fxnEC docker save "${exportImageName}" > "${exportImageName}".tar
+    fxnEC ${DOCKER_APP} save "${exportImageName}" > "${exportImageName}".tar
 
     # Delete the local save. If you want to keep it as an image, rather
     # than a tar file, import it.
-    fxnEC docker rmi --force "$exportImageName"
+    fxnEC ${DOCKER_APP} rmi --force "$exportImageName"
 
     fxnPP "Exported container is in $(pwd) "
     ls -l | grep  "${exportImageName}".tar
@@ -787,7 +789,7 @@ function fxnSaveContainer()
 # Export a copy of an already available Docker image as a file.
 # This can be used with fxnDoImport to move an image between two machines.
 # Uses: EXPORT_IMAGE_NAME  Name of resulting image.
-#         This should have been set on the command line
+#xo         This should have been set on the command line
 function fxnDoExport()
 {
     local exportFilter="$1"
@@ -797,7 +799,10 @@ function fxnDoExport()
     fxnSelectContainer "export" $exportFilter
 
     # fxnSelectContainer will have set this.
-    exportImageName="$SELECTED_CONTAINER_NAME"
+	# If the name has a / in it, replace that with a -
+	# Podman names do this, and we don't want it interpreted
+	#  as a subdirectory.
+    exportImageName="${SELECTED_CONTAINER_NAME//\//-}"	
 
     # check for file overwrite
     if [ -e ${exportImageName}.tar ];then
@@ -807,7 +812,10 @@ function fxnDoExport()
 
     # Now export the saved image
     fxnPP "Saving selected image as [ ${exportImageName}.tar ]"
-    fxnEC docker save ${exportImageName} > ${exportImageName}.tar
+	# Use the ID associated with the image
+	# Use 'save' rather than 'export' to save all layers.
+	#    fxnEC ${DOCKER_APP} save  $SELECTED_CONTAINER_ID > ${exportImageName}.tar
+    fxnEC ${DOCKER_APP} save  $SELECTED_CONTAINER_ID -o ${exportImageName}.tar	foo:bar
 
     fxnPP "Exported container is in $(pwd) "
     ls -l | grep  ${exportImageName}.tar
@@ -838,14 +846,17 @@ function fxnDoImport()
 
     fxnPP "Importing [ $fileName ] as [ $dueName ]"
 
-    #tar -c "$fileName"  | docker image import - "$dueName"
-    docker load --input $fileName
-    if [ $? != 0 ];then
-        fxnERR "Failed to import $fileName. Exiting."
-        exit 1
-    fi
+	#
+	# Use 'load' as it goes with 'save' - gathering all layers
+	# Do not mix 'import' and 'export' with 'load' and 'save'
+	# The former do not preserve all filesystem layers, and
+	# mixing the two creates failures that only show at run time.
+	# 
+	fxnEC ${DOCKER_APP} load --input $fileName  || exit 1
+	#tar -c "$fileName"  | docker image import - "$dueName"	
+	#${DOCKER_APP} import $fileName $dueName
     # Show the user the result
-    docker images | grep "$dueName"
+    ${DOCKER_APP} images | sed -e 's/^[ \t]*//g' | grep "$dueName"
 
     fxnPP "Imported: $fileName as $dueName"
     echo ""
@@ -902,17 +913,17 @@ function fxnBrowseRegistry()
     echo ""
     images=$(   echo "$result"  | jq '.repositories[]' | tr -d \" )
     examplePullImage=$(echo "$images" | head -n 1)
-    examplePushImage=$(docker images --format "{{.Repository}}:{{.Tag}}" | head -n 1)
+    examplePushImage=$(${DOCKER_APP} images --format "{{.Repository}}:{{.Tag}}" | head -n 1)
     echo "$images"
     echo ""
     echo "------------------------------------------------------------"
     echo " Access examples:"
     echo ""
     echo "  Pull registry image  [ $examplePullImage ] from $fullURL "
-    echo "    docker image pull ${fullURL}/${examplePullImage} "
+    echo "    ${DOCKER_APP} image pull ${fullURL}/${examplePullImage} "
     echo ""
     echo "  Push a local image like [ $examplePushImage ] to $fullURL"
-    echo "    docker image tag $examplePushImage ${fullURL}/${examplePushImage};  docker image push ${fullURL}/${examplePushImage}"
+    echo "    ${DOCKER_APP} image tag $examplePushImage ${fullURL}/${examplePushImage};  docker image push ${fullURL}/${examplePushImage}"
     echo ""
 
 }
@@ -976,11 +987,13 @@ function fxnSelectContainer()
     #
     # Starting a new container. The selection process will be from existing images.
     #
+
     if [ "$doOperation" = "start" ] || [ "$doOperation" = "export" ];then
         #
         # Run a container
         #
-        theContainers=$( docker images --format 'table  {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.ID}}')
+		# Podman will add leading spaces that throw off start-of-line pattern matching. Trim them.
+        theContainers=$( ${DOCKER_APP} images --format 'table  {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.ID}}' | sed -e 's/^[ \t]*//g' )
         if [ $? != 0 ];then
             # As this is frequently the first access of the system's Docker daemon,
             # Fail gracefully if it's not installed.
@@ -1033,16 +1046,22 @@ function fxnSelectContainer()
         #
         # select existing container
         #
+		# Podman doesn't print the header returning from a query. 
+		if [ "${DOCKER_APP}" = "podman" ];then
+			theContainers="NAMES              IMAGE    CONTAINER ID  COMMAND 
+"
+		fi
+
         if [ "$VERBOSITY_LEVEL" -ne 0 ];then
-            theContainers=$(     docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.ID}}\t{{.RunningFor}}\t{{.Status}}\t{{.Command}}')
+            theContainers+=$(     ${DOCKER_APP} ps --format 'table {{.Names}}\t{{.Image}}\t{{.ID}}\t{{.RunningFor}}\t{{.Status}}\t{{.Command}}')
         else
             # just the basics
-            theContainers=$(     docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.ID}}\t{{.Command}}')
+            theContainers+=$(     ${DOCKER_APP} ps --format 'table {{.Names}}\t{{.Image}}\t{{.ID}}\t{{.Command}}')
         fi
 
         if [ "$filterByType" != "" ];then
-            # pass filter type and REPOSITORY header
-            theContainers=$( echo "$theContainers" | grep "$filterByType\|CONTAINER\ ID" )
+            # pass filter type and REPOSITORY header (or NAMES for podman)
+            theContainers=$( echo "$theContainers" | grep "$filterByType\|REPOSITORY \|NAMES " )
         fi
 
         if [ "$FILTER_SHOW_ONLY_DUE" = "FALSE" ];then
@@ -1060,8 +1079,8 @@ function fxnSelectContainer()
     fi
 
 
-    # separate the head from the body to prevent it getting numbered
-    theHeader=$( echo "$theContainers" | head -n 1 )
+	# separate the head from the body to prevent it getting numbered		
+	theHeader=$( echo "$theContainers" | head -n 1 )
 
     # set -n - clip first line
     # cat -n - put a number at the start
@@ -1079,7 +1098,7 @@ function fxnSelectContainer()
         if [ "$filterByType" = "" ];then
             echo "  No Docker images were found. Try running [ ./due --create --help ]? "
         else
-            echo "  No Docker images  starting with [ $filterByType ] found. "
+            echo "  No Docker images starting with [ $filterByType ] found. "
         fi
         echo ""
         exit 0
@@ -1131,7 +1150,9 @@ function fxnSelectContainer()
         # This should be whats left from a filter operation
         ENTRY=1
     fi
-    if [ "$doOperation" = "start" ];then
+	
+	# If dealing with image files, starting them or exporting them...
+    if [ "$doOperation" = "start" ] || [ "$doOperation" = "export" ];then
         # use the pre-filtered var, theBody
 
         # print ENTRY line only
@@ -1234,10 +1255,11 @@ function fxnDoLogin()
 
     if [ "$1" = "start" ];then
         # If we are selecting an image to run as a container
-        DUEImageType=$( docker inspect -f '{{.ContainerConfig.Labels.DUEImageType}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
+		#        DUEImageType=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
+		        DUEImageType=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
     else
         # Logging in to an already running container
-        DUEImageType=$( docker container inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_ID}")
+        DUEImageType=$( ${DOCKER_APP} container inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_ID}")
     fi
 
 
@@ -1285,7 +1307,7 @@ function fxnDoLogin()
     # If we are starting a new container
     if [ "$1" = "start" ];then
         if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
-            usersContainers=$( docker ps | grep -c " ${USER_NAME}_"  )
+            usersContainers=$( ${DOCKER_APP} ps | grep -c " ${USER_NAME}_"  )
             # include this container they're starting
             usersContainers=$(( usersContainers + 1 ))
             if [ "$usersContainers" = 1 ];then
@@ -1310,7 +1332,7 @@ function fxnDoLogin()
         if [ "$isDUEImage" = "TRUE" ];then
             # If the container has a hint about mounting host directories relative
             # to the current working directory, take that into account.
-            DUEMountHostDirsUP=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirsUp}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
+            DUEMountHostDirsUP=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEMountHostDirsUp}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
 
             MOUNT_CURRENT_WORKING_DIRECTORY="$CURRENT_WORKING_DIRECTORY"
             for (( count=DUEMountHostDirsUP ; count > 0 ; count-- ))
@@ -1414,7 +1436,7 @@ function fxnDoLogin()
         # The container's Dockerfile.config would have a:
         #   LABEL DUEMountHostDirectories=/path1,/path2,/path3, etc to mount
         #
-        MountHostDirectories=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirectories}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
+        MountHostDirectories=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEMountHostDirectories}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
         if [ "$MountHostDirectories" != "<no value>" ];then
             # Save the current field separator (probably return)
             saveIFS=$IFS
@@ -1533,7 +1555,7 @@ function fxnDoLogin()
 
         echo " ----------------------------------------------------------------------------"
         echo " ------ : start and log in to [ $SELECTED_CONTAINER_ID ] with this command:      -- "
-        echo "   docker run $formatRunCMD"
+        echo "   ${DOCKER_APP} run $formatRunCMD"
 
         echo ""
         echo " ----------------------------------------------------------------------------"
@@ -1557,9 +1579,9 @@ function fxnDoLogin()
         if [ "$cmdList" != "" ];then
             # even the empty "" here will trip up a shell login, but they are
             # needed if cmdList is set to anything. Hence two cases.
-            docker run $runCMD "$cmdList"
+            ${DOCKER_APP} run $runCMD "$cmdList"
         else
-            docker run $runCMD
+            ${DOCKER_APP} run $runCMD
         fi
 
     else
@@ -1570,7 +1592,7 @@ function fxnDoLogin()
         echo "Logging in to running  [ $SELECTED_CONTAINER_ID ] with: "
         echo " ___________________________________________________________________________"
         echo "|"
-        echo "|  docker exec $doInteractive $userNameArg ${SELECTED_CONTAINER_ID}  $LOGIN_SHELL"
+        echo "|  ${DOCKER_APP} exec $doInteractive $userNameArg ${SELECTED_CONTAINER_ID}  $LOGIN_SHELL"
         echo "|___________________________________________________________________________"
         echo ""
         echo ""
@@ -1583,14 +1605,14 @@ function fxnDoLogin()
         if [ "$DO_DEBUG" = "TRUE" ];then
             # If this is debug, make few assumptions about the container's ability to handle
             # logins. Just start a specified shell.
-            docker exec $doInteractive  $userNameArg "${SELECTED_CONTAINER_ID}" $LOGIN_SHELL
+            ${DOCKER_APP} exec $doInteractive  $userNameArg "${SELECTED_CONTAINER_ID}" $LOGIN_SHELL
         else
             if [ "$OS_TYPE" = "RedHat" ];then
-                docker exec $doInteractive --user "$USER_NAME"  "${SELECTED_CONTAINER_ID}" /bin/bash --login
+                ${DOCKER_APP} exec $doInteractive --user "$USER_NAME"  "${SELECTED_CONTAINER_ID}" /bin/bash --login
             else
                 # Log into container as root, then set ID to user. This executes .bashrc configs and
                 # feels more like a real login.
-                docker exec $doInteractive --user root "${SELECTED_CONTAINER_ID}" /bin/login -p -f "$USER_NAME"
+                ${DOCKER_APP} exec $doInteractive --user root "${SELECTED_CONTAINER_ID}" /bin/login -p -f "$USER_NAME"
             fi
         fi
     fi
@@ -1800,16 +1822,16 @@ function fxnPrintContainerLabels()
     local DUECreationVersion
 
     # How does the container identify itself?
-    DUEImageType=$( docker inspect -f '{{.ContainerConfig.Labels.DUEImageType}}' "${containerName}":"${containerTag}" )
+    DUEImageType=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEImageType}}' "${containerName}":"${containerTag}" )
 
     # Mount host file system this many directories up from current working directory
-    DUEMountHostDirsUP=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirsUp}}' "${containerName}":"${containerTag}" )
+    DUEMountHostDirsUP=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEMountHostDirsUp}}' "${containerName}":"${containerTag}" )
     # Revision of container
-    DUEContainerVersion=$( docker inspect -f '{{.ContainerConfig.Labels.DUEContainerVersion}}' "${containerName}":"${containerTag}" )
+    DUEContainerVersion=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEContainerVersion}}' "${containerName}":"${containerTag}" )
     # DUE revision that created it
-    DUECreationVersion=$( docker inspect -f '{{.ContainerConfig.Labels.DUECreationVersion}}' "${containerName}":"${containerTag}" )
+    DUECreationVersion=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUECreationVersion}}' "${containerName}":"${containerTag}" )
     # Host directories to try and mount in the container (for shared libraries, etc)
-    DUEMountHostDirectories=$( docker inspect -f '{{.ContainerConfig.Labels.DUEMountHostDirectories}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
+    DUEMountHostDirectories=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEMountHostDirectories}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
 
     echo " -----------------------------------------------------------------------"
     echo "| DUE Labels for:      ${containerName}:${containerTag}"
@@ -1845,7 +1867,7 @@ function fxnDoContainerStop()
     if [ "$stopTerm" = "" ];then
         fxnSelectContainer "running" "$filterByUser"
         echo "Stopping container in 5 seconds. Use Ctrl-C to cancel."
-        containerInfo=$(docker ps | grep "$SELECTED_CONTAINER_ID")
+        containerInfo=$(${DOCKER_APP} ps | grep "$SELECTED_CONTAINER_ID")
         echo "$containerInfo"
         while [ $countDown -ne 0 ]
         do
@@ -1855,13 +1877,14 @@ function fxnDoContainerStop()
         done
         echo ""
         echo "Stopping container."
-        fxnEC docker stop "$SELECTED_CONTAINER_ID" || exit 1
+        fxnEC ${DOCKER_APP} stop "$SELECTED_CONTAINER_ID" || exit 1
         # Leave some evidence in the system log in case this was not what was intended.
         /usr/bin/logger "due: $(whoami) stopped container [ $containerInfo ]"
         echo "Stopped."
     else
-        header=$( docker ps | head -n 1 )
-        terms=$( docker ps | grep "$stopTerm" )
+
+        header=$( ${DOCKER_APP} ps | head -n 1 ) 
+        terms=$( ${DOCKER_APP} ps | grep "$stopTerm" )
         if [ "$filterByUser" != "" ];then
             terms=$( echo "$terms" | grep "$filterByUser" )
         fi
@@ -1877,8 +1900,8 @@ function fxnDoContainerStop()
         # put a # after the container ID to turn the rest of the info in to a comment
         # prepend the ID with 'docker stop' to create an executable command.
         #echo "$terms" | sed -e 's/   / # /' | sed -e 's/^/docker stop /g' >> $STOP_SCRIPT
-
-        toDelete=$( echo "$terms" | sed -e 's/   / # /' | sed -e 's/^/docker stop /g' )
+		toDelete=$( echo "$terms" | sed -e 's/ / # /' | sed -e "s/^/${DOCKER_APP} stop /g" )
+#        toDelete=$( echo "$terms" | sed -e 's/   / # /' | sed -e "s/^/${DOCKER_APP} stop /g" )
 
         # Create the stop script to be very explicit about what will happen
         {
