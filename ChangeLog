@@ -1,10 +1,9 @@
-due (2.4.0-1) unstable; urgency=medium
+due (3.0.0-1) unstable; urgency=medium
 
-  * Version bump to 2.4.0
-  * Pre and post install local dirs to build local packages into containers
-  * Debian-package features and fixes in due-manage-local-repo.sh
+  * Version bump to 3.0.0
+  * Replace qemu, qemu-system Recommends with just qemu-user-static. Closes: #992947
 
- -- Alex Doyle <adoyle@nvidia.com>  Sat, 13 Feb 2021 05:05:05 -0700
+ -- Alex Doyle <adoyle@nvidia.com>  Sat, 13 Nov 2021 14:10:10 -0700
 
 due (2.3.0-1) unstable; urgency=medium
 

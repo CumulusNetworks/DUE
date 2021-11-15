@@ -1,8 +1,8 @@
-due (2.4.0~1) unstable; urgency=medium
+due (3.0.0~1) unstable; urgency=medium
 
-  * Development version to accumulate changes until the next release to Debian.
+  * Replace qemu, qemu-system Recommends with just qemu-user-static. Closes: #992947
 
- -- Alex Doyle <adoyle@nvidia.com>  Sun, 24 Jan 2021 16:10:00 -0700
+ -- Alex Doyle <adoyle@nvidia.com>  Sat, 13 Nov 2021 16:02:00 -0700
 
 due (2.3.0-2) unstable; urgency=medium
 
