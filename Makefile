@@ -70,6 +70,7 @@ help:
 	$(Q) echo "Dedicated User Environment make help."
 	$(Q) echo "----------------------------------------"
 	$(Q) echo " debian-package  - build DUE as .deb file."
+	$(Q) echo "                     Requires debian-package image from ./due --create."
 	$(Q) echo " depends         - install DUE's run time dependencies."
 	$(Q) echo " install         - install DUE and dependencies."
 	$(Q) echo " orig.tar        - create tarball for packaging."
