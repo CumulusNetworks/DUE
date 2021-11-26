@@ -3,9 +3,10 @@ Maintainer: Alex Doyle <adoyle@nvidia.com>
 Uploaders: Geert Stappers <stappers@debian.org>
 Section: devel
 Priority: optional
-Build-Depends: debhelper (>= 10),
+Rules-Requires-Root: no
+Build-Depends: debhelper-compat (= 10),
 	       git
-Standards-Version: 4.5.0
+Standards-Version: 4.6.0
 Homepage: https://github.com/CumulusNetworks/DUE
 Vcs-Browser: https://github.com/CumulusNetworks/DUE/tree/debian/master
 Vcs-Git: https://github.com/CumulusNetworks/DUE.git -b debian/master

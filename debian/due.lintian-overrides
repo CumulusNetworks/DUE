@@ -8,3 +8,7 @@ due: shell-script-fails-syntax-check usr/share/due/templates/common-templates/fi
 # The usr directory at the end is used by the template for the install path in the container,
 # and is not present on the host system, creating a false positive error.
 due: repeated-path-segment usr usr/share/due/templates/common-templates/filesystem/usr/
+due: repeated-path-segment usr usr/share/due/templates/debian-package/filesystem/usr/
+due: repeated-path-segment usr usr/share/due/templates/frr/filesystem/usr/
+due: repeated-path-segment usr usr/share/due/templates/onie/filesystem/usr/
+

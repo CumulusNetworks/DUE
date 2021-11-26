@@ -1,17 +1,17 @@
 due (3.0.0-1) unstable; urgency=medium
 
   * Version bump to 3.0.0
-  * Replace qemu, qemu-system Recommends with just qemu-user-static. Closes: #992947
   * Support Podman as well as Docker.
-  * templates: Add pre and post install local dirs to build local packages into containers.
-  * templates: debian-package and onie support for Debian 11.
-  * Makefile: Clean up and provide better help by default.
-  * debian-package: due-manage-local-repo: support multiple named local repositories.
-  * libdue: support sub-type template directory file hierarchy for templates.
-  * Fix invocation bug when running ARM64 containers on aarch64 hosts.
+  * Replace qemu, qemu-system Recommends with just qemu-user-static. Closes: bug#992947
+  * templates: Add pre and post install local dirs to build local packages into containers
+  * templates: debian-package and onie support for Debian 11
+  * Makefile: Clean up and provide better help by default
+  * debian-package: due-manage-local-repo: support multiple named local repositories
+  * libdue: support sub-type template directory file hierarchy for templates
+  * Fix invocation bug when running ARM64 containers on aarch64 hosts
   * Fix save/load import/export mismatch when writing and reading image files.
 
- -- Alex Doyle <adoyle@nvidia.com>  Sat, 13 Nov 2021 14:10:10 -0700
+ -- Alex Doyle <adoyle@nvidia.com>  Tue, 31 Aug 2021 11:11:11 -0700
 
 due (2.3.0-1) unstable; urgency=medium
 
