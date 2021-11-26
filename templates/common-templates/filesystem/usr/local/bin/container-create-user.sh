@@ -357,6 +357,20 @@ if [ -e /usr/bin/docker ];then
     fi
 fi
 
+
+# If an image-specific /etc/hosts file was present for creaton,
+# append its entries at run time. Docker will replace the /etc/hosts
+# at run time, so this re-applies what the author intended to be there.
+# Typical use would be to handle hostname resolution issues for		
+#  the container
+if [ -e /due-configuration/filesystem/etc/hosts ];then
+	# If the changes are not there yet, append them
+	diff /due-configuration/filesystem/etc/hosts /etc/hosts \
+		| grep '>' > /dev/null  && { 
+		sudo bash -c "cat /due-configuration/filesystem/etc/hosts >> /etc/hosts"
+	}
+fi
+
 # at the user to the container
 fxnAddUserInContainer
 

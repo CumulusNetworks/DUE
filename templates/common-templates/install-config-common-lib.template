@@ -121,6 +121,15 @@ function fxnPostInstallCommon()
 			echo " . /etc/due-bashrc "                >> /etc/bash.bashrc
 		fi
 	fi
+
+	# If an /etc/hosts is there (container has DNS issues?)
+	# copy that over before doing more package updates
+	if [ -e ${CONF_DIR}/etc/hosts ];then
+#		mv /etc/hosts /etc/apt/original-sources.list
+		echo "$0 Replacing /etc/hosts with new copy."
+		cp ${CONF_DIR}/etc/hosts /etc/hosts
+	fi
+
 }
 
 

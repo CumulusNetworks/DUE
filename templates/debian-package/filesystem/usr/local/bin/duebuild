@@ -1246,23 +1246,19 @@ if [ "$DO_BUILD" = "TRUE" ];then
         # The above dpkg-source -x should have generated this directory.
         # If not, we've no idea where to go, and are done.
 
-        packageName=$( basename "${BUILD_SOURCE_DSC_FILE%%_*}" )
-
-        packageName=$( basename "${BUILD_SOURCE_DSC_FILE%%_*}" )
-
+        # Get the name of the file (in case it has a '_'_ )
+        packageName=$(basename "$BUILD_SOURCE_DSC_FILE")
+        # Now get just the name.
+        packageName=${packageName%%_*}
+        
         # list most recent directory
         buildDir=$( ls -1rd -- */ | grep "$packageName" | tail -n 1)
 
         if [ ! -e "$buildDir" ];then
-            fxnERR "Failed to find expected source directory [ $buildDir ]. Exiting."
+            fxnERR "Failed to find expected source directory [ $buildDir ] in [ $(pwd) ]. Exiting."         
             exit 1
         fi
-        fxnPP "Using most recently created directory [ $buildDir ]"
 
-        if [ ! -e "$buildDir" ];then
-            fxnERR "Failed to find expected source directory [ $buildDir ] in [ $(pwd) ]. Exiting."
-            exit 1
-        fi
         # hop in the build directory and let it go from there
         fxnPP "Setting current working directory to [ $buildDir ]"
         fxnEC cd "$buildDir" || exit 1

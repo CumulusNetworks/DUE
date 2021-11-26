@@ -41,10 +41,10 @@ DEBIAN_FRONTEND=noninteractive \
                python 2>/dev/null
 if [ $? != 0 ];then
     DEBIAN_FRONTEND=noninteractive \
-               apt-get install \
-               --assume-yes \
-               --no-install-recommends \
-               python3
+                   apt-get install \
+                   --assume-yes \
+                   --no-install-recommends \
+                   python3
 fi
 # Packages for kernel build, but not essential for Debian packaging
 KERNEL_BUILD_PACKAGES=" build-essential python-six rsync gcc bc bison cpio flex kmod quilt u-boot-tools "
@@ -71,18 +71,18 @@ DEBIAN_FRONTEND=noninteractive \
                apt-get install \
                --assume-yes \
                --no-install-recommends \
-                openssh-server \
-                iputils-ping \
-                devscripts \
-                git \
-                x11-xkb-utils \
-                equivs \
-                $KERNEL_BUILD_PACKAGES \
-                $LINTIAN_PACKAGES \
-                $EDITORS \
-                $NICE_TO_HAVE \
-                apt-utils \
-                dpkg-dev  || exit 1
+               openssh-server \
+               iputils-ping \
+               devscripts \
+               git \
+               x11-xkb-utils \
+               equivs \
+               $KERNEL_BUILD_PACKAGES \
+               $LINTIAN_PACKAGES \
+               $EDITORS \
+               $NICE_TO_HAVE \
+               apt-utils \
+               dpkg-dev  || exit 1
 
 #
 # Check for any local software to install.
@@ -90,14 +90,20 @@ DEBIAN_FRONTEND=noninteractive \
 # the format of whatever is found.
 #
 if [ -d /due-configuration/post-install-local ];then
-    echo "Post installing local software:"
     cd /due-configuration/post-install-local
-    ls -l
-    # Install packages (expect dependency errors)
-    sudo dpkg -i *.deb
-    # Resolve dependency errors with --fix-broken
-    DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --fix-broken || exit 1
-    echo "Post installing local software: DONE"
+    #
+    # As debs are the only post install currently supported,
+    # list them if present and install. Otherwise, ignore.
+    ls *.deb 2> /dev/null
+    if [ $? = "0" ];then
+        echo "Post installing local software:"
+        # Install packages (expect dependency errors)
+        sudo dpkg -i *.deb
+        # Resolve dependency errors with --fix-broken
+        DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --fix-broken || exit 1
+        echo "Post installing local software: DONE"
+    fi
 fi
+
 
 echo "Done $0"

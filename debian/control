@@ -13,7 +13,7 @@ Vcs-Git: https://github.com/CumulusNetworks/DUE.git -b debian/master
 Package: due
 Architecture: all
 Depends: ${misc:Depends},
-	 docker.io | docker-ce,
+	 docker.io | docker-ce | podman,
 	 bsdutils (>= 1:2.25.2-6),
 	 git,
 	 rsync,
