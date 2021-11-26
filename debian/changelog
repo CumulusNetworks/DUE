@@ -1,5 +1,6 @@
 due (3.0.0~1) unstable; urgency=medium
 
+  * New upstream release
   * Replace qemu,qemu-system Recommends with qemu-user-static. Closes: #992947
 
  -- Alex Doyle <adoyle@nvidia.com>  Sat, 13 Nov 2021 16:02:00 -0700
