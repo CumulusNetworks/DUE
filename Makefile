@@ -212,7 +212,7 @@ debian-package: orig.tar
 	@echo "# Extracting tarball."
 	$(Q) tar -xvf ../due_*orig.tar.gz --strip-components=1
 	@echo "# Select a Debian package build container."
-	$(Q) ./due --build
+	$(Q) ./due --duebuild --build-command dpkg-buildpackage -us -uc
 	@echo ""
 	@echo "# Deleting files extracted from tar archive."
 	$(Q) git clean -xdf
