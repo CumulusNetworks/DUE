@@ -209,8 +209,13 @@ debian-package: orig.tar
 	@echo "# Checking out debian/master branch."
 	$(Q) git checkout debian/master
 	@echo ""
-	@echo "# Extracting tarball."
-	$(Q) tar -xvf ../due_*orig.tar.gz --strip-components=1
+# Keep the option to extract master tarball in to a directory of
+# strictly Debian files. This would be used only during testing
+# development packaging builds, since the debian/master branch
+# contains snapshots of the versions of DUE files that have been
+# upstreamed, and will only be updated during upstreaming efforts.
+#	@echo "# Extracting tarball."
+#	$(Q) tar -xvf ../due_*orig.tar.gz --strip-components=1
 	@echo "# Select a Debian package build container."
 	$(Q) ./due --duebuild --build-command dpkg-buildpackage -us -uc
 	@echo ""
