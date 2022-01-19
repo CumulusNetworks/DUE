@@ -162,8 +162,14 @@ function fxnAddUserInContainer()
                         fi
                         # IDs match and group exists. That's fortunate. Carry on.
                     else
-                        # Group does not exist. Time to make it.
-                        groupadd --gid "$GROUP_ID" "$GROUP_NAME"
+                        # Group name does not exist. Time to make it.
+                        # Use --non-unique so if there is another group with the same ID,
+                        # the new name will be created with the same ID in /etc/groups
+                        # so that there are two different names with the same ID.
+                        # The goal is to have host-consistent groups on the files when
+                        # the contiainer exits, and to have the correct ID associated
+                        # with either group name inside the container.
+                        groupadd --non-unique --gid "$GROUP_ID" "$GROUP_NAME"
                         if [ $? != 0 ];then
                             echo "ERROR! In container, failed to create group [ $GROUP_NAME] with ID [ $GROUP_ID ]. Exiting."
                             exit 1
