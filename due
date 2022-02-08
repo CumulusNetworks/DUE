@@ -887,6 +887,9 @@ function fxnParseRunArgs()
                 if [ "$term" != "" ];then
                     # Flag bad arguments
                     echo "Unrecognized --run argument [ $term ]"
+					if [ "$DOCKER_SPECIFIC_ARGS" != "" ];then
+						echo " Tip: Were dockerarg arguments quoted? Ex: --dockerarg '--flag value'"
+					fi
                 fi
                 exit
                 ;;
