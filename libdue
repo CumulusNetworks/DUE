@@ -820,7 +820,7 @@ function fxnDoExport()
 	# Use the ID associated with the image
 	# Use 'save' rather than 'export' to save all layers.
 	#    fxnEC ${DOCKER_APP} save  $SELECTED_CONTAINER_ID > ${exportImageName}.tar
-    fxnEC ${DOCKER_APP} save  $SELECTED_CONTAINER_ID -o ${exportImageName}.tar	foo:bar
+    fxnEC ${DOCKER_APP} save  $SELECTED_CONTAINER_ID -o ${exportImageName}.tar 
 
     fxnPP "Exported container is in $(pwd) "
     ls -l | grep  ${exportImageName}.tar
