@@ -1277,15 +1277,18 @@ if [ "$DO_LOGIN" = "TRUE" ];then
     # they have to pick from all possible containers.
 fi
 
-# This gets read from the DUE_CONFIG_ABSOLUTE_PATH
-if [ "$DUE_ENV_DEFAULT_HOMEDIR" != "" ];then
-    if [ ! -e "$DUE_ENV_DEFAULT_HOMEDIR" ];then
-        fxnWarn "DUE_ENV_DEFAULT_HOMEDIR [ $DUE_ENV_DEFAULT_HOMEDIR ] does not exist."
-    else
-        USE_HOMEDIR="$DUE_ENV_DEFAULT_HOMEDIR"
+
+# If home directory is not explicitly set by the user
+if [ "$USE_HOMEDIR" = "" ];then
+    # This gets read from the DUE_CONFIG_ABSOLUTE_PATH
+    if [ "$DUE_ENV_DEFAULT_HOMEDIR" != "" ];then
+        if [ ! -e "$DUE_ENV_DEFAULT_HOMEDIR" ];then
+            fxnWarn "DUE_ENV_DEFAULT_HOMEDIR [ $DUE_ENV_DEFAULT_HOMEDIR ] does not exist."
+        else
+            USE_HOMEDIR="$DUE_ENV_DEFAULT_HOMEDIR"
+        fi
     fi
 fi
-
 
 #
 # If verbosity was requested, print the invocation arguments
