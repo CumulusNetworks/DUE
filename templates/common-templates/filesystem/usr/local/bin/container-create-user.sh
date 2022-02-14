@@ -162,8 +162,14 @@ function fxnAddUserInContainer()
                         fi
                         # IDs match and group exists. That's fortunate. Carry on.
                     else
-                        # Group does not exist. Time to make it.
-                        groupadd --gid "$GROUP_ID" "$GROUP_NAME"
+                        # Group name does not exist. Time to make it.
+                        # Use --non-unique so if there is another group with the same ID,
+                        # the new name will be created with the same ID in /etc/groups
+                        # so that there are two different names with the same ID.
+                        # The goal is to have host-consistent groups on the files when
+                        # the contiainer exits, and to have the correct ID associated
+                        # with either group name inside the container.
+                        groupadd --non-unique --gid "$GROUP_ID" "$GROUP_NAME"
                         if [ $? != 0 ];then
                             echo "ERROR! In container, failed to create group [ $GROUP_NAME] with ID [ $GROUP_ID ]. Exiting."
                             exit 1
@@ -175,10 +181,10 @@ function fxnAddUserInContainer()
             # Don't create home directory - we presume it is getting mounted
             # use --gecos "" to supply blank data for Full Name, Room number, etc
             if [ "$OS_TYPE" = "RedHat" ];then
-				if [ ! -d /home/"$USER_NAME" ];then
-					# useradd throws warnings if this already exists
-					makeHomeDir=" --home-dir /home/ $USER_NAME" 
-				fi
+                if [ ! -d /home/"$USER_NAME" ];then
+                    # useradd throws warnings if this already exists
+                    makeHomeDir=" --home-dir /home/ $USER_NAME" 
+                fi
                 useradd $makeHomeDir \
                         --gid "$GROUP_ID" \
                         --shell /bin/bash \
@@ -270,8 +276,8 @@ function fxnRunAsUser()
         echo ""
 
         if [ "$OS_TYPE" = "RedHat" ];then
-			# Login behaves differently here, but su and cd _seem_ to be equivalent...
-			cd "$(sudo -u $USER_NAME sh -c 'echo $HOME')"
+            # Login behaves differently here, but su and cd _seem_ to be equivalent...
+            cd "$(sudo -u $USER_NAME sh -c 'echo $HOME')"
             su "${USER_NAME}"
 
         else
@@ -361,14 +367,14 @@ fi
 # If an image-specific /etc/hosts file was present for creaton,
 # append its entries at run time. Docker will replace the /etc/hosts
 # at run time, so this re-applies what the author intended to be there.
-# Typical use would be to handle hostname resolution issues for		
+# Typical use would be to handle hostname resolution issues for     
 #  the container
 if [ -e /due-configuration/filesystem/etc/hosts ];then
-	# If the changes are not there yet, append them
-	diff /due-configuration/filesystem/etc/hosts /etc/hosts \
-		| grep '>' > /dev/null  && { 
-		sudo bash -c "cat /due-configuration/filesystem/etc/hosts >> /etc/hosts"
-	}
+    # If the changes are not there yet, append them
+    diff /due-configuration/filesystem/etc/hosts /etc/hosts \
+        | grep '>' > /dev/null  && { 
+        sudo bash -c "cat /due-configuration/filesystem/etc/hosts >> /etc/hosts"
+    }
 fi
 
 # at the user to the container

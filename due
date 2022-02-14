@@ -1,7 +1,7 @@
 #!/bin/bash 
 # SCRIPT_PURPOSE: Dedicated User Environment CLI
 
-# Copyright 2021 Nvidia Corporation.  All rights reserved.
+# Copyright 2021,2022 Nvidia Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
@@ -143,14 +143,14 @@ function fxnHelpManage()
     echo "   --export-container <name>  Save a running container as a Docker image named [name]"
     echo "   --export-image <name>      Export a docker image as a file. [name] is optional."
     echo "   --import-image <name>      Import Docker image file named [name]"
-	echo ""
-	echo "   --browse <registry >       Browse a docker registry. Ex: due --manage --browse localhost:5000"
-	echo ""
+    echo ""
+    echo "   --browse <registry >       Browse a docker registry. Ex: due --manage --browse localhost:5000"
+    echo ""
     echo "   --copy-config              Create a personal DUE configuration file in ~/.config/due/due.config"
     echo "   --make-dev-dir <dir>       Populate a local directory for DUE container development."
     echo "   --list-templates           List available templates."
-    echo "   --docker-clean             Run 'docker system prune ; docker image prune' to reclaim disk space."	
-    echo ""	
+    echo "   --docker-clean             Run 'docker system prune ; docker image prune' to reclaim disk space."  
+    echo "" 
     echo "   --stop  <match>            Stop a running container. Optional pattern <match>"
     echo "   --delete-matched [term]    Delete containers that contain this term. USE WITH CAUTION!"
     echo ""
@@ -606,8 +606,8 @@ function fxnParseCreateArgs()
                         fxnPP "Setting --use-template path to $MERGE_IN_TEMPLATE_PATH"
                     else
                         # The target may be nested under /sub-type/ directories, in
-						# which case the merged template will be the contents of a
-						# series of sub-type directories merged together.
+                        # which case the merged template will be the contents of a
+                        # series of sub-type directories merged together.
                         MERGE_IN_TEMPLATE_PATH=$( find "$SPECIFIC_TEMPLATE_PATH" -name $MERGE_IN_TEMPLATE_PATH )
                         if [ ! -e "$MERGE_IN_TEMPLATE_PATH" ];then
                             fxnERR "Failed to find template directory [ $2 ] or [ $SPECIFIC_TEMPLATE_PATH ]. Exiting."
@@ -761,6 +761,17 @@ function fxnParseRunArgs()
                 if [ "$2" != "" ];then
                     # Seems the run help would be useful here.
                     case $2 in
+                        --home-dir )
+                            USE_HOMEDIR="$3"
+                            if [ ! -e "$USE_HOMEDIR" ];then
+                                fxnERR "Failed to find --home-dir [ $USE_HOMEDIR ]. Exiting."
+                                exit 1
+                            fi
+                            # Shift these args out of the command line passed to duebuild
+                            shift
+                            shift
+                            ;;
+                        
                         -h | --help | help )
                             fxnHelpRun
                             exit
@@ -887,6 +898,9 @@ function fxnParseRunArgs()
                 if [ "$term" != "" ];then
                     # Flag bad arguments
                     echo "Unrecognized --run argument [ $term ]"
+                    if [ "$DOCKER_SPECIFIC_ARGS" != "" ];then
+                        echo " Tip: Were dockerarg arguments quoted? Ex: --dockerarg '--flag value'"
+                    fi
                 fi
                 exit
                 ;;
@@ -926,20 +940,20 @@ function fxnParseManageArgs()
                 fi
                 ;;
 
-			--browse )
-				# URL to browse
-				if [ "$2" = "" ];then
-					fxnERR " --browse requres a registry URL"
-					echo "Maybe one of these on [ localhost | $(hostname --fqdn ) ] ?"
-					# search for docker instances using port 5000."
-					${DOCKER_APP} ps | grep "registry"
-					exit 1
-				fi
-				fxnBrowseRegistry "$2"
-				shift
-				exit 0
-				;;
-			
+            --browse )
+                # URL to browse
+                if [ "$2" = "" ];then
+                    fxnERR " --browse requres a registry URL"
+                    echo "Maybe one of these on [ localhost | $(hostname --fqdn ) ] ?"
+                    # search for docker instances using port 5000."
+                    ${DOCKER_APP} ps | grep "registry"
+                    exit 1
+                fi
+                fxnBrowseRegistry "$2"
+                shift
+                exit 0
+                ;;
+            
             -l |--list-images )
                 # dump the docker header
                 ${DOCKER_APP} images | head -n 1  | sed -e 's/                //g'
@@ -1126,7 +1140,7 @@ fi
 # Are probably using docker, but it might be podman instead...
 DOCKER_APP="docker"
 if [ -e "/usr/bin/podman" ];then
-	DOCKER_APP="podman"
+    DOCKER_APP="podman"
 fi
 
 while [[ $# -gt 0 ]]
@@ -1274,15 +1288,18 @@ if [ "$DO_LOGIN" = "TRUE" ];then
     # they have to pick from all possible containers.
 fi
 
-# This gets read from the DUE_CONFIG_ABSOLUTE_PATH
-if [ "$DUE_ENV_DEFAULT_HOMEDIR" != "" ];then
-    if [ ! -e "$DUE_ENV_DEFAULT_HOMEDIR" ];then
-        fxnWarn "DUE_ENV_DEFAULT_HOMEDIR [ $DUE_ENV_DEFAULT_HOMEDIR ] does not exist."
-    else
-        USE_HOMEDIR="$DUE_ENV_DEFAULT_HOMEDIR"
+
+# If home directory is not explicitly set by the user
+if [ "$USE_HOMEDIR" = "" ];then
+    # This gets read from the DUE_CONFIG_ABSOLUTE_PATH
+    if [ "$DUE_ENV_DEFAULT_HOMEDIR" != "" ];then
+        if [ ! -e "$DUE_ENV_DEFAULT_HOMEDIR" ];then
+            fxnWarn "DUE_ENV_DEFAULT_HOMEDIR [ $DUE_ENV_DEFAULT_HOMEDIR ] does not exist."
+        else
+            USE_HOMEDIR="$DUE_ENV_DEFAULT_HOMEDIR"
+        fi
     fi
 fi
-
 
 #
 # If verbosity was requested, print the invocation arguments
