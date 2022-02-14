@@ -1,6 +1,7 @@
 # /bin/bash  syntax
 # SCRIPT_PURPOSE: A function library for Dedicated User Environment (DUE)
 
+# Copyright 2021,2022 Nvidia Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
@@ -272,9 +273,9 @@ function fxnDeleteImage()
         | grep "$DELETE_TERM" \
         | awk '{printf "# Delete: %s Tag: %s Image ID %s, Created %s %s %s, Size %s \n REPLACE_DOCKER_APP rmi --force %s \n", $1, $2, $3, $4, $5, $6, $7, $3}' \
               >> "$DELETE_SCRIPT"
-	# Set the applicatio 
-	sed -i "s/REPLACE_DOCKER_APP/$DOCKER_APP/g" "$DELETE_SCRIPT"
-	
+    # Set the applicatio 
+    sed -i "s/REPLACE_DOCKER_APP/$DOCKER_APP/g" "$DELETE_SCRIPT"
+    
     echo " ________________________________________________________________________"
     echo "|                                                                       "
     echo "| Run [ ./$DELETE_SCRIPT ]                                "
@@ -804,10 +805,10 @@ function fxnDoExport()
     fxnSelectContainer "export" $exportFilter
 
     # fxnSelectContainer will have set this.
-	# If the name has a / in it, replace that with a -
-	# Podman names do this, and we don't want it interpreted
-	#  as a subdirectory.
-    exportImageName="${SELECTED_CONTAINER_NAME//\//-}"	
+    # If the name has a / in it, replace that with a -
+    # Podman names do this, and we don't want it interpreted
+    #  as a subdirectory.
+    exportImageName="${SELECTED_CONTAINER_NAME//\//-}"  
 
     # check for file overwrite
     if [ -e ${exportImageName}.tar ];then
@@ -817,9 +818,9 @@ function fxnDoExport()
 
     # Now export the saved image
     fxnPP "Saving selected image as [ ${exportImageName}.tar ]"
-	# Use the ID associated with the image
-	# Use 'save' rather than 'export' to save all layers.
-	#    fxnEC ${DOCKER_APP} save  $SELECTED_CONTAINER_ID > ${exportImageName}.tar
+    # Use the ID associated with the image
+    # Use 'save' rather than 'export' to save all layers.
+    #    fxnEC ${DOCKER_APP} save  $SELECTED_CONTAINER_ID > ${exportImageName}.tar
     fxnEC ${DOCKER_APP} save  $SELECTED_CONTAINER_ID -o ${exportImageName}.tar 
 
     fxnPP "Exported container is in $(pwd) "
@@ -851,15 +852,15 @@ function fxnDoImport()
 
     fxnPP "Importing [ $fileName ] as [ $dueName ]"
 
-	#
-	# Use 'load' as it goes with 'save' - gathering all layers
-	# Do not mix 'import' and 'export' with 'load' and 'save'
-	# The former do not preserve all filesystem layers, and
-	# mixing the two creates failures that only show at run time.
-	# 
-	fxnEC ${DOCKER_APP} load --input $fileName  || exit 1
-	#tar -c "$fileName"  | docker image import - "$dueName"	
-	#${DOCKER_APP} import $fileName $dueName
+    #
+    # Use 'load' as it goes with 'save' - gathering all layers
+    # Do not mix 'import' and 'export' with 'load' and 'save'
+    # The former do not preserve all filesystem layers, and
+    # mixing the two creates failures that only show at run time.
+    # 
+    fxnEC ${DOCKER_APP} load --input $fileName  || exit 1
+    #tar -c "$fileName"  | docker image import - "$dueName" 
+    #${DOCKER_APP} import $fileName $dueName
     # Show the user the result
     ${DOCKER_APP} images | sed -e 's/^[ \t]*//g' | grep "$dueName"
 
@@ -997,7 +998,7 @@ function fxnSelectContainer()
         #
         # Run a container
         #
-		# Podman will add leading spaces that throw off start-of-line pattern matching. Trim them.
+        # Podman will add leading spaces that throw off start-of-line pattern matching. Trim them.
         theContainers=$( ${DOCKER_APP} images --format 'table  {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.ID}}' | sed -e 's/^[ \t]*//g' )
         if [ $? != 0 ];then
             # As this is frequently the first access of the system's Docker daemon,
@@ -1051,11 +1052,11 @@ function fxnSelectContainer()
         #
         # select existing container
         #
-		# Podman doesn't print the header returning from a query. 
-		if [ "${DOCKER_APP}" = "podman" ];then
-			theContainers="NAMES              IMAGE    CONTAINER ID  COMMAND 
+        # Podman doesn't print the header returning from a query. 
+        if [ "${DOCKER_APP}" = "podman" ];then
+            theContainers="NAMES              IMAGE    CONTAINER ID  COMMAND 
 "
-		fi
+        fi
 
         if [ "$VERBOSITY_LEVEL" -ne 0 ];then
             theContainers+=$(     ${DOCKER_APP} ps --format 'table {{.Names}}\t{{.Image}}\t{{.ID}}\t{{.RunningFor}}\t{{.Status}}\t{{.Command}}')
@@ -1084,8 +1085,8 @@ function fxnSelectContainer()
     fi
 
 
-	# separate the head from the body to prevent it getting numbered		
-	theHeader=$( echo "$theContainers" | head -n 1 )
+    # separate the head from the body to prevent it getting numbered        
+    theHeader=$( echo "$theContainers" | head -n 1 )
 
     # set -n - clip first line
     # cat -n - put a number at the start
@@ -1155,8 +1156,8 @@ function fxnSelectContainer()
         # This should be whats left from a filter operation
         ENTRY=1
     fi
-	
-	# If dealing with image files, starting them or exporting them...
+    
+    # If dealing with image files, starting them or exporting them...
     if [ "$doOperation" = "start" ] || [ "$doOperation" = "export" ];then
         # use the pre-filtered var, theBody
 
@@ -1260,8 +1261,8 @@ function fxnDoLogin()
 
     if [ "$1" = "start" ];then
         # If we are selecting an image to run as a container
-		#        DUEImageType=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
-		        DUEImageType=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
+        #        DUEImageType=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
+                DUEImageType=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
     else
         # Logging in to an already running container
         DUEImageType=$( ${DOCKER_APP} container inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_ID}")
@@ -1383,7 +1384,7 @@ function fxnDoLogin()
         # Local file systems the container can mount.
         #
         if [ "$USE_HOMEDIR" = "" ];then
-			HOMEDIR_PATH+=" $(realpath ~/):/home/$USER_NAME"
+            HOMEDIR_PATH+=" $(realpath ~/):/home/$USER_NAME"
         else
             echo "$USE_HOMEDIR" | grep -q "/"
             if [ $? = 0 ];then
@@ -1392,31 +1393,31 @@ function fxnDoLogin()
             # not having an absolute path = use container home dir.
         fi
 
-		# Add the homedir to mount
-		ADDITIONAL_MOUNTS+=" --volume $HOMEDIR_PATH"
+        # Add the homedir to mount
+        ADDITIONAL_MOUNTS+=" --volume $HOMEDIR_PATH"
         if [ "$CURRENT_WORKING_DIRECTORY" != "" ];then
 
-			if [[ "$CURRENT_WORKING_DIRECTORY" != "$USE_HOMEDIR"* ]];then
-				# Let this fall through and get caught in the duplicate check, which has verbose
-				# solutions.
-			    echo "Warning: Current working directory [ $CURRENT_WORKING_DIRECTORY ]"
-				echo " is not under home directory [ $USE_HOMEDIR ]."
-				echo " Use --mount-dir or --home-dir options to resolve paths if needed."
-			fi
+            if [[ "$CURRENT_WORKING_DIRECTORY" != "$USE_HOMEDIR"* ]];then
+                # Let this fall through and get caught in the duplicate check, which has verbose
+                # solutions.
+                echo "Warning: Current working directory [ $CURRENT_WORKING_DIRECTORY ]"
+                echo " is not under home directory [ $USE_HOMEDIR ]."
+                echo " Use --mount-dir or --home-dir options to resolve paths if needed."
+            fi
 
-			# If cwd is the home directory, don't specify it as a volume mount again.
-			# Especially because --home-dir may have been used to specify a different home
-			# directory, and the launch will die trying to mount:
-			#  /foo:/home/usr
-			#   and
-			#  /bar:/home/usr
-			# at the same time...
-			if [[ "$MOUNT_CURRENT_WORKING_DIRECTORY" != "/home/$USER_NAME" ]];then
-				# If we are making the inside of the container have the
-				# same path as the directory this was invoked in, do it here.
-				ADDITIONAL_MOUNTS+=" --volume $MOUNT_CURRENT_WORKING_DIRECTORY:$MOUNT_CURRENT_WORKING_DIRECTORY"
+            # If cwd is the home directory, don't specify it as a volume mount again.
+            # Especially because --home-dir may have been used to specify a different home
+            # directory, and the launch will die trying to mount:
+            #  /foo:/home/usr
+            #   and
+            #  /bar:/home/usr
+            # at the same time...
+            if [[ "$MOUNT_CURRENT_WORKING_DIRECTORY" != "/home/$USER_NAME" ]];then
+                # If we are making the inside of the container have the
+                # same path as the directory this was invoked in, do it here.
+                ADDITIONAL_MOUNTS+=" --volume $MOUNT_CURRENT_WORKING_DIRECTORY:$MOUNT_CURRENT_WORKING_DIRECTORY"
             # Put the user in the same equivalent directory in the container.
-			fi
+            fi
             COMMAND_LIST=" cd $CURRENT_WORKING_DIRECTORY ; $COMMAND_LIST"
         fi
 
@@ -1437,7 +1438,7 @@ function fxnDoLogin()
             echo ""
             echo " Note: some containers (debian package builds) mount the host system above the current working directory."
             echo " Solutions:  Add a directory to change the path?"
-			echo "             Use --home-dir to specify a different host home directory to use in the container."
+            echo "             Use --home-dir to specify a different host home directory to use in the container."
             echo "             Move the current working directory elsewhere?"
             #
             # check for a redefine of the home directory and use of the original home directory.
@@ -1926,7 +1927,7 @@ function fxnDoContainerStop()
         # put a # after the container ID to turn the rest of the info in to a comment
         # prepend the ID with 'docker stop' to create an executable command.
         #echo "$terms" | sed -e 's/   / # /' | sed -e 's/^/docker stop /g' >> $STOP_SCRIPT
-		toDelete=$( echo "$terms" | sed -e 's/ / # /' | sed -e "s/^/${DOCKER_APP} stop /g" )
+        toDelete=$( echo "$terms" | sed -e 's/ / # /' | sed -e "s/^/${DOCKER_APP} stop /g" )
 #        toDelete=$( echo "$terms" | sed -e 's/   / # /' | sed -e "s/^/${DOCKER_APP} stop /g" )
 
         # Create the stop script to be very explicit about what will happen
