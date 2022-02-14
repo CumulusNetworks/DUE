@@ -1383,20 +1383,40 @@ function fxnDoLogin()
         # Local file systems the container can mount.
         #
         if [ "$USE_HOMEDIR" = "" ];then
-            ADDITIONAL_MOUNTS+=" --volume $(realpath ~/):/home/$USER_NAME"
+			HOMEDIR_PATH+=" $(realpath ~/):/home/$USER_NAME"
         else
             echo "$USE_HOMEDIR" | grep -q "/"
             if [ $? = 0 ];then
-                ADDITIONAL_MOUNTS+=" --volume ${USE_HOMEDIR}:/home/$USER_NAME"
+                HOMEDIR_PATH+=" ${USE_HOMEDIR}:/home/$USER_NAME"
             fi
             # not having an absolute path = use container home dir.
         fi
 
+		# Add the homedir to mount
+		ADDITIONAL_MOUNTS+=" --volume $HOMEDIR_PATH"
         if [ "$CURRENT_WORKING_DIRECTORY" != "" ];then
-            # If we are making the inside of the container have the
-            # same path as the directory this was invoked in, do it here.
-            ADDITIONAL_MOUNTS+=" --volume $MOUNT_CURRENT_WORKING_DIRECTORY:$MOUNT_CURRENT_WORKING_DIRECTORY"
+
+			if [[ "$CURRENT_WORKING_DIRECTORY" != "$USE_HOMEDIR"* ]];then
+				# Let this fall through and get caught in the duplicate check, which has verbose
+				# solutions.
+			    echo "Warning: Current working directory [ $CURRENT_WORKING_DIRECTORY ]"
+				echo " is not under home directory [ $USE_HOMEDIR ]."
+				echo " Use --mount-dir or --home-dir options to resolve paths if needed."
+			fi
+
+			# If cwd is the home directory, don't specify it as a volume mount again.
+			# Especially because --home-dir may have been used to specify a different home
+			# directory, and the launch will die trying to mount:
+			#  /foo:/home/usr
+			#   and
+			#  /bar:/home/usr
+			# at the same time...
+			if [[ "$MOUNT_CURRENT_WORKING_DIRECTORY" != "/home/$USER_NAME" ]];then
+				# If we are making the inside of the container have the
+				# same path as the directory this was invoked in, do it here.
+				ADDITIONAL_MOUNTS+=" --volume $MOUNT_CURRENT_WORKING_DIRECTORY:$MOUNT_CURRENT_WORKING_DIRECTORY"
             # Put the user in the same equivalent directory in the container.
+			fi
             COMMAND_LIST=" cd $CURRENT_WORKING_DIRECTORY ; $COMMAND_LIST"
         fi
 
@@ -1417,6 +1437,7 @@ function fxnDoLogin()
             echo ""
             echo " Note: some containers (debian package builds) mount the host system above the current working directory."
             echo " Solutions:  Add a directory to change the path?"
+			echo "             Use --home-dir to specify a different host home directory to use in the container."
             echo "             Move the current working directory elsewhere?"
             #
             # check for a redefine of the home directory and use of the original home directory.

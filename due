@@ -761,6 +761,17 @@ function fxnParseRunArgs()
                 if [ "$2" != "" ];then
                     # Seems the run help would be useful here.
                     case $2 in
+						--home-dir )
+							USE_HOMEDIR="$3"
+							if [ ! -e "$USE_HOMEDIR" ];then
+								fxnERR "Failed to find --home-dir [ $USE_HOMEDIR ]. Exiting."
+								exit 1
+							fi
+							# Shift these args out of the command line passed to duebuild
+							shift
+							shift
+							;;
+						
                         -h | --help | help )
                             fxnHelpRun
                             exit
@@ -1280,14 +1291,14 @@ fi
 
 # If home directory is not explicitly set by the user
 if [ "$USE_HOMEDIR" = "" ];then
-    # This gets read from the DUE_CONFIG_ABSOLUTE_PATH
-    if [ "$DUE_ENV_DEFAULT_HOMEDIR" != "" ];then
-        if [ ! -e "$DUE_ENV_DEFAULT_HOMEDIR" ];then
-            fxnWarn "DUE_ENV_DEFAULT_HOMEDIR [ $DUE_ENV_DEFAULT_HOMEDIR ] does not exist."
-        else
-            USE_HOMEDIR="$DUE_ENV_DEFAULT_HOMEDIR"
-        fi
-    fi
+	# This gets read from the DUE_CONFIG_ABSOLUTE_PATH
+	if [ "$DUE_ENV_DEFAULT_HOMEDIR" != "" ];then
+		if [ ! -e "$DUE_ENV_DEFAULT_HOMEDIR" ];then
+			fxnWarn "DUE_ENV_DEFAULT_HOMEDIR [ $DUE_ENV_DEFAULT_HOMEDIR ] does not exist."
+		else
+			USE_HOMEDIR="$DUE_ENV_DEFAULT_HOMEDIR"
+		fi
+	fi
 fi
 
 #
