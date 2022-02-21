@@ -37,6 +37,9 @@ FILTER_SHOW_ONLY_DUE="TRUE"
 # default tag to latest
 DOCKER_IMAGE_TAG="latest"
 
+# Options passed to Docker build, using --dockerarg
+DOCKER_SPECIFIC_BUILD_ARGS=""
+
 # List of example images
 KNOWN_IMAGES="
  debian:10
@@ -486,6 +489,9 @@ function fxnMakeNewDockerImage()
     local imageFrom="$1"
     local imageName="$2"
 
+	# Store the build command to be run, so it can be printed out to the user
+	local dockerBuildCommand=""
+	
     if [ "$2" = "" ];then
         # 3rd argument is optional
         fxnERR "Failed to pass enough arguments to fxnMakeNewDockerImage(). Exiting."
@@ -696,7 +702,10 @@ function fxnMakeNewDockerImage()
         if [ "$DO_CREATE_IMAGE_NOW" = "TRUE" ];then
             # Create it all in one shot
             fxnHeader "Creating the new image with: $0 --create --build-dir ${BUILD_MERGE_DIR}/$imageName"
-            $0 --create --build-dir "${BUILD_MERGE_DIR}/$imageName" --tag "$DOCKER_IMAGE_TAG"
+            $0 --create \
+			   --build-dir "${BUILD_MERGE_DIR}/$imageName" \
+			   --tag "$DOCKER_IMAGE_TAG" \
+			   --dockerarg "$DOCKER_SPECIFIC_BUILD_ARGS"
         else
             fxnHeader " To create the new image, run: $0 --create --build-dir ${BUILD_MERGE_DIR}/$imageName"
         fi
@@ -742,7 +751,17 @@ function fxnMakeNewDockerImage()
         #
         # Create the image based off the contents of ./$imageName
         # This allows the user to test incremental changes without starting from scratch.
-        fxnEC ${DOCKER_APP} build --no-cache=true --tag "${CONFIGURED_NAME_AND_TAG}" --file=./Dockerfile.create . || exit 1
+		dockerBuildCommand="${DOCKER_APP} build \
+			  --no-cache=true \
+			  $DOCKER_SPECIFIC_BUILD_ARGS \
+			  --tag "${CONFIGURED_NAME_AND_TAG}" \
+			  --file=./Dockerfile.create \
+			  ."
+		# Print the build command, turning all whitespace in to one space.
+		fxnHeader "Building with: $( echo $dockerBuildCommand | sed -e 's/[[:space:]]\+/ /g')"
+
+		# Run it.
+        fxnEC $dockerBuildCommand ||  exit 1
     fi
 
     # Done.

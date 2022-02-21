@@ -261,6 +261,13 @@ Optional:
 --prompt [prompt]
 :	Set in container prompt to [prompt] to provide user context
 
+--dockerarg [argument]
+:	Pass arguments to docker build. Argument is passed as a single
+	value, so if it contains spaces, it should be quoted.
+	--dockerarg can be used multiple times, or can contain multiple strings.  
+	Example: --dockerarg '--build-arg HTTP_PROXY=http://10.20.30.2:1234' 
+	
+
 --no-image
 :   With --create, allow directories to be created, but do not try
     to build the image. Effectively stops use of --dir.

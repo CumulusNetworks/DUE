@@ -302,6 +302,18 @@ Optional:
 .B \[en]prompt [prompt]
 Set in container prompt to [prompt] to provide user context
 .TP
+.B \[en]dockerarg [argument]
+Pass arguments to docker build.
+Argument is passed as a single value, so if it contains spaces, it
+should be quoted.
+\[en]dockerarg can be used multiple times, or can contain multiple
+strings.
+.PD 0
+.P
+.PD
+Example: \[en]dockerarg `\[en]build\-arg
+HTTP_PROXY=http://10.20.30.2:1234'
+.TP
 .B \[en]no\-image
 With \[en]create, allow directories to be created, but do not try to
 build the image.

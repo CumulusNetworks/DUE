@@ -238,6 +238,8 @@ function fxnHelpCreate()
     echo "  2 - Build a Docker image from the image build directory."
     echo ""
     echo "   --build-dir <dirname>       Build using an existing configuration directory."
+    echo "   --dockerarg <arg>           Pass <arg> to the Docker build invocation."
+    echo "                               Use multiple times for multiple args, or pass one long quoted string."	
     echo ""
     echo "   --clean                      Remove due-build-merge directory."
     echo "   --help                       This help."
@@ -273,6 +275,12 @@ function fxnHelpCreateExamples()
     echo ""
     echo " Ex: filter creation examples to only show those containing 'foo' "
     echo " $0 --create --help --filter foo"
+    echo ""
+	echo " Ex: pass proxy arguments to Docker build, using --create and --dockerarg:"
+	echo " $0  --create --from debian:10 --description 'Debian 10 example' --name example-debian-10 \\ "
+	echo "     --prompt Ex --tag example-debian-10 --use-template example \\ "
+	echo "     --dockerarg '--build-arg HTTP_PROXY=http://10.20.30.2:1234' \\ "
+	echo "     --dockerarg ' --build-arg FTP_PROXY=http://40.50.60.5:4567' \\ "
     echo ""
 }
 
@@ -584,6 +592,12 @@ function fxnParseCreateArgs()
                     fxnERR "--tag Docker image tag [ $DOCKER_IMAGE_TAG ]must be lower case only."
                     exit 1
                 fi
+                shift
+                ;;
+            --dockerarg )
+                # Append addtional argument to pass through to docker build
+				# $2 should be passed as a quoted string
+                DOCKER_SPECIFIC_BUILD_ARGS+=" $2 "
                 shift
                 ;;
 
