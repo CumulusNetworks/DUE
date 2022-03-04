@@ -214,6 +214,8 @@ function fxnAddUserInContainer()
                   --uid "$USER_ID" \
                   $addGroupID \
                   --gecos "" \
+				  --disabled-password \
+                  "$USER_NAME" \
                   > /dev/null || exit 1
         fi
     fi
@@ -238,12 +240,13 @@ function fxnAddUserInContainer()
     else
         # Allow this user to become root
         fxnEC adduser "$USER_NAME" sudo > /dev/null || exit 1
+		# Make sure the in-contianer password is empty.
+		# This is about convenience, not security.
+		fxnEC passwd -d "$USER_NAME" > /dev/null || exit 1
+		
     fi
 
     fxnPP "| Passwordless [ $USER_NAME ]."
-    # Make sure the in-contianer password is empty.
-    # This is about convenience, not security.
-    fxnEC passwd -d "$USER_NAME" > /dev/null || exit 1
 
     # Do not require password to become root via 'sudo su'
     echo "$USER_NAME       ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
