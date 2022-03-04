@@ -13,6 +13,73 @@
 # for easy invocation (or not) in overriding scripts.
 fxnPostInstallCommon
 
+#
+# Creating a Red Hat based container.
+#
+if [ -e /etc/redhat-release ];then
+    OS_TYPE="RedHat"
+    PACKAGE_UPDATE=" dnf check-update"
+    PACKAGE_INSTALL=" dnf install "
+else
+    OS_TYPE="Debian"
+    PACKAGE_UPDATE=" apt-get update "
+    PACKAGE_INSTALL=" apt-get install "
+fi
+
+#
+# Container specific configuration
+#
+
+# Add a user account for test purposes.
+# This is lifted from container-create-user.sh, which is
+# to dynamicaly add the invoking user to the container
+# at runtime. Here the code creates an example user that will
+# always be in the container.
+
+USER_NAME=bob
+
+# Put the user ID high enough to be unique, but not to conflict
+USER_ID=2201
+
+echo "Adding user [ $USER_NAME ] with UID [ $USER_ID ] to the container."
+
+DEBIAN_ADDUSER_ARGS=" --gecos  --disabled-password "
+
+if [ "$OS_TYPE" = "RedHat" ];then
+	DEBIAN_ADDUSER_ARGS=""
+fi
+
+adduser --home /home/"$USER_NAME" \
+        $makeHomeDir \
+        --shell "$userShell" \
+        --uid "$USER_ID" \
+        $addGroupID \
+		$DEBIAN_ADDUSER_ARGS \
+		"$USER_NAME" \
+    > /dev/null || exit 1
+
+
+if [ "$OS_TYPE" = "RedHat" ];then
+    # Allow this user to become root
+    usermod -aG wheel "$USER_NAME" || exit 1
+else
+    # Allow this user to become root
+    adduser "$USER_NAME" sudo > /dev/null || exit 1
+	# Make sure the in-contianer password is empty.
+	# This is about convenience, not security.
+	passwd -d "$USER_NAME" > /dev/null || exit 1
+	
+fi
+
+
+# Do not require password to become root via 'sudo su'
+echo "$USER_NAME       ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+#
+# make sure directory is owned by user
+#
+chown $USER_NAME /home/$USER_NAME/.bashrc
+
 # Insert post install actions here, such as adding additional packages.
 # See other template's post-install-config.sh files for examples.
 
