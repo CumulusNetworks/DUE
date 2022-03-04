@@ -1282,7 +1282,7 @@ function fxnDoLogin()
     if [ "$1" = "start" ];then
         # If we are selecting an image to run as a container
 		#        DUEImageType=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
-		        DUEImageType=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
+		DUEImageType=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
     else
         # Logging in to an already running container
         DUEImageType=$( ${DOCKER_APP} container inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_ID}")
@@ -1437,7 +1437,7 @@ function fxnDoLogin()
 				# If we are making the inside of the container have the
 				# same path as the directory this was invoked in, do it here.
 				ADDITIONAL_MOUNTS+=" --volume $MOUNT_CURRENT_WORKING_DIRECTORY:$MOUNT_CURRENT_WORKING_DIRECTORY"
-            # Put the user in the same equivalent directory in the container.
+				# Put the user in the same equivalent directory in the container.
 			fi
             COMMAND_LIST=" cd $CURRENT_WORKING_DIRECTORY ; $COMMAND_LIST"
         fi
@@ -1624,16 +1624,15 @@ function fxnDoLogin()
 
         echo ""
 
+		if [ "$DOCKER_APP" = "podman" ];then
+			APPLICATION_ARGS="  --userns=keep-id "
+		fi
         if [ "$cmdList" != "" ];then
             # even the empty "" here will trip up a shell login, but they are
             # needed if cmdList is set to anything. Hence two cases.
-            ${DOCKER_APP} run $runCMD "$cmdList"
+            ${DOCKER_APP} run $APPLICATION_ARGS $runCMD "$cmdList"
         else
-			if [ "$DOCKER_APP" = "podman" ];then
-				${DOCKER_APP} run --userns=keep-id  $runCMD
-			else
-				${DOCKER_APP} $runCMD				
-			fi
+			${DOCKER_APP} run $APPLICATION_ARGS $runCMD "$cmdList"
         fi
 
     else
@@ -1953,7 +1952,7 @@ function fxnDoContainerStop()
         # prepend the ID with 'docker stop' to create an executable command.
         #echo "$terms" | sed -e 's/   / # /' | sed -e 's/^/docker stop /g' >> $STOP_SCRIPT
 		toDelete=$( echo "$terms" | sed -e 's/ / # /' | sed -e "s/^/${DOCKER_APP} stop /g" )
-#        toDelete=$( echo "$terms" | sed -e 's/   / # /' | sed -e "s/^/${DOCKER_APP} stop /g" )
+		#        toDelete=$( echo "$terms" | sed -e 's/   / # /' | sed -e "s/^/${DOCKER_APP} stop /g" )
 
         # Create the stop script to be very explicit about what will happen
         {
