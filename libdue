@@ -735,19 +735,21 @@ function fxnMakeNewDockerImage()
         # if this doesn't exist at this point, things have gone very wrong.
         fxnEC cd "${BUILD_MERGE_DIR}/$imageName" || exit 1
 
-        if [ ! -e /var/run/docker.sock ];then
-            fxnERR "Communication error with Docker!"
-            result=$( dpkg -l | grep ${DOCKER_APP} )
-            if [ "$result" != ""  ];then
-                echo "Looks like ${DOCKER_APP} is installed:"
-                echo "[ $result ]"
-                fxnERR "Is it running?"
-                exit 1
-            else
-                fxnERR "Has ${DOCKER_APP} been installed?"
-                exit 1
-            fi
-        fi
+		# Sanity check the code doing most of the work
+		# Podman/Docker should return success
+		DockerAppPath=$( which $DOCKER_APP )
+		if [ "$DockerAppPath" = "" ];then
+			fxnERR "Failed to find path for [ $DOCKER_APP ]. Is it installed?"
+			exit 1
+		fi
+		if [ "$DOCKER_APP" = 'docker' ];then
+			# Check if the Docker daemon is running.
+			if [ ! -e /var/run/docker.sock ];then
+				fxnERR "Is Docker running?"
+				exit 1
+			fi
+		fi
+
         #
         # Create the image based off the contents of ./$imageName
         # This allows the user to test incremental changes without starting from scratch.
@@ -1378,7 +1380,8 @@ function fxnDoLogin()
             executeProgram+=" --docker-group-id $dockerGID "
 
             # specify user and ID
-            executeProgram+=" --username $USER_NAME --userid $USER_ID --groupid $USER_GROUP_ID --groupname $USER_GROUP_NAME "
+			executeProgram+=" --username $USER_NAME --userid $USER_ID --groupid $USER_GROUP_ID --groupname $USER_GROUP_NAME "
+
 
             # Set any CONTAINER_SPECIFIC_ARGS
             fxnSetContainerSpecificArgs "$DUEImageType"
@@ -1626,7 +1629,11 @@ function fxnDoLogin()
             # needed if cmdList is set to anything. Hence two cases.
             ${DOCKER_APP} run $runCMD "$cmdList"
         else
-            ${DOCKER_APP} run $runCMD
+			if [ "$DOCKER_APP" = "podman" ];then
+				${DOCKER_APP} run --userns=keep-id  $runCMD
+			else
+				${DOCKER_APP} $runCMD				
+			fi
         fi
 
     else
