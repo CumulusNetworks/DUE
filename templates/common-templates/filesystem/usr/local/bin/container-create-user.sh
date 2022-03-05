@@ -45,7 +45,7 @@ function fxnEC ()
     status=$?
     # Print calling chain (BASH_SOURCE) and lines called from (BASH_LINENO) for better debug
     if [ $status -ne 0 ];then
-        echo "ERROR [ $status ] in ${BASH_SOURCE[1]##*/}, line #${BASH_LINENO[0]}, calls [ ${BASH_LINENO[*]} ] command: \"$@\"" 1>&2
+        echo "ERROR [ $status ] in ${BASH_SOURCE[1]##*/}, line #${BASH_LINENO[0]}, calls [ ${BASH_LINENO[*]} ] command: \"$*\"" 1>&2
     fi
 
     #$resetDebug
@@ -61,7 +61,6 @@ function fxnERR
     echo ""
 }
 
-SEND_ERRORS="/dev/null"
 #
 # This creates a user on the fly for the container,
 # Unless that user already exists.
@@ -115,8 +114,8 @@ function fxnAddUserInContainer()
             echo "|   Warning: Container already has [ $containerUserName ]:[ $containerUID ]. Using those."
 
             USER_ID="$containerUID"
-            GROUP_ID="$(id --group $USER_NAME )"
-            GROUP_NAME="$(id --name --group $USER_NAME)"
+            GROUP_ID="$(id --group "$USER_NAME" )"
+            GROUP_NAME="$(id --name --group "$USER_NAME")"
 
 
         fi
@@ -192,32 +191,27 @@ function fxnAddUserInContainer()
             makeHomeDir=" --no-create-home "
             echo "| $USER_NAME : /home directory already exists. Not creating."
         else
+            makeHomeDir=" --home-dir /home/ $USER_NAME"			
             echo "| $USER_NAME : /home directory does not exist. Creating..."
         fi
 
-        # Don't create home directory - we presume it is getting mounted
-        # use --gecos "" to supply blank data for Full Name, Room number, etc
-        if [ "$OS_TYPE" = "RedHat" ];then
-            if [ ! -d /home/"$USER_NAME" ];then
-                # useradd throws warnings if this already exists
-                makeHomeDir=" --home-dir /home/ $USER_NAME"
-            fi
-            useradd $makeHomeDir \
-                    --gid "$GROUP_ID" \
-                    --shell "$userShell" \
-                    --uid "$USER_ID" \
-                    "$USER_NAME"
-        else
-            fxnEC adduser --home /home/"$USER_NAME" \
-                  $makeHomeDir \
-                  --shell "$userShell" \
-                  --uid "$USER_ID" \
-                  $addGroupID \
-                  --gecos "" \
-				  --disabled-password \
-                  "$USER_NAME" \
-                  > /dev/null || exit 1
-        fi
+        # use --gecos "" to supply blank data for Full Name, Room number, etc		
+		DEBIAN_ADDUSER_ARGS=" --gecos ''  --disabled-password "
+
+		if [ "$OS_TYPE" = "RedHat" ];then
+			# RedHat adduser likes none of those arguments.
+			# Configure the account after creation.
+			DEBIAN_ADDUSER_ARGS=""
+		fi
+
+        fxnEC adduser --home /home/"$USER_NAME" \
+              $makeHomeDir \
+              --shell "$userShell" \
+              --uid "$USER_ID" \
+              $addGroupID \
+			  $DEBIAN_ADDUSER_ARGS \
+              "$USER_NAME" \
+              > /dev/null || exit 1
     fi
 
     #
@@ -232,7 +226,7 @@ function fxnAddUserInContainer()
     fxnEC usermod \
           --shell "$userShell" \
           $addGroupID \
-          "$USER_NAME"  > /dev/null 2>&1 || exit
+          "$USER_NAME"  > /dev/null 2>&1 || exit 1
 
     if [ "$OS_TYPE" = "RedHat" ];then
         # Allow this user to become root
@@ -267,15 +261,6 @@ function fxnAddUserInContainer()
 
         . /etc/due-bashrc
     fi
-
-    if [ 1 = 0 ];then
-        echo "Force allow user"
-        # Allow this user to become root
-        fxnPP "| $USER_NAME : adding to sudoers file."
-        fxnEC adduser "$USER_NAME" sudo > /dev/null || exit 1
-        # Do not require password to become root via 'sudo su'
-        echo "$USER_NAME       ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
-    fi
 }
 
 #
@@ -298,7 +283,7 @@ function fxnRunAsUser()
         # run the rest of it in a shell in case there's multiple commands in there
         # Suggested format for chaining commands in command list: cmd1 && cmd2 && cmd3
         # Run as specified user
-        /bin/su - ${USER_NAME} bash -c "$COMMAND_LIST"
+        /bin/su - "${USER_NAME}" bash -c "$COMMAND_LIST"
         result=$?
         echo " ___________________________________________________________________________"
         echo "|                                                                           |"
@@ -315,7 +300,7 @@ function fxnRunAsUser()
 
         if [ "$OS_TYPE" = "RedHat" ];then
             # Login behaves differently here, but su and cd _seem_ to be equivalent...
-            cd "$(sudo -u $USER_NAME sh -c 'echo $HOME')"
+            fxnEC cd "$(sudo -u "$USER_NAME" sh -c 'echo $HOME')" || exit 1
             su "${USER_NAME}"
 
         else
@@ -368,7 +353,7 @@ do
             # if a command was passed in, it's now the rest of these arguments
             # get --command off the list
             shift
-            COMMAND_LIST="$@"
+            COMMAND_LIST="$*"
             # parsing stops here
             break
             ;;
