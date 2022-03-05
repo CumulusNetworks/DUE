@@ -1,4 +1,4 @@
-% DUE(1) Version 3.0.0 | Dedicated User Environment
+% DUE(1) Version 3.1.0 | Dedicated User Environment
 
 # NAME
 
@@ -376,7 +376,7 @@ COPYRIGHT
 =========
 SPDX-License-Identifier:     MIT
 
-Copyright (c) 2021 Nivia Corporation.  
+Copyright (c) 2021,2022 Nvidia Corporation.  
 Copyright (c) 2019,2020 Cumulus Networks, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
