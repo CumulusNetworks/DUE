@@ -1623,7 +1623,7 @@ function fxnDoLogin()
         echo " -------- Type 'exit' to leave.  Docker Container Output Follows ------------"
 
         echo ""
-set -x
+
         if [ "$DOCKER_APP" = "podman" ];then
             APPLICATION_ARGS="  --userns=keep-id "
         fi
