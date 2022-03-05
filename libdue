@@ -1,4 +1,4 @@
-# /bin/bash  syntax
+#!/bin/bash  syntax
 # SCRIPT_PURPOSE: A function library for Dedicated User Environment (DUE)
 
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
@@ -27,7 +27,7 @@ USER_ID=$( id -u )
 USER_GROUP_ID=$( id -g )
 # Get the name of the group if it has to be created in the container
 USER_GROUP_NAME=$( getent group "$USER_GROUP_ID" | cut -d: -f1 )
-HOST_HOME_DIR=$( realpath ~/)
+
 # default the login shell
 LOGIN_SHELL="/bin/bash --login"
 
@@ -516,7 +516,7 @@ function fxnMakeNewDockerImage()
     # Name of image and corresponding tag
     CONFIGURED_NAME_AND_TAG=due-${imageName}:${DOCKER_IMAGE_TAG}
 
-    if [ "$(which ${DOCKER_APP})" = "" ];then
+    if [ "$(command -v "${DOCKER_APP}")" = "" ];then
         if [ -e /.dockerenv ];then
             fxnERR "Docker or podman was not found, but you are already running in a container."
         else
@@ -599,7 +599,7 @@ function fxnMakeNewDockerImage()
         if [ "$imageArchitecture" = "" ];then
             # Well, get a copy.
             fxnPP "[ $imageFrom ] not found. Pulling an image to check it's architecture before proceeding."
-            fxnEC ${DOCKER_APP} pull "$imageFrom"  || exit 1
+            fxnEC "${DOCKER_APP}" pull "$imageFrom"  || exit 1
             imageArchitecture=$( ${DOCKER_APP} inspect -f '{{.Architecture}}' "${imageFrom}" )
             if [ "$imageArchitecture" = "" ];then
                 # If the architecture can't be determined at this point, it is a bad sign,
@@ -737,7 +737,7 @@ function fxnMakeNewDockerImage()
 
         # Sanity check the code doing most of the work
         # Podman/Docker should return success
-        DockerAppPath=$( which $DOCKER_APP )
+        DockerAppPath=$( which "$DOCKER_APP" )
         if [ "$DockerAppPath" = "" ];then
             fxnERR "Failed to find path for [ $DOCKER_APP ]. Is it installed?"
             exit 1
@@ -756,7 +756,7 @@ function fxnMakeNewDockerImage()
         dockerBuildCommand="${DOCKER_APP} build \
               --no-cache=true \
               $DOCKER_SPECIFIC_BUILD_ARGS \
-              --tag "${CONFIGURED_NAME_AND_TAG}" \
+              --tag ${CONFIGURED_NAME_AND_TAG} \
               --file=./Dockerfile.create \
               ."
         # Print the build command, turning all whitespace in to one space.
@@ -796,15 +796,15 @@ function fxnSaveContainer()
 
     # commit saves the container as an image, so all layers are captured.
     fxnPP "Saving container $SELECTED_CONTAINER_ID as image  ${exportImageName}"
-    fxnEC ${DOCKER_APP} commit  "$SELECTED_CONTAINER_ID"  "${exportImageName}"
+    fxnEC "${DOCKER_APP}" commit  "$SELECTED_CONTAINER_ID"  "${exportImageName}"
 
     # Now export the saved image
     fxnPP "Saving selected image as [ ${exportImageName}.tar ]"
-    fxnEC ${DOCKER_APP} save "${exportImageName}" > "${exportImageName}".tar
+    fxnEC "${DOCKER_APP}" save "${exportImageName}" > "${exportImageName}".tar
 
     # Delete the local save. If you want to keep it as an image, rather
     # than a tar file, import it.
-    fxnEC ${DOCKER_APP} rmi --force "$exportImageName"
+    fxnEC "${DOCKER_APP}" rmi --force "$exportImageName"
 
     fxnPP "Exported container is in $(pwd) "
     ls -l | grep  "${exportImageName}".tar
@@ -831,7 +831,7 @@ function fxnDoExport()
     exportImageName="${SELECTED_CONTAINER_NAME//\//-}"
 
     # check for file overwrite
-    if [ -e ${exportImageName}.tar ];then
+    if [ -e "${exportImageName}.tar" ];then
         fxnERR "File: [ ${exportImageName}.tar ] already exists. Not overwriting.Exiting."
         exit 1
     fi
@@ -841,7 +841,7 @@ function fxnDoExport()
     # Use the ID associated with the image
     # Use 'save' rather than 'export' to save all layers.
     #    fxnEC ${DOCKER_APP} save  $SELECTED_CONTAINER_ID > ${exportImageName}.tar
-    fxnEC ${DOCKER_APP} save  $SELECTED_CONTAINER_ID -o ${exportImageName}.tar
+    fxnEC "${DOCKER_APP}" save  "$SELECTED_CONTAINER_ID" -o "${exportImageName}.tar"
 
     fxnPP "Exported container is in $(pwd) "
     ls -l | grep  ${exportImageName}.tar
@@ -878,7 +878,7 @@ function fxnDoImport()
     # The former do not preserve all filesystem layers, and
     # mixing the two creates failures that only show at run time.
     #
-    fxnEC ${DOCKER_APP} load --input $fileName  || exit 1
+    fxnEC "${DOCKER_APP}" load --input "$fileName"  || exit 1
     #tar -c "$fileName"  | docker image import - "$dueName"
     #${DOCKER_APP} import $fileName $dueName
     # Show the user the result
@@ -1146,7 +1146,7 @@ function fxnSelectContainer()
         read -r ENTRY
 
         case $ENTRY in
-            q|Q|x|X|"" )
+            q|Q|x|X )
                 echo "Exiting"
                 exit 0
                 ;;
@@ -1258,7 +1258,7 @@ function fxnDoLogin()
     # Ex: since built Debian packages are one directory up from
     # where the build is invoked, the container should mount the
     # host system directory one level above where the build is.
-    local DUEMountHostDirsUp
+    local DUEMountHostDirsUP
     # Add --debug as first argument to turn on debugging in container-create-user.sh
     local executeProgram="/usr/local/bin/container-create-user.sh "
 
@@ -1405,7 +1405,10 @@ function fxnDoLogin()
         # Local file systems the container can mount.
         #
         if [ "$USE_HOMEDIR" = "" ];then
-            HOMEDIR_PATH+=" $(realpath ~/):/home/$USER_NAME"
+            # User is not supplying a different home directory, so
+            # use what the default of DUE_ENV_DEFAULT_HOMEDIR
+            # ( either ~/ or what was pulled from ~/.conf/due/due.conf )
+            HOMEDIR_PATH+="${DUE_ENV_DEFAULT_HOMEDIR}:/home/$USER_NAME"
         else
             echo "$USE_HOMEDIR" | grep -q "/"
             if [ $? = 0 ];then
@@ -1844,7 +1847,11 @@ function fxnReadConfigFile()
         homeDir=$(echo "$configVars" | grep DUE_ENV_DEFAULT_HOMEDIR | tail -n 1 )
         if [ "$homeDir" != "" ];then
             # This will set DUE_ENV_DEFAULT_HOMEDIR
-            eval "$( echo $homeDir )"
+            eval "$( echo "$homeDir" )"
+        else
+            # Not set in the config file, so default home directory
+            # to the user's home on the host system.
+            eval "$( echo DUE_ENV_DEFAULT_HOMEDIR="$( realpath ~/ )" )"
         fi
 
         # Parse the DUE_USER_CONTAINER_LIMIT variable, and override the
@@ -1928,7 +1935,7 @@ function fxnDoContainerStop()
         done
         echo ""
         echo "Stopping container."
-        fxnEC ${DOCKER_APP} stop "$SELECTED_CONTAINER_ID" || exit 1
+        fxnEC "${DOCKER_APP}" stop "$SELECTED_CONTAINER_ID" || exit 1
         # Leave some evidence in the system log in case this was not what was intended.
         /usr/bin/logger "due: $(whoami) stopped container [ $containerInfo ]"
         echo "Stopped."

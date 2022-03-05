@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 # SCRIPT_PURPOSE: Dedicated User Environment CLI
 
 # Copyright 2021 Nvidia Corporation.  All rights reserved.
@@ -143,14 +143,14 @@ function fxnHelpManage()
     echo "   --export-container <name>  Save a running container as a Docker image named [name]"
     echo "   --export-image <name>      Export a docker image as a file. [name] is optional."
     echo "   --import-image <name>      Import Docker image file named [name]"
-	echo ""
-	echo "   --browse <registry >       Browse a docker registry. Ex: due --manage --browse localhost:5000"
-	echo ""
+    echo ""
+    echo "   --browse <registry >       Browse a docker registry. Ex: due --manage --browse localhost:5000"
+    echo ""
     echo "   --copy-config              Create a personal DUE configuration file in ~/.config/due/due.config"
     echo "   --make-dev-dir <dir>       Populate a local directory for DUE container development."
     echo "   --list-templates           List available templates."
-    echo "   --docker-clean             Run 'docker system prune ; docker image prune' to reclaim disk space."	
-    echo ""	
+    echo "   --docker-clean             Run 'docker system prune ; docker image prune' to reclaim disk space."
+    echo ""
     echo "   --stop  <match>            Stop a running container. Optional pattern <match>"
     echo "   --delete-matched [term]    Delete containers that contain this term. USE WITH CAUTION!"
     echo ""
@@ -239,7 +239,7 @@ function fxnHelpCreate()
     echo ""
     echo "   --build-dir <dirname>       Build using an existing configuration directory."
     echo "   --dockerarg <arg>           Pass <arg> to the Docker build invocation."
-    echo "                               Use multiple times for multiple args, or pass one long quoted string."	
+    echo "                               Use multiple times for multiple args, or pass one long quoted string."
     echo ""
     echo "   --clean                      Remove due-build-merge directory."
     echo "   --help                       This help."
@@ -276,11 +276,11 @@ function fxnHelpCreateExamples()
     echo " Ex: filter creation examples to only show those containing 'foo' "
     echo " $0 --create --help --filter foo"
     echo ""
-	echo " Ex: pass proxy arguments to Docker build, using --create and --dockerarg:"
-	echo " $0  --create --from debian:10 --description 'Debian 10 example' --name example-debian-10 \\ "
-	echo "     --prompt Ex --tag example-debian-10 --use-template example \\ "
-	echo "     --dockerarg '--build-arg HTTP_PROXY=http://10.20.30.2:1234' \\ "
-	echo "     --dockerarg ' --build-arg FTP_PROXY=http://40.50.60.5:4567' \\ "
+    echo " Ex: pass proxy arguments to Docker build, using --create and --dockerarg:"
+    echo " $0  --create --from debian:10 --description 'Debian 10 example' --name example-debian-10 \\ "
+    echo "     --prompt Ex --tag example-debian-10 --use-template example \\ "
+    echo "     --dockerarg '--build-arg HTTP_PROXY=http://10.20.30.2:1234' \\ "
+    echo "     --dockerarg ' --build-arg FTP_PROXY=http://40.50.60.5:4567' \\ "
     echo ""
 }
 
@@ -338,7 +338,7 @@ function fxnHelpRun()
     echo ""
     echo " Host directories to mount in the container:"
     echo "        --home-dir <host path> Absolute path on host system to mount as container user home directory"
-    echo "                              Default: $HOST_HOME_DIR"
+    echo "                              Default: $DUE_ENV_DEFAULT_HOMEDIR"
     echo "                              Pass 'container' as path to use home dir that comes with the container."
     echo "        --mount-dir <hp:cp>   Mount absolute path to host directory hp at location cp in container."
     echo "                               Ex: mount host /tmp in container /var/build:  --mount-dir /tmp:/var/build "
@@ -596,7 +596,7 @@ function fxnParseCreateArgs()
                 ;;
             --dockerarg )
                 # Append addtional argument to pass through to docker build
-				# $2 should be passed as a quoted string
+                # $2 should be passed as a quoted string
                 DOCKER_SPECIFIC_BUILD_ARGS+=" $2 "
                 shift
                 ;;
@@ -620,8 +620,8 @@ function fxnParseCreateArgs()
                         fxnPP "Setting --use-template path to $MERGE_IN_TEMPLATE_PATH"
                     else
                         # The target may be nested under /sub-type/ directories, in
-						# which case the merged template will be the contents of a
-						# series of sub-type directories merged together.
+                        # which case the merged template will be the contents of a
+                        # series of sub-type directories merged together.
                         MERGE_IN_TEMPLATE_PATH=$( find "$SPECIFIC_TEMPLATE_PATH" -name $MERGE_IN_TEMPLATE_PATH )
                         if [ ! -e "$MERGE_IN_TEMPLATE_PATH" ];then
                             fxnERR "Failed to find template directory [ $2 ] or [ $SPECIFIC_TEMPLATE_PATH ]. Exiting."
@@ -775,17 +775,17 @@ function fxnParseRunArgs()
                 if [ "$2" != "" ];then
                     # Seems the run help would be useful here.
                     case $2 in
-						--home-dir )
-							USE_HOMEDIR="$3"
-							if [ ! -e "$USE_HOMEDIR" ];then
-								fxnERR "Failed to find --home-dir [ $USE_HOMEDIR ]. Exiting."
-								exit 1
-							fi
-							# Shift these args out of the command line passed to duebuild
-							shift
-							shift
-							;;
-						
+                        --home-dir )
+                            USE_HOMEDIR="$3"
+                            if [ ! -e "$USE_HOMEDIR" ];then
+                                fxnERR "Failed to find --home-dir [ $USE_HOMEDIR ]. Exiting."
+                                exit 1
+                            fi
+                            # Shift these args out of the command line passed to duebuild
+                            shift
+                            shift
+                            ;;
+
                         -h | --help | help )
                             fxnHelpRun
                             exit
@@ -912,9 +912,9 @@ function fxnParseRunArgs()
                 if [ "$term" != "" ];then
                     # Flag bad arguments
                     echo "Unrecognized --run argument [ $term ]"
-					if [ "$DOCKER_SPECIFIC_ARGS" != "" ];then
-						echo " Tip: Were dockerarg arguments quoted? Ex: --dockerarg '--flag value'"
-					fi
+                    if [ "$DOCKER_SPECIFIC_ARGS" != "" ];then
+                        echo " Tip: Were dockerarg arguments quoted? Ex: --dockerarg '--flag value'"
+                    fi
                 fi
                 exit
                 ;;
@@ -954,20 +954,20 @@ function fxnParseManageArgs()
                 fi
                 ;;
 
-			--browse )
-				# URL to browse
-				if [ "$2" = "" ];then
-					fxnERR " --browse requres a registry URL"
-					echo "Maybe one of these on [ localhost | $(hostname --fqdn ) ] ?"
-					# search for docker instances using port 5000."
-					${DOCKER_APP} ps | grep "registry"
-					exit 1
-				fi
-				fxnBrowseRegistry "$2"
-				shift
-				exit 0
-				;;
-			
+            --browse )
+                # URL to browse
+                if [ "$2" = "" ];then
+                    fxnERR " --browse requres a registry URL"
+                    echo "Maybe one of these on [ localhost | $(hostname --fqdn ) ] ?"
+                    # search for docker instances using port 5000."
+                    ${DOCKER_APP} ps | grep "registry"
+                    exit 1
+                fi
+                fxnBrowseRegistry "$2"
+                shift
+                exit 0
+                ;;
+
             -l |--list-images )
                 # dump the docker header
                 ${DOCKER_APP} images | head -n 1  | sed -e 's/                //g'
@@ -1154,7 +1154,7 @@ fi
 # Are probably using docker, but it might be podman instead...
 DOCKER_APP="docker"
 if [ -e "/usr/bin/podman" ];then
-	DOCKER_APP="podman"
+    DOCKER_APP="podman"
 fi
 
 while [[ $# -gt 0 ]]
@@ -1274,16 +1274,16 @@ fi
 # to work...unless they're running Podman.
 #
 if [ "$DOCKER_APP" = "docker" ];then
-	
-	groups | grep -q "docker"
-	if [ $? != 0 ];then
-		fxnWarn "You are not an active member of the Docker group."
-		echo " You can fix this by doing the following:"
-		echo "  1 - run: sudo /usr/sbin/usermod -a -G docker $(whoami)"
-		echo "  2 - log out and back in again for the addition to take effect."
-		echo ""
-		exit 1
-	fi
+
+    groups | grep -q "docker"
+    if [ $? != 0 ];then
+        fxnWarn "You are not an active member of the Docker group."
+        echo " You can fix this by doing the following:"
+        echo "  1 - run: sudo /usr/sbin/usermod -a -G docker $(whoami)"
+        echo "  2 - log out and back in again for the addition to take effect."
+        echo ""
+        exit 1
+    fi
 fi
 #
 # if logging in to a running container
@@ -1306,14 +1306,14 @@ fi
 
 # If home directory is not explicitly set by the user
 if [ "$USE_HOMEDIR" = "" ];then
-	# This gets read from the DUE_CONFIG_ABSOLUTE_PATH
-	if [ "$DUE_ENV_DEFAULT_HOMEDIR" != "" ];then
-		if [ ! -e "$DUE_ENV_DEFAULT_HOMEDIR" ];then
-			fxnWarn "DUE_ENV_DEFAULT_HOMEDIR [ $DUE_ENV_DEFAULT_HOMEDIR ] does not exist."
-		else
-			USE_HOMEDIR="$DUE_ENV_DEFAULT_HOMEDIR"
-		fi
-	fi
+    # This gets read from the DUE_CONFIG_ABSOLUTE_PATH
+    if [ "$DUE_ENV_DEFAULT_HOMEDIR" != "" ];then
+        if [ ! -e "$DUE_ENV_DEFAULT_HOMEDIR" ];then
+            fxnWarn "DUE_ENV_DEFAULT_HOMEDIR [ $DUE_ENV_DEFAULT_HOMEDIR ] does not exist."
+        else
+            USE_HOMEDIR="$DUE_ENV_DEFAULT_HOMEDIR"
+        fi
+    fi
 fi
 
 #
