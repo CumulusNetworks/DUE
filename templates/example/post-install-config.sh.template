@@ -43,14 +43,13 @@ USER_ID=2201
 
 echo "Adding user [ $USER_NAME ] with UID [ $USER_ID ] to the container."
 
-DEBIAN_ADDUSER_ARGS=" --gecos  --disabled-password "
+DEBIAN_ADDUSER_ARGS=" --gecos ''  --disabled-password "
 
 if [ "$OS_TYPE" = "RedHat" ];then
 	DEBIAN_ADDUSER_ARGS=""
 fi
 
 adduser --home /home/"$USER_NAME" \
-        $makeHomeDir \
         --shell "$userShell" \
         --uid "$USER_ID" \
         $addGroupID \
