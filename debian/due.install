@@ -1,0 +1,7 @@
+README.md        usr/share/doc/due
+templates        usr/share/due
+due              usr/bin
+libdue           usr/lib
+docs/due.1       usr/share/man/man1
+etc/due/due.conf etc/due
+

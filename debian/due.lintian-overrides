@@ -1,0 +1,6 @@
+# Overriding the judgement of Lintian
+
+# a false positive, a `bash` script gets syntax check with `sh -n` ( but the
+#   templates/common-templates/filesystem/usr/local/bin/duebuild: 31: Syntax error: "(" unexpected
+# can be avoided )
+due: shell-script-fails-syntax-check usr/share/due/templates/common-templates/filesystem/usr/local/bin/duebuild
