@@ -253,8 +253,11 @@ HUB_VERSION="2.12.8"
 HUB_URL="https://github.com/github/hub/releases/download/v${HUB_VERSION}/hub-linux-amd64-${HUB_VERSION}.tgz"
 
 echo "Installing optional package 'hub' version $HUB_VERSION as a GitHub utility in /usr/local/bin."
-echo "wget $HUB_URL"
-wget $HUB_URL                                               || exit 1
+echo "curl --remote-name --remote-header-name --location $HUB_URL"
+# This was wget instead of curl until wget developed an issue with redirects
+# where it would rapidly loop and then exceed the --max-redirect.
+# Curl gets it on the first try.
+curl --remote-name --remote-header-name --location $HUB_URL || exit 1
 tar -xvf hub-linux-amd64-${HUB_VERSION}.tgz                 || exit 1
 cp hub-linux-amd64-${HUB_VERSION}/bin/hub /usr/local/bin    || exit 1
 
