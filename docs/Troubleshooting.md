@@ -1,6 +1,8 @@
 # Troubleshooting
 ...for when things don't go as expected
 
+# Installing DUE
+
 ## Symptom: Docker (or Podman) isn't installed
 
 ### Installing Docker without a DUE .deb
@@ -27,6 +29,8 @@ If that fails (and might, depending on how old the version of your operating sys
 `sudo apt install docker.io`  
 ...and if that fails, try downloading and installing docker.ce from [https://hub.docker.com](https://hub.docker.com/)
 
+# Running DUE
+
 ## Symptom: Docker containers don't run (or only run as root).
 You'll see `Got permission denied while trying to connect to the Docker daemon socket`
 You are probably not a member of the Docker group, so you'll need to:
@@ -36,7 +40,6 @@ You are probably not a member of the Docker group, so you'll need to:
 
 You may have to *log out* and back in again for the group change to take effect.
 Running `groups` should show `docker` along with your other groups.
-
 
 ## Symptom: Strange failures and permission errors in the container.
 Check that the host directory the container is using is a **LOCAL** file system.
@@ -141,4 +144,5 @@ a script named `delete_these_docker_images.sh` that can be run to delete all tho
 `--delete-matched` filters images with  with `*term-supplied*` so you should 
 check that the images listed in the script are, indeed,
 the ones you want to get rid of.  
+
 

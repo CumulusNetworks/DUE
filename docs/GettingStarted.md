@@ -15,7 +15,7 @@ If it is just a deb file, `sudo dpkg -i due_*deb` and resolve missing dependenci
 ## Install DUE's software dependencies
 To run DUE from the source directory, you will need to install the following
 packages:  
-  *  docker.io  (docker.ce works as well)  
+  *  One of: docker.io, docker.ce, or podman
   *  git  
   *  bsdutils  
   *  rsync  
