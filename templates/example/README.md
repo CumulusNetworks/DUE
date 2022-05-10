@@ -12,6 +12,8 @@ Create defafult Red Hat EXAMPLE with: ./due --create --from fedora:33 --descript
 
 Create default Debian EXAMPLE with: ./due --create --from debian:10 --description "Debian 10 example" --name example-debian-10 --prompt Ex --tag example-debian-10 --use-template example
 
+Create default Ubuntu using Podman EXAMPLE with: ./due --create --from docker.io/library/ubuntu:20.04  --description "Debian 20.04 example" --name example-debian-20 --prompt Ex --tag example-debian-20 --use-template example
+
 ### Explanation of the Debian example  above:
   * Use a Debian 10 image
   * Name it example-debian-10
