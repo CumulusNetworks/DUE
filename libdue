@@ -1378,7 +1378,10 @@ function fxnDoLogin()
             # If running docker in the container, it has to match the host
             # system's group ID
             dockerGID=$( getent group 'docker' | awk -F ':' '{print$3}' )
-            executeProgram+=" --docker-group-id $dockerGID "
+            # If this is an empty value, do NOT pass it along
+			if [ "$dockerGID" != "" ];then
+				executeProgram+=" --docker-group-id $dockerGID "
+			fi
 
             # specify user and ID
             executeProgram+=" --username $USER_NAME --userid $USER_ID --groupid $USER_GROUP_ID --groupname $USER_GROUP_NAME "
@@ -1569,6 +1572,11 @@ function fxnDoLogin()
             imname="${USE_HOSTNAME}"
         fi
 
+		# If running podman, preserve the user's ID in the container
+		#  so that they can read/write home directory files, etc.
+        if [ "$DOCKER_APP" = "podman" ];then
+            APPLICATION_ARGS="  --userns=keep-id "
+        fi
 
         # Note that any variables here that are not set will evaluate to
         # blank space and not be parsed as arguments.
@@ -1585,6 +1593,7 @@ function fxnDoLogin()
         # Specify the container
         # Pass the command to execute
         runCMD="$DOCKER_SPECIFIC_ARGS \
+				$APPLICATION_ARGS \
                 $CONTAINER_SPECIFIC_ARGS \
                 $doInteractive \
                 --rm \
@@ -1628,15 +1637,12 @@ function fxnDoLogin()
 
         echo ""
 
-        if [ "$DOCKER_APP" = "podman" ];then
-            APPLICATION_ARGS="  --userns=keep-id "
-        fi
         if [ "$cmdList" != "" ];then
             # even the empty "" here will trip up a shell login, but they are
             # needed if cmdList is set to anything. Hence two cases.
-            ${DOCKER_APP} run $APPLICATION_ARGS $runCMD "$cmdList"
+            ${DOCKER_APP} run $runCMD "$cmdList"			
         else
-            ${DOCKER_APP} run $APPLICATION_ARGS $runCMD
+            ${DOCKER_APP} run $runCMD			
         fi
 
     else
