@@ -6,6 +6,9 @@
 #
 #  SPDX-License-Identifier:     MIT
 
+# If a piped operation fails, die on the first error.
+set -o pipefail
+
 INSTALLED_DUE_DIR="/usr/share/due"
 LIBRARY_FILE="/usr/lib/libdue"
 if [  -e ./libdue ];then
