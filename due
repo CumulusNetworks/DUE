@@ -132,6 +132,12 @@ function fxnHelpExamples()
     echo ""
     echo "See topic specific help for topic specific examples."
     echo " Ex: $0 --help-examples --build"
+    echo ""
+    echo " Debug a failed container build through running it."
+    echo "  $0 --run --debug --all --login-shell /bin/bash --login"
+    echo ""
+
+
 
 }
 
@@ -870,6 +876,7 @@ function fxnParseRunArgs()
                 # Run this when logging into a container
                 # Typically /bin/bash or /bin/sh for non DUE containers
                 LOGIN_SHELL="$2"
+                OVERRIDE_LOGIN="TRUE"
                 shift
                 ;;
 
