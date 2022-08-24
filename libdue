@@ -1200,7 +1200,7 @@ function fxnSelectContainer()
         echo ""
         if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
             echo "  No DUE Docker images were found. "
-            echo "  Howwever, the results were filtered by [ $userIs ]. Add --all to the command to see all Docker images."
+            echo "  However, the results were filtered by [ $userIs ]. Add --all to the command to see all Docker images."
             exit 1
         fi
         if [ "$filterByType" = "" ];then
@@ -1441,18 +1441,21 @@ function fxnDoLogin()
             if [ "$OVERRIDE_LOGIN" = "TRUE" ];then
                 # if a login shell was explicitly passed,
                 executeProgram="$LOGIN_SHELL"
-            else            
+            else
+
                 # If the container has a hint about mounting host directories relative
                 # to the current working directory, take that into account.
                 DUEMountHostDirsUP=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEMountHostDirsUp}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
 
                 MOUNT_CURRENT_WORKING_DIRECTORY="$CURRENT_WORKING_DIRECTORY"
-                for (( count=DUEMountHostDirsUP ; count > 0 ; count-- ))
-                do
-                    # Back up a directory
-                    MOUNT_CURRENT_WORKING_DIRECTORY="$( dirname "$MOUNT_CURRENT_WORKING_DIRECTORY" )"
-                done
 
+                if [ "$DUEMountHostDirsUP" != "<no value>" ];then
+                    for (( count=DUEMountHostDirsUP ; count > 0 ; count-- ))
+                    do
+                        # Back up a directory
+                        MOUNT_CURRENT_WORKING_DIRECTORY="$( dirname "$MOUNT_CURRENT_WORKING_DIRECTORY" )"
+                    done
+                fi
 
                 # DUE images have the container-create-user.sh script, so configure for that.
                 if [ "$DO_DEBUG" = "TRUE" ];then
@@ -1461,12 +1464,12 @@ function fxnDoLogin()
                 fi
 
                 # If running docker in the container, it has to match the host
-                # system's group ID
+                # system's group ID.
+                # Only add it if you find it, as Podman systems probably won't have this.
                 dockerGID=$( getent group 'docker' | awk -F ':' '{print$3}' )
-                # If this is an empty value, do NOT pass it along
-			    if [ "$dockerGID" != "" ];then
-				    executeProgram+=" --docker-group-id $dockerGID "
-			    fi
+                if [ "$dockerGID" != "" ];then
+                    executeProgram+=" --docker-group-id $dockerGID "
+                fi
 
                 # specify user and ID
                 executeProgram+=" --username $USER_NAME --userid $USER_ID --groupid $USER_GROUP_ID --groupname $USER_GROUP_NAME "
