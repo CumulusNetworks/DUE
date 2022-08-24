@@ -701,12 +701,18 @@ function fxnMakeNewDockerImage()
             fxnPP "Adding qemu-${imageArchitecture}-static to $imageName/filesystem/usr/bin/qemu-${imageArchitecture}-static."
             # qemu-user
 
-            if [ ! -e /usr/bin/qemu-"${imageArchitecture}"-static ];then
-                fxnERR "Host system must have qemu-${imageArchitecture}-static to run an ${imageArchitecture} container. Try: sudo $PACKAGE_INSTALL qemu-user-static."
-                # Clean this up so that a re-run does not report success despite not having the emulation support.
-                echo "Deleting partially built image at: ${BUILD_MERGE_DIR}/${imageName}"
-                rm -rf "${BUILD_MERGE_DIR}/${imageName}"
-                exit 1
+            STATIC_QEMU_SOURCE="/usr/bin/qemu-${imageArchitecture}-static"
+            if [ ! -e $STATIC_QEMU_SOURCE ];then
+                fxnWarn "Host system must have qemu-${imageArchitecture}-static to run an ${imageArchitecture} container. Try: sudo $PACKAGE_INSTALL qemu-user-static."
+                echo "Trying using the template's filesystem/usr/bin/"
+                STATIC_QEMU_SOURCE="${USE_TEMPLATE_PATH}/filesystem/usr/local/bin/qemu-${imageArchitecture}-static"
+                if [ ! -e "$STATIC_QEMU_SOURCE" ];then
+                    fxnERR "Failed to find [ $STATIC_QEMU_SOURCE ] to run an ${imageArchitecture} container. Try copying it in under there."
+                    # Clean this up so that a re-run does not report success despite not having the emulation support.
+                    echo "Deleting partially built image at: ${BUILD_MERGE_DIR}/${imageName}"
+                    rm -rf "${BUILD_MERGE_DIR}/${imageName}"
+                    exit 1
+                fi
             fi
 
             if [ ! -e /proc/sys/fs/binfmt_misc/qemu-${imageArchitecture} ];then
@@ -719,7 +725,10 @@ function fxnMakeNewDockerImage()
             if [ ! -e "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin ];then
                 mkdir -p "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin
             fi
-            fxnEC cp -a /usr/bin/qemu-${imageArchitecture}-static "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin/qemu-${imageArchitecture}-static || exit 1
+            # if no static qemu already there, copy the system's in.
+            if [ ! -e "${BUILD_MERGE_DIR}/$imageName/filesystem/usr/bin/qemu-${imageArchitecture}-static" ];then
+                fxnEC cp -a "$STATIC_QEMU_SOURCE" "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin/qemu-${imageArchitecture}-static || exit 1
+            fi
             # Set this to pass to Dockerfile configuration so that qemu-static
             # will be present in the image _before_ Docker executes any commands in the image.
             QEMU_STATIC="qemu-${imageArchitecture}-static"
