@@ -9,16 +9,26 @@
 # If a piped operation fails, die on the first error.
 set -o pipefail
 
+INSTALLED_DUE_PATH="/usr/bin/due"
 INSTALLED_DUE_DIR="/usr/share/due"
 LIBRARY_FILE="/usr/lib/libdue"
-if [  -e ./libdue ];then
-    # Use local copy if it exists. We are running from a source
-    # checkout and probably want the current file, rather than
-    # the installed one
-    TOP_LEVEL_DIR=$(pwd)
-    LIBRARY_FILE="${TOP_LEVEL_DIR}/libdue"
-fi
 
+
+if [ "$0" != "$INSTALLED_DUE_PATH" ];then
+    if [  -e ./libdue ] && [ -e ./due ];then
+        # If both files are in the same directory,
+        # it is probably running from a source checkout
+        # should use the library from the corrent
+        # directory, rather than the installed one.
+        TOP_LEVEL_DIR=$(pwd)
+        LIBRARY_FILE="${TOP_LEVEL_DIR}/libdue"
+        # Let the user know they're using the local copy.
+        echo "Sourcing DUE files from [ $TOP_LEVEL_DIR ]"
+    else
+        echo "Cannot run $0. Missing files. Exiting."
+        exit 1
+    fi
+fi
 if [ ! -e "$LIBRARY_FILE"  ];then
     echo "ERROR! Failed to find [ $LIBRARY_FILE ]. Exiting."
     exit 1
