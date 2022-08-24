@@ -14,7 +14,7 @@
 shopt -s extglob
 
 # Documentation and changelog builds get the official version from here.
-DUE_VERSION="3.1.0"
+DUE_VERSION="3.3.0"
 
 # Debian packages required for DUE to run
 REQUIRED_PACKAGES=" docker.io rsync bsdutils git"
@@ -485,11 +485,18 @@ function fxnPreProcessInstallConfigLib()
 # Create a new Docker Image
 # Takes: FROM_IMAGE_TYPE    - source image to build on
 #        NEW_IMAGE_NAME     - Local name for image (my-stretch-build, for example)
+#        PLATFORM           - specify architecture that may be different from the host. (optional)
 function fxnMakeNewDockerImage()
 {
     local imageFrom="$1"
     local imageName="$2"
-
+    local platformArg
+    # if the architecture is different from the host
+    local platformArch
+    # If image should be pulled from remote registry
+    local pullImage
+    local imageID
+    local imageTag
     # Store the build command to be run, so it can be printed out to the user
     local dockerBuildCommand=""
 
@@ -506,6 +513,13 @@ function fxnMakeNewDockerImage()
         #fxnListContainersForCreation
         echo "$KNOWN_IMAGES"
         exit 1
+    fi
+
+    if [ "$3" != "" ];then
+        # pass the platform specifying architecture specification along.
+        # Ex: linux/aarch64
+        platformArg=" --platform $3"
+        platformArch=${3##*/}
     fi
 
     # DOCKER_IMAGE_TAG will have been initialized to 'latest' by default,
@@ -598,16 +612,74 @@ function fxnMakeNewDockerImage()
         # So, has the image already been pulled?
         imageArchitecture=$( ${DOCKER_APP} inspect -f '{{.Architecture}}' "${imageFrom}" 2>/dev/null )
         if [ "$imageArchitecture" = "" ];then
+            # Do not have an image with that name
+            fxnPP "No image [ $imageFrom ] found. Will pull."
+            pullImage="TRUE"
+        else
+            fxnPP "Found existing image [ $imageFrom ]. Will not pull. Use --platform linux/amd64|aarch64 to override."
+        fi
+        if [ "$platformArg" != "" ];then
+            # If the user specified a platform for the image, and it is not here.
+            if [ "$imageArchitecture" != "$platformArch" ];then
+                fxnPP "Specified $platformArg and there was no match for [ $imageFrom ]. Will pull."
+                pullImage="TRUE"
+            fi
+        fi
+
+        if [ "$pullImage" = "TRUE" ];then
             # Well, get a copy.
             fxnPP "[ $imageFrom ] not found. Pulling an image to check it's architecture before proceeding."
-            fxnEC "${DOCKER_APP}" pull "$imageFrom"  || exit 1
-            imageArchitecture=$( ${DOCKER_APP} inspect -f '{{.Architecture}}' "${imageFrom}" )
-            if [ "$imageArchitecture" = "" ];then
-                # If the architecture can't be determined at this point, it is a bad sign,
-                # but maybe not fatal. Continue and see what happens.
-                fxnWarn "Failed to determine architecture of [ $imageFrom ]. Guessing same as host."
-                imageArchitecture="$HOST_ARCH"
+            fxnEC "${DOCKER_APP}" pull $platformArg "$imageFrom"  || exit 1
+
+            # Use image id rather than name here. Red Hat images use the same name for arm64 and x86 images, so
+            # if both are present, one will hide the other. Tag the image with the architecture to keep track.
+            # the host's.
+
+            # inspect handles finding the latest image in case there are mutliple, and will take an imageFrom
+            #  string that may have more than one '/' in it, in case there are multiple.
+            # However, it returns the ID with 'sha256:' stuck to the front.
+            imageID=$( "${DOCKER_APP}"  inspect --format "{{.ID}}" "${imageFrom}" | sed -e 's/sha256://' )
+            if [ "$imageID" = "" ];then
+                fxnERR "Failed to properly id [ $imageFrom ]. Exiting."
+                exit 1
             fi
+
+            # May want to remove platformArg logic and just key off of Docker vs Podman
+            if [ "$platformArg" != "" ];then
+                if [ "${DOCKER_APP}" = 'docker' ];then
+                    # Print only the fields to the left and right of the last '/' to strip registry references.
+                    imageFrom=$( echo $imageFrom |  awk -F '/' '{print$(NF-1)"/"$NF}' )
+                fi
+            fi
+
+            imageArchitecture=$( ${DOCKER_APP} inspect -f '{{.Architecture}}' "$imageID" )
+            if [ "$platformArg" != "" ];then
+                # Print only the fields to the left and right of the last '/' to strip registry references.
+                #               imageFrom=$( echo $imageFrom |  awk -F '/' '{print$(NF-1)"/"$NF}' )
+                # Sanitize the tag and source by changing any : to -, as having
+                # multiple will break the auto-tagging below.
+                imageFrom=${imageFrom//:/-}
+                # Isolate the architecture
+                imageTag=${platformArg##*/}
+                # Tag to use
+                imageTag=${imageTag//:/-}
+
+
+                if [ "$imageArchitecture" = "" ];then
+                    # If the architecture can't be determined at this point, it is a bad sign,
+                    # but maybe not fatal. Continue and see what happens.
+                    fxnWarn "Failed to determine architecture of [ $imageFrom ]. Guessing same as host."
+                    imageArchitecture="$HOST_ARCH"
+                fi
+
+                # Tag it with the architecture
+                imageTag="$imageArchitecture"
+
+                # Tag the non-host architecture image, as it's name may not be different on a per-architecture basis.
+                fxnEC "${DOCKER_APP}" tag $imageID ${imageFrom}:${imageTag} || exit 1
+                fxnPP "Tagged new image with ${imageFrom}:${platformArg##*/}"
+            fi
+
         fi
 
         #
@@ -1576,8 +1648,14 @@ function fxnDoLogin()
             imname="${USE_HOSTNAME}"
         fi
 
-		# If running podman, preserve the user's ID in the container
-		#  so that they can read/write home directory files, etc.
+        # Determine platform type to pass along so that warnings aren't thrown when an amd64 system runs arm64 code...
+        platformType=$( ${DOCKER_APP} inspect -f '{{.Architecture}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}"  2>/dev/null )
+        if [ "$platformType" != "" ];then
+            # Only pass this if a value was returned.
+            # It might not be on a partially built container being debugged.
+            PLATFORM_ARGS=" --platform $platformType"
+        fi
+
         if [ "$DOCKER_APP" = "podman" ];then
             APPLICATION_ARGS="  --userns=keep-id "
         fi
@@ -1598,6 +1676,7 @@ function fxnDoLogin()
         # Pass the command to execute
         runCMD="$DOCKER_SPECIFIC_ARGS \
 				$APPLICATION_ARGS \
+                $PLATFORM_ARGS \
                 $CONTAINER_SPECIFIC_ARGS \
                 $doInteractive \
                 --rm \

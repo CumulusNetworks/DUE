@@ -247,22 +247,24 @@ function fxnHelpCreate()
     echo "      Mandatory:"
     echo "     --from <name:tag>          Pull name:tag from registry to use as starting point for the image."
     echo "     --use-template <role>      Use files from templates/<role> to generate the config directory."
-    echo "     --description \"desc\"       Quoted string to describe the container on login."
+    echo "     --description \"desc\"     Quoted string to describe the container on login."
     echo "     --name <name>              Name for resulting image and config directory."
     echo "                                  Ex: debian-stretch-build, ubuntu-18.04-build, etc"
     echo "      Optional:"
-    echo "    --prompt <prompt>           Set in container prompt to <prompt> to provide user context"
-    echo "    --no-image                  Allow build directory to be created. Do not build the image."
+    echo "     --platform <os/arch>       Specify that the image has architecture different from host."
+    echo "                                  Ex: linux/aarch64"
+    echo "     --prompt <prompt>          Set in container prompt to <prompt> to provide user context"
+    echo "     --no-image                 Allow build directory to be created. Do not build the image."
     echo ""
     echo "  2 - Build a Docker image from the image build directory."
     echo ""
-    echo "   --build-dir <dirname>       Build using an existing configuration directory."
-    echo "   --dockerarg <arg>           Pass <arg> to the Docker build invocation."
-    echo "                               Use multiple times for multiple args, or pass one long quoted string."
+    echo "     --build-dir <dirname>      Build using an existing configuration directory."
+    echo "     --dockerarg <arg>          Pass <arg> to the Docker build invocation."
+    echo "                                Use multiple times for multiple args, or pass one long quoted string."
     echo ""
     echo "   --clean                      Remove due-build-merge directory."
     echo "   --help                       This help."
-    echo "   --filter <term>             With --help, filter output to contain <term>"
+    echo "   --filter <term>              With --help, filter output to contain <term>"
     echo "   --create --help-examples     Examples of using create."
 
     echo ""
@@ -601,6 +603,13 @@ function fxnParseCreateArgs()
                 # Set the in container prompt to have this to provide the
                 # user with some context.
                 NEW_PROMPT="$2"
+                shift
+                ;;
+
+            --platform )
+                # Specify an image os/architecture different from the host system.
+                # Ex: linux/aarch64 to get an ARMV8 version of a container.
+                PLATFORM="$2"
                 shift
                 ;;
 
@@ -1361,7 +1370,7 @@ if [ "$DO_CREATE_NEW_IMAGE" = "TRUE" ];then
     fi
 
     # Make an image using one of the directory configurations
-    fxnMakeNewDockerImage "$FROM_IMAGE_TYPE" "$NEW_IMAGE_NAME"
+    fxnMakeNewDockerImage "$FROM_IMAGE_TYPE" "$NEW_IMAGE_NAME" $PLATFORM
     exit
 fi
 
@@ -1396,7 +1405,7 @@ if [ "$DO_CREATE_DIRECTORY" = "TRUE" ];then
     fi
 
     # Make an image using one of the directory configurations
-    fxnMakeNewDockerImage "$FROM_IMAGE_TYPE" "$NEW_IMAGE_NAME"
+    fxnMakeNewDockerImage "$FROM_IMAGE_TYPE" "$NEW_IMAGE_NAME" $PLATFORM
     exit
 fi
 

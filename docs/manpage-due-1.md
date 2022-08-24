@@ -1,4 +1,4 @@
-% DUE(1) Version 3.1.0 | Dedicated User Environment
+% DUE(1) Version 3.3.0 | Dedicated User Environment
 
 # NAME
 
@@ -257,6 +257,9 @@ Mandatory:
     Ex: debian-stretch-build, ubuntu-18.04-build, etc
 
 Optional:
+
+--platform [os/arch]
+:	Specify that the image has a different architecture than the host. Ex: linux/aarch64
 
 --prompt [prompt]
 :	Set in container prompt to [prompt] to provide user context
