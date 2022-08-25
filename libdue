@@ -159,14 +159,15 @@ function fxnListContainersForCreation()
 
         # To simplify parsing, this counts on the example line in the README.md files being formatted
         # in exactly the same way for all, with everything up to the 'with:' getting deleted,
-        # and the last field being --use-template, as that gets prepended to the example string
+        # and the 12th field being --platform, as that gets prepended to the example string
         # via awk to specify the type of container being created.
+
         foundExamples=$( find "${SPECIFIC_TEMPLATE_PATH}" \
                               -name README.md \
                               -exec grep "^Create" {} \; \
-                             | grep -- --from \
+                             | grep -- --platform \
                              | sed -e 's/^.*with://g' \
-                             | awk '{printf "%-20s %s\n", $NF, $0}' | sort )
+                             | awk '{printf "%-20s %s\n", $12, $0}' | sort )
         echo ""
 
         if [ "$outputFormat" != "" ];then

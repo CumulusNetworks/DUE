@@ -21,8 +21,7 @@ Suggested configuration:
 
 ## Image creation example.
 <br>
-Create default frr build environment with: ./due --create --from debian:10 --description "Free Range Routing Debian 10" --name frrd10 --prompt FRRD10 --tag frr-debian10 --use-template frr
-
+Create default frr build environment with: ./due --create --platform linux/amd64    --name frr-debian-10           --prompt frrd10       --tag frr-debian10            --use-template frr               --from debian:10                             --description "Free Range Routing Debian 10"        
 ## Reference link
  http://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu1804.html#installing-dependencies
 
