@@ -1757,13 +1757,9 @@ function fxnDoLogin()
             # logins. Just start a specified shell.
             LoginCommand="${DOCKER_APP} exec $doInteractive  $userNameArg ${SELECTED_CONTAINER_ID} $LOGIN_SHELL"
         else
-            if [ "$OS_TYPE" = "RedHat" ];then
-                LoginCommand="${DOCKER_APP} exec $doInteractive --user $USER_NAME  ${SELECTED_CONTAINER_ID} /bin/bash --login"
-            else
-                # Log into container as root, then set ID to user. This executes .bashrc configs and
-                # feels more like a real login.
-                LoginCommand="${DOCKER_APP} exec $doInteractive --user root ${SELECTED_CONTAINER_ID} /bin/login -p -f $USER_NAME"
-            fi
+            # Log into container as root, then set ID to user. This executes .bashrc configs and
+            # feels more like a real login.
+            LoginCommand="${DOCKER_APP} exec $doInteractive --user root ${SELECTED_CONTAINER_ID} $executeProgram --username $USER_NAME --userid $USER_ID  --groupid $USER_GROUP_ID --groupname $USER_GROUP_NAME"
         fi
         echo "Logging in to running  [ $SELECTED_CONTAINER_ID ] with: "
         echo " ___________________________________________________________________________"

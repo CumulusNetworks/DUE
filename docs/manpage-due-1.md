@@ -150,7 +150,9 @@ creation dies running internal configuration scripts.
 Logging in to a running container
 -------
 -l, --login
-:	Choose an existing container to log in to.
+:	Choose an existing container to log in to. If the user logging in is not the
+ same one that started the container, a /home/$USER directory will be created for
+ them in the container.
 
 --username  [username]
 :	Name to use when logging in.

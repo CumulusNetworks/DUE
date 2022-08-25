@@ -187,6 +187,8 @@ Example: mount host /tmp dir in container /var/build: \[en]mount\-dir
 .TP
 .B \-l, \[en]login
 Choose an existing container to log in to.
+If the user logging in is not the same one that started the container, a
+/home/$USER directory will be created for them in the container.
 .TP
 .B \[en]username [username]
 Name to use when logging in.
