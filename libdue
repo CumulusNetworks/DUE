@@ -1155,10 +1155,11 @@ function fxnSelectContainer()
         # select existing container
         #
         # Podman doesn't print the header returning from a query.
-        if [ "${DOCKER_APP}" = "podman" ];then
-            theContainers="NAMES              IMAGE    CONTAINER ID  COMMAND
-"
-        fi
+        # ..but new versions do. Disable this for now, but leave it to check against older Podman versions.
+        #if [ "${DOCKER_APP}" = "podman" ];then
+        #     theContainers="NAMES              IMAGE    CONTAINER ID  COMMAND
+#"
+        #fi
 
         if [ "$VERBOSITY_LEVEL" -ne 0 ];then
             theContainers+=$(     ${DOCKER_APP} ps --format 'table {{.Names}}\t{{.Image}}\t{{.ID}}\t{{.RunningFor}}\t{{.Status}}\t{{.Command}}')
