@@ -5,7 +5,7 @@
 # CONTEXT: runs inside the container at creation time.
 # Note - this is /bin/sh as /bin/bash may not be available.
 
-# Copyright 2021 NVIDIA Corporation.  All rights reserved.
+# Copyright 2021,2022 NVIDIA Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
@@ -15,32 +15,9 @@
 # allow the install of packages to be used by the post install script.
 # ( i.e. Bash ) as those packages may not come pre installed in the container
 
-
-echo " ___________________________________________________________________________ "
-echo "|"
-echo "| Running REPLACE_IMAGE_NAME pre install configuration."
-echo "|___________________________________________________________________________"
-
-if [ ! -e /build ];then
-    echo "$0 Creating a /build directory as a common build mount point."
-    mkdir /build
-    chmod a+w /build
-fi
-
-#
-# Initial install of packages required for DUE to behave itself.
-# These have to come from the container's package repository
-# The important package here is gnupg, as it is needed for
-# any package repository key additions
-
-BASE_PACKAGES="\
-    wget \
-    bash \
-    sudo \
-    procps \
-    gnupg "
-
-if [ -e /etc/redhat-release ];then
+# Red Hat uses dnf and .rpm
+fxnConfigureRedHat()
+{
     dnf check-update
     case $? in
         100 )
@@ -64,8 +41,39 @@ if [ -e /etc/redhat-release ];then
         exit 1
     fi
 
-else
+}
 
+# Suse config is RPM based. Borrow Red Hat configuration for now.
+fxnConfigureSuse()
+{
+    # Refresh repositories
+    zypper refresh
+    case $? in
+        100 )
+            echo "Updates are available."
+            ;;
+        0 )
+            echo "No updates are available."
+            ;;
+        * )
+            echo "$0 ERROR! Failed dnf check-update. Exiting."
+            exit 1
+            ;;
+    esac
+
+    # /usr/bin/find is apparently not present in RedHat images?
+    # /usr/bin/hostname
+    # /usr/bin/pgrep
+    zypper --non-interactive install awk  hostname procps $BASE_PACKAGES
+    if [ $? != 0 ];then
+        echo "$0 ERROR! Failed zypper install. Exiting."
+        exit 1
+    fi
+}
+
+# Debian uses APT and .deb
+fxnConfigureDebian()
+{
     apt-get update
     if [ $? != 0 ];then
         echo "$0 ERROR! Failed apt-get update. Exiting."
@@ -103,7 +111,56 @@ else
         apt-get install --assume-yes --fix-broken || exit 1
         echo "Pre installing local software: DONE"
     fi
+
+}
+
+echo " ___________________________________________________________________________ "
+echo "|"
+echo "| Running REPLACE_IMAGE_NAME pre install configuration."
+echo "|___________________________________________________________________________"
+
+if [ ! -e /build ];then
+    echo "$0 Creating a /build directory as a common build mount point."
+    mkdir /build
+    chmod a+w /build
 fi
+
+#
+# Initial install of packages required for DUE to behave itself.
+# These have to come from the container's package repository
+# The important package here is gnupg, as it is needed for
+# any package repository key additions
+
+BASE_PACKAGES="\
+    wget \
+    bash \
+    sudo \
+    procps \
+    findutils \
+    gnupg "
+
+
+# Pull this in to set variables like ID and NAME
+. /etc/os-release
+
+
+case "$ID" in
+    # Red Hat variants
+    'fedora' | 'rhel' )
+        fxnConfigureRedHat
+        ;;
+
+    # SUSE variants
+    'opensuse-leap' | 'sles' )
+        fxnConfigureSuse
+        ;;
+
+    * )
+        # Default to Debian variants
+        fxnConfigureDebian
+        ;;
+esac
+
 #
 # Add any additional initial configuration here
 #

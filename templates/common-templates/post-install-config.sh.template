@@ -1,5 +1,5 @@
 #!/bin/bash
-# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0  
+# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 # SCRIPT_PURPOSE: Run configuration inside the docker container, after package install.
 # Bash should be installed at this point.
 

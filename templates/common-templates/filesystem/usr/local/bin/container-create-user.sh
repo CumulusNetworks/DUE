@@ -24,9 +24,31 @@
 # Default to Debian, unless otherwise specified.
 OS_TYPE="Debian"
 
-if [ -e /etc/redhat-release ];then
-    OS_TYPE="RedHat"
-fi
+DO_DEBUG="FALSE"
+
+# Source this to set variables like NAME
+source /etc/os-release
+
+case "$ID" in
+    # Red Hat variants
+    'fedora' | 'rhel' )
+        OS_TYPE="RedHat"
+        ;;
+
+    # SUSE variants
+    # Suse Linux Enterprise Server | Desktop
+    'opensuse-leap' | 'sles' | 'sled' )
+        # Suse is close enough to Red Hat to share code.
+        OS_TYPE="Suse"
+        ;;
+
+    # Default to Debian variants
+    * )
+        OS_TYPE="Debian"
+        ;;
+
+esac
+
 
 function fxnPP()
 {
@@ -77,7 +99,16 @@ function fxnAddUserInContainer()
     # Check for namespace collisions
     local userAlreadyExistsInContainer="FALSE"
     local userIDAlreadyUsedBy=""
+    
+    # Arguments to create a home directory in the container
+    local makeHomeDir=""
 
+    # Message to put in home directories that will vanish with
+    # the container.
+    local homeDirMountStatus="THIS_IS_A_CONTAINER_DIRECTORY"
+    # Program that adds users
+    local addUserProgram=""
+    
     echo " ___________________________________________________________________________"
     echo "|                                                                           |"
 
@@ -95,7 +126,7 @@ function fxnAddUserInContainer()
         # In case it is NOT overridden by command line arguments
         containerUID=$( grep  ^"${USER_NAME}": /etc/passwd | awk -F ':' '{print$3}' )
 
-        echo "| User account [ $containerUserName ]:[ $containerUID ] exists in container."
+        echo "| $USER_NAME : account exists in container with user id [ $containerUID ]."
         userAlreadyExistsInContainer="TRUE"
     fi
 
@@ -184,35 +215,67 @@ function fxnAddUserInContainer()
     #
     if [ "$userAlreadyExistsInContainer" = "FALSE" ];then
         #
+        # Set arguments for adding a user in different base containers
+        #
+        case $OS_TYPE in
+            'Suse' )
+                makeHomeDir+=" --create-home --home-dir /home/$USER_NAME"
+                addUserProgram="useradd"
+                # Add the 'wheel' group. Exits with 0 if group already exists.
+                groupadd --force wheel
+                # Add 'mail' group to avoid errors on user creation.
+                groupadd --force mail
+                ;;
+            'RedHat' )
+                makeHomeDir+=" --home-dir /home/$USER_NAME"
+                addUserProgram="adduser"
+                ;;
+            * )
+                # Debian variants
+                # use --gecos "" to supply blank data for Full Name, Room number, etc
+                DEBIAN_ADDUSER_ARGUMENTS=" --gecos ''  --disabled-password "
+                makeHomeDir+=" --home /home/$USER_NAME"
+                addUserProgram="adduser"
+                ;;
+        esac
+        
+        #
         # User name and ID are unique: create the user
         #
-        echo "| $USER_NAME : Creating user UID [ $USER_ID ] GID [ $GROUP_ID ] Group [ $GROUP_NAME ]"
+        echo "| $USER_NAME : Creating with: UID $USER_ID, GID $GROUP_ID, group $GROUP_NAME "
         # if a home directory exists, do not create it
         if [ -e /home/"$USER_NAME" ];then
             makeHomeDir=" --no-create-home "
-            echo "| $USER_NAME : /home directory already exists. Not creating."
+            echo "| $USER_NAME : /home/$USER_NAME already exists. Not creating."
+            # Do not leave a message indicating home directory is in a container.
+            homeDirMountStatus=""
         else
-            makeHomeDir=" --home-dir /home/ $USER_NAME"			
-            echo "| $USER_NAME : /home directory does not exist. Creating..."
+            # Specify that the home directory should be created if it
+            # does not already exist.
+            echo "| $USER_NAME : /home/$USER_NAME directory does not exist. Creating in CONTAINER ONLY."
         fi
 
-        # use --gecos "" to supply blank data for Full Name, Room number, etc		
-		DEBIAN_ADDUSER_ARGS=" --gecos ''  --disabled-password "
+        # Use for debug
+        if [ "$DO_DEBUG" = "TRUE" ];then
+            echo "| Adding user with: $addUserProgram $makeHomeDir --shell $userShell --uid $USER_ID $addGroupID $DEBIAN_ADDUSER_ARGUMENTS $USER_NAME"
+        fi
+        #
+        # Add the user
+        #
+        fxnEC $addUserProgram \
+                  $makeHomeDir \
+                  --shell "$userShell" \
+                  --uid "$USER_ID" \
+                  $addGroupID \
+                  $DEBIAN_ADDUSER_ARGUMENTS \
+                  "$USER_NAME" \
+                  > /dev/null || exit 1
 
-		if [ "$OS_TYPE" = "RedHat" ];then
-			# RedHat adduser likes none of those arguments.
-			# Configure the account after creation.
-			DEBIAN_ADDUSER_ARGS=""
-		fi
-
-        fxnEC adduser --home /home/"$USER_NAME" \
-              $makeHomeDir \
-              --shell "$userShell" \
-              --uid "$USER_ID" \
-              $addGroupID \
-			  $DEBIAN_ADDUSER_ARGS \
-              "$USER_NAME" \
-              > /dev/null || exit 1
+        # Leave a reminder that the home directory is not mounted.
+        if [ "$homeDirMountStatus" != "" ];then
+            # Leave a reminder about the home directory being local to the container.
+            touch /home/$USER_NAME/$homeDirMountStatus
+        fi
     fi
 
     #
@@ -221,27 +284,38 @@ function fxnAddUserInContainer()
     # be updated to reflect what the current user is running.
     # If the account was just created, then this is redundant, but fast.
     #
-    fxnPP "| Configuring  [ $USER_NAME ] sudo, $addGroupID, shell [ $userShell ]."
+    fxnPP "| $USER_NAME : Can sudo without password, uses shell [ $userShell ]."
+
+    if [ "$DO_DEBUG" = "TRUE" ];then
+        echo "|  usermod --shell $userShell $addGroupID $USER_NAME" 
+    fi
     # Usermod may echo 'no changes' to stderr, so filter that.
     # If there is a real problem, it'll exit.
     fxnEC usermod \
           --shell "$userShell" \
           $addGroupID \
           "$USER_NAME"  > /dev/null 2>&1 || exit 1
-
-    if [ "$OS_TYPE" = "RedHat" ];then
-        # Allow this user to become root
-        usermod -aG wheel "$USER_NAME"
-    else
+    
+    #
+    # Set up passwordless sudo, depending on OS run.
+    #
+    if [ "$OS_TYPE" = "Debian" ];then
         # Allow this user to become root
         fxnEC adduser "$USER_NAME" sudo > /dev/null || exit 1
-		# Make sure the in-contianer password is empty.
-		# This is about convenience, not security.
-		fxnEC passwd -d "$USER_NAME" > /dev/null || exit 1
-		
+        # Make sure the in-contianer password is empty.
+        # This is about convenience, not security.
+        fxnEC passwd -d "$USER_NAME" > /dev/null || exit 1
+    else
+        # Allow this user to become root
+        usermod -aG wheel "$USER_NAME"
+		# Sudo may be hampered by requiring a password in the container, so don't ask.
+        if [ ! -e /etc/sudoers.d/due-wheel-no-password ];then
+            # Configure wheel group to not require a password
+            echo "%wheel        ALL=(ALL)       NOPASSWD: ALL" > /etc/sudoers.d/due-wheel-no-password
+            # make it non-writeable
+            chmod a-w /etc/sudoers.d/due-wheel-no-password
+        fi
     fi
-
-    fxnPP "| Passwordless [ $USER_NAME ]."
 
     # Do not require password to become root via 'sudo su'
     echo "$USER_NAME       ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
@@ -299,15 +373,24 @@ function fxnRunAsUser()
         echo "|___________________________________________________________________________|"
         echo ""
 
-        if [ "$OS_TYPE" = "RedHat" ];then
-            # Login behaves differently here, but su and cd _seem_ to be equivalent...
-            fxnEC cd "$(sudo -u "$USER_NAME" sh -c 'echo $HOME')" || exit 1
-            su "${USER_NAME}"
+        case "$OS_TYPE" in
+            'RedHat' | 'Suse'  )
+                # Login behaves differently here, but su and cd _seem_ to be equivalent...
+                fxnEC cd "$(sudo -u "$USER_NAME" sh -c 'echo $HOME')" || exit 1
+                su "${USER_NAME}"
+                ;;
 
-        else
-            # Log in interactively with no password as new user
-            login -p -f  "${USER_NAME}"
-        fi
+            'Debian' )
+                # Log in interactively with no password as new user
+                login -p -f  "${USER_NAME}"
+                ;;
+
+            * )
+                # Should never hit this as 'Debian' should be the default.
+                fxnERR "Unrecognized OS type for container user creation."
+                exit 1
+        esac
+
     fi
 }
 
@@ -316,6 +399,7 @@ function fxnRunAsUser()
 #
 if [ "$1" = "--debug" ];then
     set -x
+    DO_DEBUG="TRUE"
     shift
 fi
 
