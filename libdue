@@ -43,15 +43,16 @@ DOCKER_SPECIFIC_BUILD_ARGS=""
 
 # List of example images
 KNOWN_IMAGES="
- debian:10
  debian:11
- ubuntu:18.04
  ubuntu:20.04
  arm32v5/debian:jessie
  arm32v7/debian:10
- arm64v8/debian:10
  arm64v8/debian:11
  ppc64le/debian:10
+ redhat/ubi9
+ opensuse/leap
+ bci/bci-base-15.3
+ fedora-33/fedora-33
 "
 
 # Max number of containers per user.
@@ -95,26 +96,38 @@ DUE_IMAGE_TYPE_LABEL="default-type"
 # Put build steps here
 BUILD_MERGE_DIR="$(pwd)/due-build-merge"
 
-#
-# Red Hat uses a different package manager, so abstract that out.
-# Ex: sudo $PACKAGE_UPDATE  ; sudo $PACKAGE_INSTALL rsync
-#
-if [ -e /etc/redhat-release ];then
-    OS_TYPE="RedHat"
-    PACKAGE_UPDATE=" dnf check-update"
-    PACKAGE_INSTALL=" dnf install "
-    #
-    # Defaults for Red Hat systems have nosuid set when Docker runs,
-    # preventing the mount of the user's home directory.
-    # There may be a better work around, but for now,
-    #  default to running --privileged
-    #
-    DOCKER_SPECIFIC_ARGS=" --privileged "
-else
-    OS_TYPE="Debian"
-    PACKAGE_UPDATE=" apt-get update "
-    PACKAGE_INSTALL=" apt-get install "
-fi
+
+# Pull this in to set variables like ID
+source /etc/os-release
+
+case "$ID" in
+    # Red Hat variants
+    'fedora' | 'rhel' | 'opensuse-leap' | 'sles' )
+        #
+        # Red Hat uses a different package manager, so abstract that out.
+        # Ex: sudo $PACKAGE_UPDATE  ; sudo $PACKAGE_INSTALL rsync
+        #
+        OS_TYPE="RedHat"
+        PACKAGE_UPDATE=" dnf check-update"
+        PACKAGE_INSTALL=" dnf install "
+        #
+        # Defaults for Red Hat systems have nosuid set when Docker runs,
+        # preventing the mount of the user's home directory.
+        # There may be a better work around, but for now,
+        #  default to running --privileged
+        #
+        DOCKER_SPECIFIC_ARGS=" --privileged "
+        ;;
+
+
+    * )
+        # Default to Debian variants
+        OS_TYPE="Debian"
+        PACKAGE_UPDATE=" apt-get update "
+        PACKAGE_INSTALL=" apt-get install "
+        ;;
+esac
+
 ######################################################################
 # Common utility functions
 ######################################################################
