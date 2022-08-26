@@ -1724,16 +1724,16 @@ function fxnDoLogin()
         # Remove spaces for readability when echoing.
         # put one argument per line for readability
         # and make sure there are \ so the command can be cut and pasted
-        formatRunCMD=$( echo $runCMD  | sed -e 's/                / /g' | sed -e 's# --#\\ \n     --#g' )
+        formatRunCMD=$( echo $runCMD  | sed -e 's/                / /g' | sed -e 's# --#\\\n     --#g' )
 
         #
         # Let the user know what DUE is doing behind the scenes
         #
 
         echo " ----------------------------------------------------------------------------"
-        echo " ------ : start and log in to [ $SELECTED_CONTAINER_ID ] with this command:      -- "
-        echo "   ${DOCKER_APP} run $formatRunCMD"
-
+        echo " ------ : Start and log in to [ $SELECTED_CONTAINER_ID ] with this command:      -- "
+        echo "   ${DOCKER_APP} run \\"
+        echo "     $formatRunCMD"
         echo ""
         echo " ----------------------------------------------------------------------------"
         echo " ------ Host file systems are mounted as follows: ---------------------------"
@@ -1776,11 +1776,11 @@ function fxnDoLogin()
             # feels more like a real login.
             LoginCommand="${DOCKER_APP} exec $doInteractive --user root ${SELECTED_CONTAINER_ID} $executeProgram --username $USER_NAME --userid $USER_ID  --groupid $USER_GROUP_ID --groupname $USER_GROUP_NAME"
         fi
+        formatLoginCMD=$( echo $LoginCommand  | sed -e 's/                / /g' | sed -e 's# --#\\\n     --#g' )
         echo "Logging in to running  [ $SELECTED_CONTAINER_ID ] with: "
-        echo " ___________________________________________________________________________"
-        echo "|"
-        echo "|  $LoginCommand"
-        echo "|___________________________________________________________________________"
+        echo " ---------------------------------------------------------------------------"
+        echo " ------ : Logging in to running [ $SELECTED_CONTAINER_ID ] with this command:       -- "
+        echo "   $formatLoginCMD"
         echo ""
         echo " ---------------------------------------------------------------------------"
         echo " -             Logging in to container. Type 'exit' to leave.              -"
