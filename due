@@ -13,7 +13,7 @@ INSTALLED_DUE_PATH="/usr/bin/due"
 INSTALLED_DUE_DIR="/usr/share/due"
 LIBRARY_FILE="/usr/lib/libdue"
 
-
+echo ""
 if [ "$0" != "$INSTALLED_DUE_PATH" ];then
     if [  -e ./libdue ] && [ -e ./due ];then
         # If both files are in the same directory,
@@ -23,9 +23,9 @@ if [ "$0" != "$INSTALLED_DUE_PATH" ];then
         TOP_LEVEL_DIR=$(pwd)
         LIBRARY_FILE="${TOP_LEVEL_DIR}/libdue"
         # Let the user know they're using the local copy.
-        echo "Sourcing DUE files from [ $TOP_LEVEL_DIR ]"
+        echo "==== Sourcing DUE files from:     [ $TOP_LEVEL_DIR ]"
     else
-        echo "Cannot run $0. Missing files. Exiting."
+        echo "ERROR! Cannot run $0. Missing files. Exiting."
         exit 1
     fi
 fi

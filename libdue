@@ -2111,29 +2111,39 @@ function fxnDoContainerStop()
 # Takes: String identifying the type of DUE container
 # Does:  Sets CONTIANER_SPECIFIC_ARGS, if needed.
 #
-# This sets any additional arguments to pass to Docker when starting a
-# container, such as --privileged or an additional mount point.
-#
-# This is left at the end of the file for easy merging, as local
-# branches may have deployment specific changes that do not apply
-# to upstream.
+# Set additional default arguments to Docker/Podman when running a container
+# based off of the DUEImageType label value found in the image.
+# This is set in the template's Dockerfile.config.
+#  Example: LABEL DUEImageType=no-op-image
+
+# This can be overridden on a per system or per user basis by sourcing the
+# /etc/due/due.conf
+# or the user's  ~/.config/due/due.conf file, below.
+
 function fxnSetContainerSpecificArgs()
 {
+    echo "No default container specific arguments were applied."
     local imageType="$1"
-
-    # uses the value set by the DUEImageType label from
+    # Uses the value set by the DUEImageType label from
     # template directory's Dockerfile.config
     case $imageType in
         "no-op-image" )
-        # Example: Mount current directory under /build in the container.
-        # Useful if this is invoked by an automated build system
-        # that builds outside the home directory hierarchy
-        # CONTAINER_SPECIFIC_ARGS="  --volume $(dirname $(pwd)):/build "
-        ;;
-
+            # Example: mount host /tmp directory as container's /tmp
+            CONTAINER_SPECIFIC_ARGS+=" --volume /tmp/:/tmp/"
+            ;;
     esac
-
 }
+
+
+if [ -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then
+    # If ~/.config/due/due.conf  prioritize that
+    echo "==== Sourcing configuration from: [ $DUE_HOME_CONFIG_ABSOLUTE_PATH ]"
+    source "$DUE_HOME_CONFIG_ABSOLUTE_PATH"
+elif [ -e "$DUE_CONFIG_FILE_PATH" ];then
+    # Use the system-wide due.conf
+    echo "==== Sourcing configuration from: [ $DUE_CONFIG_FILE_PATH ]"
+    source $DUE_CONFIG_FILE_PATH
+fi
 
 ######################################################################
 # Editor hints for sh syntax interpretation
