@@ -786,11 +786,14 @@ function fxnParseRunArgs()
                 # Settings to debug a failed container creation.
                 # Default to root account,
                 # Show containers not labeled as created by DUE
+                # Bash may not be installed, so /bin/sh should be safe.
                 USER_NAME="root"
                 USER_ID="0"
                 FILTER_SHOW_ONLY_DUE="FALSE"
-
+                DEBUG_LOGIN="TRUE"
+                LOGIN_SHELL="/bin/sh"
                 ;;
+            
             -b | --build | --duebuild )
                 # execute /usr/local/bin/duebuild
                 if [ "$term" = "--duebuild" ];then

@@ -1479,7 +1479,7 @@ function fxnDoLogin()
                 fi
 
                 # DUE images have the container-create-user.sh script, so configure for that.
-                if [ "$DO_DEBUG" = "TRUE" ];then
+                if [ "$DEBUG_LOGIN" = "TRUE" ];then
                     # If container-create-user.sh gets --debug as the first argument, it will set -x
                     executeProgram=" $executeProgram --debug "
                 fi
@@ -1766,8 +1766,8 @@ function fxnDoLogin()
         if [ "$USER_NAME" != "" ];then
             userNameArg=" --user $USER_NAME "
         fi
-
-        if [ "$DO_DEBUG" = "TRUE" ];then
+        
+        if [ "$DEBUG_LOGIN" = "TRUE" ];then
             # If this is debug, make few assumptions about the container's ability to handle
             # logins. Just start a specified shell.
             LoginCommand="${DOCKER_APP} exec $doInteractive  $userNameArg ${SELECTED_CONTAINER_ID} $LOGIN_SHELL"

@@ -63,8 +63,8 @@ Run `due --duebuild --help` and you can select a container to run `duebuild --he
 ## Can I log in to a running container?
 Yes, use `due --login`, which will show all running DUE created containers, and should log you in as yourself.
 This is handy if you're used to working with multiple terminals.
-**NOTE** if you log into someone _else's_ running container, you will not have an account created, and would
-want to come in as root with `due --login --debug`
+**NOTE** if you log into someone _else's_ running container, you will retain your system identity and get a home directory created for you **in the container** rather than having a host mounted one. So any files you save under your home diretory will vanish with the container.
+
 
 ## Can I use DUE with containers it did not create?
 Yes, although functionality will be limited.
@@ -72,8 +72,7 @@ Yes, although functionality will be limited.
 `due --run --any` will show all Docker images. Note that for images not created by DUE, you may need to
 add the --username and --userid options to have an account to log in as. The root account usually works, so:
 
-`due --run --any --username root --userid 0` will probably get you a sane environment.  
-
+`due --run --any --username root --userid 0` will probably get you a sane environment.
 
 ## Well, can I log in to containers that DUE did not create?
 Yes - `due --login --any` will show all running containers on the system, although you'll probably want
