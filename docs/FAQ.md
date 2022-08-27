@@ -35,12 +35,12 @@ Cross compilation may be faster, but this is very convenient.
 
 ## How do I know that I am in a container?  
 There are a couple of options.  
-First,  If there is a `/.dockerenv` file - you're in a container.  
-Second, if the container was created by DUE,  the bash prompt (PS1)
-may hint this if the container's `/etc/due-bashrc` is sourced.
+Is there is a `/.dockerenv` file? You're in a container run by Docker.  
+Is there a `/run/.containerenv` file? You're in a container run by Podman.  
+Does the bash prompt (PS1) look different? Containers created by DUE will change the prompt to help provide a frame of reference.  
 
-If your home directory in the container already has a `~/.bashrc`, and it sets `PS1`, it will
-override the container.  
+###A note on the prompt...
+If your home directory in the container already has a `~/.bashrc`, and it sets `PS1`, it will override the container.  
 If desired, you can get around this by either:  
 1. Sourcing the `/etc/due-bashrc` on log in with `. /etc/due-bashrc`  
 OR  
@@ -80,6 +80,14 @@ Yes - `due --login --any` will show all running containers on the system, althou
 to supply `--username root --userid 0` if the container wasn't created by DUE.  
 Or use `due --login --debug`, which is a shortcut to log you in as root.
 
+# Changing the defaults - DUE's config file(s).
+DUE's configuration files are at `/etc/due/due.conf` and `~/.config/due/due.conf`.  
+These allow the sysadmin or user to set default run time arguments based on the type of container being run. It sets a few default variables that are self-explanatory, but gets interesting when `libdue` sources it to override `fxnSetContainerSpecificArgs()` to, say, mount a host directory by default. Or supply a hostname/IP address, or run a container `--privileged` by default (more on that, below).  
+Initially this functionality was in `libdue`, but it has become apparent that per-site/user customization is very convenient, and these customizations are not universal enough to be upstreamed. While sysadmins have been able to edit libdue to create a custom version, that is only good until the next upgrade, whereas the config files will persist.  
+As it may not be a good idea to give system users too much creative freedom, 
+the scope of customization is initially limited to`/etc/due/due.conf` by having `DUE_ALLOW_USER_CONFIG` set to `FALSE` in the config file. DUE will read the `/etc/due/due.conf` file first, and will only source user `due.conf` files if `DUE_ALLOW_USER_CONFIG` is set to `TRUE`  
+
+
 ## On using `--privileged`. Do. Not. Recommend.
 The `--privileged` option gives a Docker container access to host device entries that would normally
 not be accessible. This can be useful for things like loopback mounting a file system to write to it,
@@ -89,7 +97,7 @@ as users in the container may be able to affect the host system without realizin
 Within DUE it was a deliberate design choice to make things like this inconvenient so that the user has to be 
 acutely aware of what they are doing.
 
-## Using `--privileged`
+## Using `--privileged` ...if you have to.
 If you are indeed in a situation where this is necessary, `--privileged` can be passed to the command line
 invocation of Docker by using `due --run --dockerarg "--privileged"`. The `--dockerarg` option passes the
 following parameter through. It can be used multiple times for multiple arguments.

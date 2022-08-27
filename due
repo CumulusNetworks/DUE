@@ -13,6 +13,9 @@ INSTALLED_DUE_PATH="/usr/bin/due"
 INSTALLED_DUE_DIR="/usr/share/due"
 LIBRARY_FILE="/usr/lib/libdue"
 
+# Set user's default home directory
+DUE_ENV_DEFAULT_HOMEDIR="$HOME"
+
 echo ""
 if [ "$0" != "$INSTALLED_DUE_PATH" ];then
     if [  -e ./libdue ] && [ -e ./due ];then
@@ -1162,10 +1165,11 @@ function fxnPrintArgs()
 
 }
 #
-# Read in any defaults set by the user.
+# Read in any defaults set by the user, or create the config file.
 #
 
-fxnReadConfigFile
+fxnCreateConfigFile
+
 
 # For any image creation, default to building the image in one step.
 DO_CREATE_IMAGE_NOW="TRUE"

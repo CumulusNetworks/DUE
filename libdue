@@ -1892,95 +1892,42 @@ function fxnGenerateTemplate()
 # Configuration file code
 #
 # System wide config file
-DUE_CONFIG_FILE_PATH="/etc/due/due.conf"
+DUE_ETC_CONFIG_FILE_PATH="/etc/due/due.conf"
 
 # Personal config file
 DUE_HOME_CONFIG_DIR=~/.config/due
 DUE_HOME_CONFIG_FILENAME=due.conf
-DUE_HOME_CONFIG_ABSOLUTE_PATH=${DUE_HOME_CONFIG_DIR}/${DUE_HOME_CONFIG_FILENAME}
+DUE_USER_CONFIG_PATH=${DUE_HOME_CONFIG_DIR}/${DUE_HOME_CONFIG_FILENAME}
 
 
-# Configuration file to hold user specific overrides
-# This will copy the version installed in $DUE_CONFIG_FILE_PATH as a starting point,
-# and put a copy in the user's real home directory.
+# Configuration file to hold user specific overrides.
+# There are two use cases.
+#  If code is running locally, and DUE has not been installed (no /etc/due/due.conf)
+#  Due will copy the due.conf file from the source  checkout to the user's .config
+# If DUE has been installed, it will copy the /etc/due/due.conf to the user's .config
+#  directory, which will provide any system specific customizations.
 function fxnCreateConfigFile()
 {
 
-    if [ ! -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then
-        fxnPP "Making directory $DUE_HOME_CONFIG_DIR"
+    # If no user local config directory, create it
+    if [ ! -e  "$DUE_HOME_CONFIG_DIR" ];then
+        fxnPP "Making directory $DUE_HOME_CONFIG_DIR"        
         fxnEC mkdir -p "$DUE_HOME_CONFIG_DIR" || exit 1
     fi
 
-    if [ -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then
-        fxnPP "$DUE_HOME_CONFIG_ABSOLUTE_PATH already exists. Doing nothing."
+    if [ ! -e "$DUE_ETC_CONFIG_FILE_PATH" ];then
+        # DUE has not been installed as a package.
+        # Assume execution from a downloaded source directory
+        fxnPP "Copying ./$DUE_ETC_CONFIG_FILE_PATH $DUE_USER_CONFIG_PATH"
+        fxnEC cp ./"$DUE_ETC_CONFIG_FILE_PATH" "$DUE_USER_CONFIG_PATH" || exit 1
     else
-
-        if [ ! -e "$DUE_CONFIG_FILE_PATH" ];then
-            # DUE has not been installed as a package.
-            # Assume execution from a downloaded source directory
-            fxnPP "Copying ./$DUE_CONFIG_FILE_PATH $DUE_HOME_CONFIG_ABSOLUTE_PATH"
-            fxnEC cp ./"$DUE_CONFIG_FILE_PATH" "$DUE_HOME_CONFIG_ABSOLUTE_PATH" || exit 1
-        else
-            fxnPP "Copying $DUE_CONFIG_FILE_PATH $DUE_HOME_CONFIG_ABSOLUTE_PATH"
-            fxnEC cp "$DUE_CONFIG_FILE_PATH" "$DUE_HOME_CONFIG_ABSOLUTE_PATH" || exit 1
-        fi
+        # Use the conf file from /etc/due
+        cp "$DUE_ETC_CONFIG_FILE_PATH" "$DUE_USER_CONFIG_PATH"
         # Pix or it didn't happen.
         echo "ls -l $DUE_HOME_CONFIG_DIR"
         ls -l $DUE_HOME_CONFIG_DIR
     fi
 
-}
-
-#
-# Read any user set configuration, and provide config file under ~/.config
-#
-
-# Save for later if printing --verbose.
-# Default to user's due.conf file
-CONFIG_FILE_PATH="$DUE_HOME_CONFIG_ABSOLUTE_PATH"
-
-function fxnReadConfigFile()
-{
-    # store variable name / value pairs
-    local configVars
-    local homeDir
-    local maxContainers
-
-    # If the user's local DUE config does not exist
-    if [ ! -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then
-        if [ -e "$CONFIG_FILE_PATH" ];then
-            # Use the system wide file if it exists ( via Debian package install)
-            CONFIG_FILE_PATH="$DUE_HOME_CONFIG_ABSOLUTE_PATH"
-        else
-            # Create a local config to use.
-            fxnPP "Creating DUE configuration file at $CONFIG_FILE_PATH"
-            fxnEC fxnCreateConfigFile || exit 1
-        fi
-    fi
-
-    if [ -e "$CONFIG_FILE_PATH" ];then
-        # Read the file, filter out comments (#) and empty lines (\S)
-        configVars=$( grep -v "#" "$CONFIG_FILE_PATH" | grep "\S" )
-
-        # Parse the DUE_ENV_DEFAULT_HOMEDIR variable.
-        homeDir=$(echo "$configVars" | grep DUE_ENV_DEFAULT_HOMEDIR | tail -n 1 )
-        if [ "$homeDir" != "" ];then
-            # This will set DUE_ENV_DEFAULT_HOMEDIR
-            eval "$( echo "$homeDir" )"
-        else
-            # Not set in the config file, so default home directory
-            # to the user's home on the host system.
-            eval "$( echo DUE_ENV_DEFAULT_HOMEDIR="$( realpath ~/ )" )"
-        fi
-
-        # Parse the DUE_USER_CONTAINER_LIMIT variable, and override the
-        # default set at the top of this file.
-        maxContainers=$(echo "$configVars" | grep DUE_USER_CONTAINER_LIMIT | tail -n 1 )
-        if [ "$maxContainers" != "" ];then
-            # Trim everything before the = to leave the number
-            DUE_USER_CONTAINER_LIMIT=${maxContainers##*=}
-        fi
-    fi
 }
 
 # DUE embeds labels into the images it creates to get hints for how the containers should
@@ -2134,17 +2081,34 @@ function fxnSetContainerSpecificArgs()
     esac
 }
 
+#
+# Source local settings.
+#
 
-if [ -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then
-    # If ~/.config/due/due.conf  prioritize that
-    echo "==== Sourcing configuration from: [ $DUE_HOME_CONFIG_ABSOLUTE_PATH ]"
-    source "$DUE_HOME_CONFIG_ABSOLUTE_PATH"
-elif [ -e "$DUE_CONFIG_FILE_PATH" ];then
-    # Use the system-wide due.conf
-    echo "==== Sourcing configuration from: [ $DUE_CONFIG_FILE_PATH ]"
-    source $DUE_CONFIG_FILE_PATH
+# Default to not letting users do custom configuration.
+DUE_ALLOW_USER_CONFIG="FALSE"
+
+if [ -e "$DUE_ETC_CONFIG_FILE_PATH" ];then
+    # Use the installed system-wide due.conf
+    echo "==== Sourcing configuration from: [ $DUE_ETC_CONFIG_FILE_PATH ]"
+    source $DUE_ETC_CONFIG_FILE_PATH
+else
+    # The lack of a config file under /etc implies that DUE was not already
+    # installed, so this is likely running locally from a source checkout.
+    # In which case, allow the use of a user local config.
+    # 
+    DUE_ALLOW_USER_CONFIG="TRUE"
 fi
 
+# The config under /etc will set DUE_ALLOW_USER_CONFIG to TRUE if
+# users are allowed to use their own config files.
+if [ "$DUE_ALLOW_USER_CONFIG" = "TRUE" ];then
+    if [ -e "$DUE_USER_CONFIG_PATH" ];then
+        # If ~/.config/due/due.conf  prioritize that
+        echo "==== Sourcing configuration from: [ $DUE_USER_CONFIG_PATH ]"
+        source "$DUE_USER_CONFIG_PATH"
+    fi
+fi
 ######################################################################
 # Editor hints for sh syntax interpretation
 # Append as necessary.
