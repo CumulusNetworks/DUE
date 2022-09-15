@@ -1,12 +1,13 @@
 #!/bin/bash
 # SCRIPT_PURPOSE: Run configuration inside the docker container, after package install.
-# Bash should be installed at this point.
-# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 
 # Copyright 2021,2022 NVIDIA Corporation.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
 
+# Bash should be installed at this point.
+# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
+# Note that this script applies for OpenSUSE and SUSE Linux Enterprise server DUE containers.
 . /due-configuration/install-config-common.lib
 
 # The default post install operations exist as a function
@@ -45,7 +46,7 @@ esac
 INSTALL_COMMAND="zypper --non-interactive install --force-resolution "
 
 #
-# if python can't be installed, try python3
+# If python can't be installed, try python3
 # Success will vary by distribution...
 #
 
@@ -61,7 +62,7 @@ KERNEL_BUILD_PACKAGES=" make ncurses-devel rsync gcc bc cpio  kmod  zlib-devel "
 CROSS_BUILD_PACKAGES=""
 
 # If you expect to do development in the container, these are useful.
-EDITORS="vim "
+EDITORS=" vim "
 
 # Any packages that you always use
 NICE_TO_HAVE=" time "
@@ -83,6 +84,7 @@ case "$ID" in
 	    # SUSE requires a subscription for full access
 	    RELEASE_SPECIFIC=" container-suseconnect "
         ;;
+    
     'opensuse-leap' )
         CROSS_BUILD_PACKAGES+=" \
 	   cross-aarch64-binutils \
@@ -113,7 +115,6 @@ fi
 
 
 # What's available in Suse
-# 			   xorg-x11-essentials-7.6_1-1.22 \
 DEVELOPMENT_PACKAGES="
                openssh-server \
                git \
@@ -128,10 +129,9 @@ if [ "$MAN_PAGES" != "" ];then
 	sudo sed -i 's/# rpm.install.excludedocs = yes/rpm.install.excludedocs = no/' /etc/zypp/zypp.conf
 fi
 
-
 $INSTALL_COMMAND $DEVELOPMENT_PACKAGES
 if [ $? != 0 ];then
-    echo "$0 ERROR! Failed dnf install. Exiting."
+    echo "$0 ERROR! Failed zypper install. Exiting."
     exit 1
 fi
 
