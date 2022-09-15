@@ -1,6 +1,6 @@
 # sles-package template
 
-Configure the image to build Red Hat packages.
+Configure the image to build Suse Linux Enterprise Server packages.
 
 ## SUSE SLES 15 build environment creation example
 Create default SLES 15 build environment with: ./due --create --platform linux/amd64    --name pkg-sles-15-amd64       --prompt PKGS15       --tag package-sles-15         --use-template sles-package      --from registry.suse.com/bci/bci-base:latest --description "SUSE Linux Enterprise Server"

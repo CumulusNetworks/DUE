@@ -2,8 +2,8 @@
 
 Configure the image to build opensuse packages.
 
-## openSUSE 15 build environment creation example
-Create default Suse 15 build environment with: ./due --create --platform linux/amd64    --name pkg-opensuse-leap-amd64 --prompt PKGoS        --tag pkg-opensuse-leap-amd64 --use-template opensuse-package  --from opensuse/leap                         --description "openSUSE leap"               
+## openSUSE leap build environment creation example
+Create default openSUSE leap build environment with: ./due --create --platform linux/amd64    --name pkg-opensuse-leap-amd64 --prompt PKGoS        --tag pkg-opensuse-leap-amd64 --use-template opensuse-package  --from opensuse/leap                         --description "openSUSE leap"               
 
 ### Explanation of the above:
   * Use an opensuse/leap image as the starting point.
