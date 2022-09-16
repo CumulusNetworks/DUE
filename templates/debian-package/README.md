@@ -6,7 +6,7 @@ Configure the image to build Debian packages.
 Create default Debian 11 build environment with: ./due --create --platform linux/amd64    --name package-debian-11       --prompt PKGD11       --tag pkg-debian-11-amd64     --use-template debian-package    --from debian:11                             --description "Package Build for Debian 11"        
 
 ### Explanation of the above:
-  * Use a Debian 11 image (though ubuntu:20.04 works nicely as well (see below)) as the starting point.
+  * Use a Debian 11 image (though ubuntu:22.04 works nicely as well (see below)) as the starting point.
   * Note: if the image is not x86 based, other architectures ( arm32v5, arm64v8 )are available.
   * Name it package-debian-10
   * Tag it as package-debian-10
@@ -22,8 +22,8 @@ Create default Debian 11 Debian package build environment with: ./due --create -
 ## Debian Sid (unstable)  build environment image creation example:
 Create default Debian Sid  Debian package build environment with: ./due --create --platform linux/amd64    --name pkg-sid                 --prompt PKGSid       --tag pkg-sid                 --use-template debian-package    --from debian:sid                            --description "Package Build for Debian Unstable"  
 
-## Ubuntu 20.04 build environment image creation example:
-Create default Ubuntu 20.04 Debian package build environment with: ./due --create --platform linux/amd64    --name pkg-u-20.04             --prompt PKGU2004     --tag pkg-ubuntu-20.04-amd64  --use-template debian-package    --from ubuntu:20.04                          --description "Package Build for Ubuntu 20.04"     
+## Ubuntu 22.04 build environment image creation example:
+Create default Ubuntu 22.04 Debian package build environment with: ./due --create --platform linux/amd64    --name pkg-u-22.04             --prompt PKGU2204     --tag pkg-ubuntu-22.04-amd64  --use-template debian-package    --from ubuntu:22.04                          --description "Package Build for Ubuntu 22.04"     
 
 ## Additional configuration
 In addition to the the expectedly unique `duebuild` and install scripts, there is a script for managing local package repositories: `due-manage-local-package-repo.sh`. See below.
