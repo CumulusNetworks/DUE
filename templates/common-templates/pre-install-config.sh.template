@@ -15,10 +15,19 @@
 # allow the install of packages to be used by the post install script.
 # ( i.e. Bash ) as those packages may not come pre installed in the container
 
-# Red Hat uses dnf and .rpm
-fxnConfigureRedHat()
+
+PACKAGE_UPDATE_COMMAND=""
+PACKAGE_INSTALL_COMMAND=""
+
+# Add any required packages that may not be supplied by default.
+OS_SPECIFIC_PACKAGES=""
+
+
+# Red Hat and SUSE both use rpm, so the logic is similar.
+fxnConfigureRPM()
 {
-    dnf check-update
+
+    $PACKAGE_UPDATE_COMMAND
     case $? in
         100 )
             echo "Updates are available."
@@ -35,41 +44,38 @@ fxnConfigureRedHat()
     # /usr/bin/find is apparently not present in RedHat images?
     # /usr/bin/hostname
     # /usr/bin/pgrep
-    dnf install --assumeyes findutils hostname procps $BASE_PACKAGES
+    $PACKAGE_INSTALL_COMMAND $OS_SPECIFIC_PACKAGES $BASE_PACKAGES
     if [ $? != 0 ];then
-        echo "$0 ERROR! Failed dnf install. Exiting."
+        echo "$0 ERROR! Failed [ $PACKAGE_INSTALL_COMMAND ]. Exiting."
         exit 1
     fi
 
-}
+    #
+    # Check for any local software to install.
+    # This code is responsible for being smart enough to handle
+    # the format of whatever is found.
+    #
 
-# Suse config is RPM based. Borrow Red Hat configuration for now.
-fxnConfigureSuse()
-{
-    # Refresh repositories
-    zypper refresh
-    case $? in
-        100 )
-            echo "Updates are available."
-            ;;
-        0 )
-            echo "No updates are available."
-            ;;
-        * )
-            echo "$0 ERROR! Failed dnf check-update. Exiting."
-            exit 1
-            ;;
-    esac
+    if [ -d /due-configuration/pre-install-local ];then
+        # Use find for package detection so that subdirectories can be used for organization
+        # Install packages that:
+        #   Work on any architecture
+        #   Match this container's architecture.
+        PACKAGES=$( find ./ \( -name "*noarch.rpm" -o -name "*.$(uname -p).rpm" \) )
 
-    # /usr/bin/find is apparently not present in RedHat images?
-    # /usr/bin/hostname
-    # /usr/bin/pgrep
-    zypper --non-interactive install awk  hostname procps $BASE_PACKAGES
-    if [ $? != 0 ];then
-        echo "$0 ERROR! Failed zypper install. Exiting."
-        exit 1
+        # As packages are the only post install currently supported,
+        # list them if present and install. Otherwise, ignore.
+        if [ "$PACKAGES" != "" ];then
+            echo "Installing local packages found in post-install-local."
+
+            # yum/dnf/zypper look at packages provided as a whole to resolve dependencies.
+            $PACKAGE_INSTALL_COMMAND $PACKAGES || exit 1
+            # Additional dependency install required?
+            echo "Pre install of local packages completed with exit status [ $? ]"
+        fi
     fi
 }
+
 
 # Debian uses APT and .deb
 fxnConfigureDebian()
@@ -103,7 +109,7 @@ fxnConfigureDebian()
     #
     if [ -d /due-configuration/pre-install-local ];then
         echo "Pre installing local software:"
-        cd /due-configuration/pre-install-local
+        cd /due-configuration/pre-install-local || exit 1
         ls -l
         # Install packages (expect dependency errors)
         sudo dpkg -i *.deb
@@ -147,12 +153,18 @@ BASE_PACKAGES="\
 case "$ID" in
     # Red Hat variants
     'fedora' | 'rhel' )
-        fxnConfigureRedHat
+        PACKAGE_UPDATE_COMMAND=" dnf check-update "
+        PACKAGE_INSTALL_COMMAND=" dnf install --assumeyes "
+        OS_SPECIFIC_PACKAGES=" findutils hostname procps "
+        fxnConfigureRPM 'redhat'
         ;;
 
     # SUSE variants
     'opensuse-leap' | 'sles' )
-        fxnConfigureSuse
+        PACKAGE_UPDATE_COMMAND=" zypper refresh "
+        PACKAGE_INSTALL_COMMAND=" zypper --non-interactive install "
+        OS_SPECIFIC_PACKAGES=" awk  hostname procps "
+        fxnConfigureRPM 'suse'
         ;;
 
     * )
