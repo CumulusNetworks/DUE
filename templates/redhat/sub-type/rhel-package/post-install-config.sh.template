@@ -14,8 +14,9 @@
 fxnPostInstallCommon
 
 EMULATION=" qemu-kvm libvirt virt-install virt-viewer "
+
 #
-#  install development packages
+# Install development packages
 # Note at this stage, any changes to the container's upstream repositories
 # will have happened.
 #
@@ -37,9 +38,6 @@ case $result in
 esac
 
 
-
-# /usr/bin/hostname
-# /usr/bin/pgrep
 INSTALL_COMMAND="dnf install --assumeyes "
 
 #
@@ -47,7 +45,7 @@ INSTALL_COMMAND="dnf install --assumeyes "
 # Success will vary by distribution...
 #
 
-$INSTALL_COMAMND  python 2>/dev/null
+$INSTALL_COMMAND  python 2>/dev/null
 if [ $? != 0 ];then
     $INSTALL_COMMAND python3
 fi
@@ -59,7 +57,7 @@ KERNEL_BUILD_PACKAGES=" ncurses-devel python-six rsync gcc bc cpio  kmod  zlib-d
 CROSS_BUILD_PACKAGES=""
 
 # If you expect to do development in the container, these are useful.
-EDITORS="vim "
+EDITORS=" vim "
 
 # Any packages that you always use
 NICE_TO_HAVE=" time yum-utils "
@@ -74,21 +72,13 @@ source /etc/os-release
 # a subscription to get the rest.
 
 # RedHat requires a subscription for full access
-RELEASE_SPECIFIC=" subscription-manager "	
+RELEASE_SPECIFIC=" subscription-manager "
 
 # If the system is arm64, it doesn't  need a cross compiler for itself.
 if [ "$( arch )" = 'aarch64' ];then
-	CROSS_BUILD_PACKAGES=""
+    CROSS_BUILD_PACKAGES=""
 fi
 
-#                       cross-aarch64-gcc10 \
-#					   cross-aarch64-linux-glibc-devel \
-#					   cross-arm-binutils \
-#					   cross-arm-gcc10 \
-
-
-
-MAN_PAGES=" man-pages man-pages-posix man "
 MAN_PAGES=""
 
 #
@@ -99,19 +89,15 @@ MAN_PAGES=""
 
 
 # What's available in Red Hat/Fedora
-#			   xorg-x11-essentials-7.6_1-1.22 \
 DEVELOPMENT_PACKAGES="
                openssh-server \
                git \
-			   $CROSS_BUILD_PACKAGES \
+               $CROSS_BUILD_PACKAGES \
                $KERNEL_BUILD_PACKAGES \
                $EDITORS \
                $NICE_TO_HAVE \
-			   $MAN_PAGES \
+               $MAN_PAGES \
 "
-
-# Enable downloading of man pages for software installed via zypper
-#sudo sed -i 's/# rpm.install.excludedocs = yes/rpm.install.excludedocs = no/' /etc/zypp/zypp.conf
 
 $INSTALL_COMMAND $DEVELOPMENT_PACKAGES
 if [ $? != 0 ];then
@@ -126,12 +112,12 @@ fi
 #
 
 if [ -d /due-configuration/post-install-local ];then
-    cd /due-configuration/post-install-local
+    cd /due-configuration/post-install-local || exit 1
 
     # Use find for package detection so that subdirectories can be used for organization
     # Install packages that:
     #   Work on any architecture
-    #   Match this container's architecture.    
+    #   Match this container's architecture.
     PACKAGES=$( find ./ \( -name "*noarch.rpm" -o -name "*.$(uname -p).rpm" \) )
 
     # As packages are the only post install currently supported,
@@ -139,21 +125,22 @@ if [ -d /due-configuration/post-install-local ];then
     if [ "$PACKAGES" != "" ];then
         echo "Installing local packages found in post-install-local."
 
-		# Yum will look at all rpms it is passed to resolve dependency issues. RPM does not.
-		# --assumeyes - do the install
-        #		sudo yum --assumeyes install *noarch.rpm *.$(uname -p).rpm
+        # Yum will look at all rpms it is passed to resolve dependency issues. RPM does not.
+        # --assumeyes - do the install
+        #       sudo yum --assumeyes install *noarch.rpm *.$(uname -p).rpm
         sudo yum --assumeyes install $PACKAGES
-        echo "GOT: $?"
 
         # Additional dependency install required?
-        echo "Post install of local packages is done."
+        echo "Post install of local packages completed with exit status [ $? ]"
     fi
 fi
 
-LOCAL_MIRROR_ADD="rhel-9-$(uname -p)-local-mirror-add.sh"
-if [ -e /usr/local/bin/${LOCAL_MIRROR_ADD} ];then
-    echo "Adding local mirror."
-    cd /usr/local/bin/
-    $LOCAL_MIRROR_ADD    
+# Hook to add any additional local package repositories the container
+# may need to access.
+LOCAL_PACKAGE_REPO_ADD="rhel-9-$(uname -p)-local-package-repo-add.sh"
+if [ -e /usr/local/bin/${LOCAL_PACKAGE_REPO_ADD} ];then
+    echo "Adding additional local package repositories."
+    cd /usr/local/bin/ || exit 1
+    $LOCAL_PACKAGE_REPO_ADD
 fi
-echo "Done $0"
+echo "$0 completed with exit status [ $? ]"

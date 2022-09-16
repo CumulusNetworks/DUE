@@ -13,7 +13,7 @@
 # for easy invocation (or not) in overriding scripts.
 fxnPostInstallCommon
 
-EMULATION=" qemu-kvm libvirt virt-install virt-viewer "
+
 #
 #  install development packages
 # Note at this stage, any changes to the container's upstream repositories
@@ -47,7 +47,7 @@ INSTALL_COMMAND="dnf install --assumeyes "
 # Success will vary by distribution...
 #
 
-$INSTALL_COMAMND  python 2>/dev/null
+$INSTALL_COMMAND  python 2>/dev/null
 if [ $? != 0 ];then
     $INSTALL_COMMAND python3
 fi
@@ -88,7 +88,7 @@ CROSS_BUILD_PACKAGES=" \
 	arm-none-eabi-newlib \
 "
 
-# Packages for kernel build	
+# Packages for kernel build
 KERNEL_BUILD_PACKAGES+=" bison flex quilt "
 # Popular editors
 EDITORS+=" emacs-nox "
@@ -110,20 +110,7 @@ MAN_PAGES=""
 # space is a concern.
 #
 
-DEVELOPMENT_PACKAGES="
-               openssh-server \
-               iputils-ping \
-               devscripts \
-               git \
-               x11-xkb-utils \
-               equivs \
-               $KERNEL_BUILD_PACKAGES \
-               $EDITORS \
-               $NICE_TO_HAVE \
-			   $RELEASE_SPECIFIC \
-"
-# What's available in Red Hat/Fedora
-#			   xorg-x11-essentials-7.6_1-1.22 \
+
 DEVELOPMENT_PACKAGES="
                openssh-server \
                git \
@@ -132,6 +119,7 @@ DEVELOPMENT_PACKAGES="
                $EDITORS \
                $NICE_TO_HAVE \
 			   $MAN_PAGES \
+			   $RELEASE_SPECIFIC \
 "
 
 # Enable downloading of man pages for software installed via zypper
@@ -150,12 +138,12 @@ fi
 #
 
 if [ -d /due-configuration/post-install-local ];then
-    cd /due-configuration/post-install-local
+    cd /due-configuration/post-install-local || exit 1
 
     # Use find for package detection so that subdirectories can be used for organization
     # Install packages that:
     #   Work on any architecture
-    #   Match this container's architecture.    
+    #   Match this container's architecture.
     PACKAGES=$( find ./ \( -name "*noarch.rpm" -o -name "*.$(uname -p).rpm" \) )
 
     # As packages are the only post install currently supported,
