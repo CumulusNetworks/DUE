@@ -41,6 +41,9 @@ case $result in
         ;;
 esac
 
+# Enable the repository containing source RPMs for convenient download.
+zypper mr -e repo-source
+
 # Use --force-resolution to resolve any downgrade conflicts, with the
 #  intent of creating a usable image that can be sorted later.
 INSTALL_COMMAND="zypper --non-interactive install --force-resolution "
@@ -116,6 +119,7 @@ fi
 DEVELOPMENT_PACKAGES="
                openssh-server \
                git \
+               rpm-build \
                $CROSS_BUILD_PACKAGES \
                $KERNEL_BUILD_PACKAGES \
                $EDITORS \
