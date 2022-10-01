@@ -114,6 +114,7 @@ MAN_PAGES=""
 DEVELOPMENT_PACKAGES="
                openssh-server \
                git \
+               rpm-build \
 			   $CROSS_BUILD_PACKAGES \
                $KERNEL_BUILD_PACKAGES \
                $EDITORS \
