@@ -76,16 +76,16 @@ source /etc/os-release
 
 # arm-none-eabi-binutils-cs ?
 CROSS_BUILD_PACKAGES=" \
-	binutils-aarch64-linux-gnu \
-	gcc-aarch64-linux-gnu \
-	gcc-c++-aarch64-linux-gnu \
-	binutils-arm-linux-gnu \
-	gcc-arm-linux-gnu \
-	gcc-c++-arm-linux-gnu \
-	arm-none-eabi-binutils-cs \
-	arm-none-eabi-gcc-cs \
-	arm-none-eabi-gcc-cs-c++ \
-	arm-none-eabi-newlib \
+    binutils-aarch64-linux-gnu \
+    gcc-aarch64-linux-gnu \
+    gcc-c++-aarch64-linux-gnu \
+    binutils-arm-linux-gnu \
+    gcc-arm-linux-gnu \
+    gcc-c++-arm-linux-gnu \
+    arm-none-eabi-binutils-cs \
+    arm-none-eabi-gcc-cs \
+    arm-none-eabi-gcc-cs-c++ \
+    arm-none-eabi-newlib \
 "
 
 # Packages for kernel build
@@ -98,7 +98,7 @@ NICE_TO_HAVE+=" tree "
 
 # If the system is arm64, it doesn't  need a cross compiler for itself.
 if [ "$( arch )" = 'aarch64' ];then
-	CROSS_BUILD_PACKAGES=""
+    CROSS_BUILD_PACKAGES=""
 fi
 
 MAN_PAGES=" man-pages man-pages-posix man "
@@ -115,12 +115,12 @@ DEVELOPMENT_PACKAGES="
                openssh-server \
                git \
                rpm-build \
-			   $CROSS_BUILD_PACKAGES \
+               $CROSS_BUILD_PACKAGES \
                $KERNEL_BUILD_PACKAGES \
                $EDITORS \
                $NICE_TO_HAVE \
-			   $MAN_PAGES \
-			   $RELEASE_SPECIFIC \
+               $MAN_PAGES \
+               $RELEASE_SPECIFIC \
 "
 
 # Enable downloading of man pages for software installed via zypper
@@ -152,10 +152,10 @@ if [ -d /due-configuration/post-install-local ];then
     if [ "$PACKAGES" != "" ];then
         echo "Installing local packages found in post-install-local."
 
-		# Yum will look at all rpms it is passed to resolve dependency issues. RPM does not.
-		# --assumeyes - do the install
-        #		sudo yum --assumeyes install *noarch.rpm *.$(uname -p).rpm
-        sudo yum --assumeyes install $PACKAGES
+        # Dnf will look at all rpms it is passed to resolve dependency issues. RPM does not.
+        # --assumeyes - do the install
+        #       sudo dnf --assumeyes install *noarch.rpm *.$(uname -p).rpm
+        sudo dnf --assumeyes install $PACKAGES
         echo "GOT: $?"
 
         # Additional dependency install required?
