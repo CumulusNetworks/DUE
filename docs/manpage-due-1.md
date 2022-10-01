@@ -1,4 +1,4 @@
-% DUE(1) Version 3.3.0 | Dedicated User Environment
+% DUE(1) Version 4.0.0 | Dedicated User Environment
 
 # NAME
 
