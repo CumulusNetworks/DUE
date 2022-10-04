@@ -49,6 +49,23 @@ case "$ID" in
 
 esac
 
+# A basic help function
+function fxnHelp()
+{
+    echo "Usage  : $(basename "$0"): [options]"
+    echo "  Script to add a user in a container. "
+    echo ""
+    echo " --username <user>"
+    echo " --userid   <UID>"
+    echo " --groupid  <GID>"
+    echo " --groupname <name>"
+    echo ""
+
+    echo "$0 has to be run as root, and should be smart enough to not"
+    echo "   overwrite any account configuration that may have been"
+    echo "   supplied by Docker/Podman."
+    echo ""
+}
 
 function fxnPP()
 {
@@ -126,7 +143,7 @@ function fxnAddUserInContainer()
         # In case it is NOT overridden by command line arguments
         containerUID=$( grep  ^"${USER_NAME}": /etc/passwd | awk -F ':' '{print$3}' )
 
-        echo "| $USER_NAME : account exists in container with user id [ $containerUID ]."
+        echo "| $USER_NAME : Account exists in container with user id [ $containerUID ]."
         userAlreadyExistsInContainer="TRUE"
     fi
 
@@ -401,6 +418,13 @@ if [ "$1" = "--debug" ];then
     set -x
     DO_DEBUG="TRUE"
     shift
+fi
+
+if [ "$#" = "0" ];then
+    # Require an argument for action.
+    # Always trigger help messages on no action.
+    fxnHelp
+    exit 0
 fi
 
 #
