@@ -29,35 +29,34 @@ ifeq ($(PODMAN_PRESENT),podman)
 endif
 
 # Use ID_LIKE from /etc/os-release to make installation decisions.
+# Strip any "s from the string
 # Possible values: debian, fedora, suse
-HOST_OS :=	$(shell grep 'ID_LIKE=' /etc/os-release | sed -e 's/^.*=//')
+HOST_OS :=	$(shell grep 'ID_LIKE=' /etc/os-release | sed -e 's/^.*=//' -e 's/"//g' )
 
 #
 # If Docker/Podman is not already installed, add one based on host OS.
 #
 # Red Hat like OSs lean towards Podman
+# Default to yum as it may be more universal than the new 'dnf'
 ifeq ($(HOST_OS),fedora)
 	DOCKER_TO_INSTALL ?= podman
-else
-# Debian, Ubuntu, SUSE
+	PACKAGE_MANAGER := yum
+endif
+
+ifeq ($(HOST_OS),debian)
+	PACKAGE_MANAGER := apt
+	ADDITIONAL_PACKAGES := bsdutils
 	DOCKER_TO_INSTALL ?= docker.io
+endif
+
+ifeq ($(HOST_OS),suse)
+	DOCKER_TO_INSTALL ?= docker.io
+	PACKAGE_MANAGER := zypper
 endif
 
 # If Docker is, or is going to be installed, remind the user about group membership.
 ifeq ($(DOCKER_TO_INSTALL),docker.io)
 	DOCKER_INSTALL_MESSAGE ?= "Finally, add yourself to the user group with: sudo /usr/sbin/usermod -a -G docker $(shell whoami)"
-endif
-
-#Package manager to use
-ifeq ($(HOST_OS),fedora)
-	PACKAGE_MANAGER := yum
-endif
-ifeq ($(HOST_OS),debian)
-	PACKAGE_MANAGER := apt
-	ADDITIONAL_PACKAGES := bsdutils
-endif
-ifeq ($(HOST_OS),suse)
-	PACKAGE_MANAGER := zypper
 endif
 
 #
@@ -296,6 +295,8 @@ debian: orig.tar
 	@ ./due --build
 
 test:
+# A target for makefile debug.
 	@echo "Due version $(DUE_VERSION)"
 	@echo "Docker to install $(DOCKER_TO_INSTALL)"
+	@echo "Package manager $(PACKAGE_MANAGER)"
 	@echo "Host os $(HOST_OS)"
