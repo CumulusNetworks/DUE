@@ -1,5 +1,10 @@
 #!/usr/bin/make -f
 
+# Copyright 2021,2022 Nvidia Corporation.  All rights reserved.
+# Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
+#
+#  SPDX-License-Identifier:     MIT
+
 # Set the version in libdue as the source of truth
 DUE_VERSION := $(shell /bin/sh -c "grep -o 'DUE_VERSION=\".*\"' ./libdue | sed -e 's/DUE_VERSION=//g' | tr -d \\\" " )
 
