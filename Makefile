@@ -9,6 +9,57 @@ DUE_ORIG_TAR=due_$(DUE_VERSION).orig.tar.gz
 # Uncomment the following to enable more makefile output
 #export DH_VERBOSE = 1
 
+# Configuration for make install, with some caveats:
+#  Debian OSs lean towards docker.io
+#  Red Hat OSs lean twoards Podman
+#  Ubuntu running in Windows Subsytstem For Linux will use Podman, as the Docker daemon...doesn't
+#   ...and there may be Debian/Ubuntu systems using Podman
+# If Docker or Podman is already installed, use that as the DOCKER_TO_INSTALL so
+#  that apt/dnf/zypper, etc will leave it unchanged.
+
+# Is docker installed? Send any basename errors to /dev/null.
+DOCKER_PRESENT := $(shell basename $$(which docker) 2>/dev/null )
+ifeq ($(DOCKER_PRESENT),docker)
+	DOCKER_TO_INSTALL := docker.io
+endif
+# If Podman is installed, don't try to bring Docker to the party.
+PODMAN_PRESENT := $(shell basename $$(which podman) )
+ifeq ($(PODMAN_PRESENT),podman)
+	DOCKER_TO_INSTALL := podman
+endif
+
+# Use ID_LIKE from /etc/os-release to make installation decisions.
+# Possible values: debian, fedora, suse
+HOST_OS :=	$(shell grep 'ID_LIKE=' /etc/os-release | sed -e 's/^.*=//')
+
+#
+# If Docker/Podman is not already installed, add one based on host OS.
+#
+# Red Hat like OSs lean towards Podman
+ifeq ($(HOST_OS),fedora)
+	DOCKER_TO_INSTALL ?= podman
+else
+# Debian, Ubuntu, SUSE
+	DOCKER_TO_INSTALL ?= docker.io
+endif
+
+# If Docker is, or is going to be installed, remind the user about group membership.
+ifeq ($(DOCKER_TO_INSTALL),docker.io)
+	DOCKER_INSTALL_MESSAGE ?= "Finally, add yourself to the user group with: sudo /usr/sbin/usermod -a -G docker $(shell whoami)"
+endif
+
+#Package manager to use
+ifeq ($(HOST_OS),fedora)
+	PACKAGE_MANAGER := yum
+endif
+ifeq ($(HOST_OS),debian)
+	PACKAGE_MANAGER := apt
+	ADDITIONAL_PACKAGES := bsdutils
+endif
+ifeq ($(HOST_OS),suse)
+	PACKAGE_MANAGER := zypper
+endif
+
 #
 # The merge directory holds intermediate stages in setting
 # up an image. It is not needed to build DUE into a .deb,
@@ -31,7 +82,7 @@ MASTER_CHANGE_LOG = ChangeLog
 # Rsync is used in merging template directories
 # jq and curl get used to browse docker registries
 # pandoc gets used to turn markdown into man pages, and is optional
-DUE_DEPENDENCIES = git rsync jq curl
+DUE_DEPENDENCIES = git rsync jq curl 
 
 GIT_STASH_MESSAGE = "Preserving master branch"
 #
@@ -132,45 +183,47 @@ depends:
 	@echo "#                                                                    #"
 	@echo "# DUE requires the following packages:                               #"
 	@echo "#                                                                    #"
-	@echo "#   bsdutils git rsync docker.io jq curl                             #"
+	@echo "#   $(DUE_DEPENDENCIES) $(ADDITIONAL_PACKAGES) $(DOCKER_TO_INSTALL)                  "
 	@echo "#                                                                    #"
 	@echo "######################################################################"
 	@echo ""
-	$(Q) if [ -f /etc/redhat-release ]; then \
-		echo "Installing dependencies for Red Hat Linux" ;\
-		sudo dnf install $(DUE_DEPENDENCIES) docker ;\
-	else \
-		echo "Installing dependencies for Debian Linux" ; \
-		sudo apt-get install $(DUE_DEPENDENCIES) bsdutils docker.io ; \
-	fi
-	@ echo "Done installing dependencies."
+	@echo "Installing dependencies for ID_LIKE=$(HOST_OS) Linux" 
+	@echo "" 
+	$(Q) sudo $(PACKAGE_MANAGER) install $(DUE_DEPENDENCIES) $(DOCKER_TO_INSTALL) 
+	@echo "" 
+	@echo "Done installing dependencies."
+	@echo "" 
 
 install: depends
 	@echo "######################################################################"
 	@echo "#                                                                    #"
-	@echo "# Installing DUE                                                     #"
+	@echo "# Installing DUE by copying the following files:                     #"
 	@echo "#                                                                    #"
 	@echo "######################################################################"
 	@echo ""
 
-	sudo cp        ./due /usr/bin
-	sudo cp        ./libdue /usr/lib
-	sudo cp        ./docs/due.1 /usr/share/man/man1
+	sudo cp        ./due               /usr/bin
+	sudo cp        ./libdue            /usr/lib
+	sudo cp        ./docs/due.1        /usr/share/man/man1
 
 	sudo mkdir -p  /etc/due
-	sudo cp       ./etc/due/due.conf /etc/due
+	sudo cp         ./etc/due/due.conf /etc/due
 
-	sudo mkdir -p /usr/share/due
-	sudo cp -r   ./templates /usr/share/due
-	sudo cp -r   ./README.md /usr/share/due
+	sudo mkdir -p  /usr/share/due
+	sudo cp -r      ./templates        /usr/share/due
+	sudo cp -r      ./README.md        /usr/share/due
 
-	@ echo "Finally, add yourself to the user group with: sudo /usr/sbin/usermod -a -G docker $(shell whoami)"
-	@echo ""
+#Podman doesn't require a group membership, but Docker does.
+	@echo "" 
+	@ echo $(DOCKER_INSTALL_MESSAGE)
+	@echo "" 
+	@echo "Done installing DUE."
+	@echo "" 
 
 uninstall:
 	@echo "######################################################################"
 	@echo "#                                                                    #"
-	@echo "# Uninstalling DUE                                                   #"
+	@echo "# Uninstalling DUE by deleting the following files:                  #"
 	@echo "#                                                                    #"
 	@echo "######################################################################"
 	@echo ""
@@ -178,8 +231,8 @@ uninstall:
 	sudo rm        /usr/lib/libdue
 	sudo rm        /usr/share/man/man1/due.1
 
-	sudo rm -rf   /etc/due
-	sudo rm -rf   /usr/share/due
+	sudo rm -rf    /etc/due
+	sudo rm -rf    /usr/share/due
 
 # Create 'upstream tarball' for use in packaging.
 orig.tar:
@@ -244,3 +297,5 @@ debian: orig.tar
 
 test:
 	@echo "Due version $(DUE_VERSION)"
+	@echo "Docker to install $(DOCKER_TO_INSTALL)"
+	@echo "Host os $(HOST_OS)"
