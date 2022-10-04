@@ -1694,6 +1694,12 @@ function fxnDoLogin()
             # Do not remap userids and namespace
             # then configure the host user in the container using container-create-user.sh
             DOCKER_SPECIFIC_ARGS+=" --user 0:0 --userns keep-id "            
+
+            # Podman versions prior to 4 have an issue running containers by ID, so supply name & tag instead.
+            PODMAN_VERSION=$( podman -v | sed -e 's/podman version //g' -e 's/\..*//g' )
+            if [ "$PODMAN_VERSION" -lt 4 ];then
+                SELECTED_CONTAINER_ID="${SELECTED_CONTAINER_NAME}:${SELECTED_CONTAINER_TAG} "
+            fi
         fi
         # Note that any variables here that are not set will evaluate to
         # blank space and not be parsed as arguments.
