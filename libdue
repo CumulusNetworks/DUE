@@ -1172,7 +1172,7 @@ function fxnSelectContainer()
         # ..but new versions do. Disable this for now, but leave it to check against older Podman versions.
         #if [ "${DOCKER_APP}" = "podman" ];then
         #     theContainers="NAMES              IMAGE    CONTAINER ID  COMMAND
-#"
+        #"
         #fi
 
         if [ "$VERBOSITY_LEVEL" -ne 0 ];then
@@ -1756,9 +1756,9 @@ function fxnDoLogin()
         if [ "$cmdList" != "" ];then
             # even the empty "" here will trip up a shell login, but they are
             # needed if cmdList is set to anything. Hence two cases.
-            ${DOCKER_APP} run $runCMD "$cmdList"			
+            ${DOCKER_APP} run $runCMD "$cmdList"
         else
-            ${DOCKER_APP} run $runCMD			
+            ${DOCKER_APP} run $runCMD
         fi
 
     else
@@ -1766,7 +1766,7 @@ function fxnDoLogin()
         if [ "$USER_NAME" != "" ];then
             userNameArg=" --user $USER_NAME "
         fi
-        
+
         if [ "$DEBUG_LOGIN" = "TRUE" ];then
             # If this is debug, make few assumptions about the container's ability to handle
             # logins. Just start a specified shell.
@@ -1911,23 +1911,23 @@ function fxnCreateConfigFile()
 
     # If no user local config directory, create it
     if [ ! -e  "$DUE_HOME_CONFIG_DIR" ];then
-        fxnPP "Making directory $DUE_HOME_CONFIG_DIR"        
+        fxnPP "Making directory $DUE_HOME_CONFIG_DIR"
         fxnEC mkdir -p "$DUE_HOME_CONFIG_DIR" || exit 1
-    fi
 
-    if [ ! -e "$DUE_ETC_CONFIG_FILE_PATH" ];then
-        # DUE has not been installed as a package.
-        # Assume execution from a downloaded source directory
-        fxnPP "Copying ./$DUE_ETC_CONFIG_FILE_PATH $DUE_USER_CONFIG_PATH"
-        fxnEC cp ./"$DUE_ETC_CONFIG_FILE_PATH" "$DUE_USER_CONFIG_PATH" || exit 1
-    else
-        # Use the conf file from /etc/due
-        cp "$DUE_ETC_CONFIG_FILE_PATH" "$DUE_USER_CONFIG_PATH"
-        # Pix or it didn't happen.
-        echo "ls -l $DUE_HOME_CONFIG_DIR"
-        ls -l $DUE_HOME_CONFIG_DIR
-    fi
 
+        if [ ! -e "$DUE_ETC_CONFIG_FILE_PATH" ];then
+            # DUE has not been installed as a package.
+            # Assume execution from a downloaded source directory
+            fxnPP "Copying ./$DUE_ETC_CONFIG_FILE_PATH $DUE_USER_CONFIG_PATH"
+            fxnEC cp ./"$DUE_ETC_CONFIG_FILE_PATH" "$DUE_USER_CONFIG_PATH" || exit 1
+        else
+            # Use the conf file from /etc/due
+            cp "$DUE_ETC_CONFIG_FILE_PATH" "$DUE_USER_CONFIG_PATH"
+            # Pix or it didn't happen.
+            echo "ls -l $DUE_HOME_CONFIG_DIR"
+            ls -l $DUE_HOME_CONFIG_DIR
+        fi
+    fi
 }
 
 # DUE embeds labels into the images it creates to get hints for how the containers should
@@ -2096,7 +2096,7 @@ else
     # The lack of a config file under /etc implies that DUE was not already
     # installed, so this is likely running locally from a source checkout.
     # In which case, allow the use of a user local config.
-    # 
+    #
     DUE_ALLOW_USER_CONFIG="TRUE"
 fi
 
