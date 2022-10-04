@@ -6,6 +6,13 @@ Other configurations may work, but have not been tested.
 Using Podman in WSL requires a bit more configuration, and users may
 encounter a few more issues, so this topic deserves its own document.
 
+## Why Podman?
+I'd had issues getting the Docker daemon going in WSL, but as Podman
+is daemonless, it will run fine.  Just make sure to install Podman
+**BEFORE** trying DUE's `make install` as the Makefile will see the
+system as Ubuntu, and will want to install `docker.io`.
+
+
 ## Powershell
 Make sure your Ubuntu instance is using WSL version 2:
 
@@ -35,5 +42,9 @@ issues I've tripped over so far...
 **Solution:** `sudo apt-get install uidmap`
 
 **Symptom:** ERROR[0000] could not find slirp4netns, the network namespace won't be configured: exec: "slirp4netns": executable file not found in $PATH  
-**Seen:** When running a container for the first time.
+**Seen:** When running a container for the first time.  
 **Solution:** `sudo apt-get install slirp4netns`
+
+**Symptom:** Error: Unsupported pull policy <container id>  
+**Seen:** When trying to run a container using Podman.  
+**Solution:** Use full image name and tag in invocation. This alleges to be fixed in newer versions of Podman (though not new enough that I could find a copy), and it's not clear to me why the pull policy, which is used for container creation is showing up at container runtime.
