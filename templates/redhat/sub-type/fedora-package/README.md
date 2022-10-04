@@ -3,7 +3,7 @@
 Configure the image to build Red Hat Fedora packages.
 
 ## Fedora 36  build environment creation example:
-Create default Fedora 36 build environment with: ./due --create --platform linux/amd64    --name pkg-fedora-36-amd64     --prompt PKGF-36      --tag pkg-fedora-36-amd64     --use-template fedora-package    --from fedora:36                             --description "Fedora 36 "                  
+Create default Fedora 36 build environment with: ./due --create --platform linux/amd64    --name pkg-fedora-36-amd64     --prompt PKGF36       --tag pkg-fedora-36-amd64     --use-template fedora-package    --from fedora:36                             --description "Fedora 36 "                  
 
 
 ### Explanation of the above:
@@ -17,4 +17,4 @@ Create default Fedora 36 build environment with: ./due --create --platform linux
 
 
 ## Fedora 36 arm64 build environment creation example:
-Create default Fedora 36 build environment with: ./due --create --platform linux/arm64    --name pkg-fedora-36-arm64     --prompt PKGF-arm64   --tag pkg-fedora-36-arm64     --use-template fedora-package    --from fedora:36                             --description "Fedora 36 "                  
+Create default Fedora 36 build environment with: ./due --create --platform linux/arm64    --name pkg-fedora-36-arm64     --prompt PKGF36-arm64 --tag pkg-fedora-36-arm64     --use-template fedora-package    --from fedora:36                             --description "Fedora 36 "                  
