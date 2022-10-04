@@ -1690,10 +1690,11 @@ function fxnDoLogin()
         fi
 
         if [ "$DOCKER_APP" = "podman" ];then
-            # Don't use --user $USER_ID:${USER_GROUP_ID}  here as it trips up creation in the contianer.
-            DOCKER_SPECIFIC_ARGS+=""
+            # For Podman, log in to the container as root,
+            # Do not remap userids and namespace
+            # then configure the host user in the container using container-create-user.sh
+            DOCKER_SPECIFIC_ARGS+=" --user 0:0 --userns keep-id "            
         fi
-
         # Note that any variables here that are not set will evaluate to
         # blank space and not be parsed as arguments.
 
