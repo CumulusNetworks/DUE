@@ -28,7 +28,7 @@ ifeq ($(DOCKER_PRESENT),docker)
 	DOCKER_TO_INSTALL := docker.io
 endif
 # If Podman is installed, don't try to bring Docker to the party.
-PODMAN_PRESENT := $(shell basename $$(which podman) )
+PODMAN_PRESENT := $(shell basename $$(which podman) 2>/dev/null  )
 ifeq ($(PODMAN_PRESENT),podman)
 	DOCKER_TO_INSTALL := podman
 endif
@@ -191,7 +191,7 @@ depends:
 	@echo "#                                                                    #"
 	@echo "######################################################################"
 	@echo ""
-	@echo "Installing dependencies for ID_LIKE=$(HOST_OS) Linux" 
+	@echo "Detected $(HOST_OS) Linux. Installing dependencies."
 	@echo "" 
 	$(Q) sudo $(PACKAGE_MANAGER) install $(DUE_DEPENDENCIES) $(DOCKER_TO_INSTALL) 
 	@echo "" 
