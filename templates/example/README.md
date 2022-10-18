@@ -8,7 +8,7 @@ The use of debian:10 here is arbitrary. Any Debian based operating system Docker
 **NOTE** DUE parses these README.md files looking for lines that start with Create to use in the command line help.  
 You'll want to make sure your template follows this convention.
 
-Create default Debian EXAMPLE with: ./due --create --platform linux/amd64    --name example-debian-10       --prompt ExD10        --tag example-debian-10       --use-template example           --from debian:10                             --description "Debian 10 example"                  
+Create default Debian EXAMPLE with: ./due --create --platform linux/amd64    --name example-debian-10       --prompt ExD10        --tag example-debian-10       --use-template example           --from debian:10                             --description "Debian 10 example"  
 
 ### Explanation of the Debian example  above:
   * Use a Debian 10 image
