@@ -1693,7 +1693,7 @@ function fxnDoLogin()
             # For Podman, log in to the container as root,
             # Do not remap userids and namespace
             # then configure the host user in the container using container-create-user.sh
-            DOCKER_SPECIFIC_ARGS+=" --user 0:0 --userns keep-id "            
+            DOCKER_SPECIFIC_ARGS+=" --user 0:0 --userns keep-id "
 
             # Podman versions prior to 4 have an issue running containers by ID, so supply name & tag instead.
             PODMAN_VERSION=$( podman -v | sed -e 's/podman version //g' -e 's/\..*//g' )
@@ -2097,7 +2097,6 @@ DUE_ALLOW_USER_CONFIG="FALSE"
 
 if [ -e "$DUE_ETC_CONFIG_FILE_PATH" ];then
     # Use the installed system-wide due.conf
-    echo "==== Sourcing configuration from: [ $DUE_ETC_CONFIG_FILE_PATH ]"
     source $DUE_ETC_CONFIG_FILE_PATH
 else
     # The lack of a config file under /etc implies that DUE was not already
@@ -2111,8 +2110,8 @@ fi
 # users are allowed to use their own config files.
 if [ "$DUE_ALLOW_USER_CONFIG" = "TRUE" ];then
     if [ -e "$DUE_USER_CONFIG_PATH" ];then
-        # If ~/.config/due/due.conf  prioritize that
-        echo "==== Sourcing configuration from: [ $DUE_USER_CONFIG_PATH ]"
+        # If ~/.config/due/due.conf, let the user know.
+        DUE_CONFIG_SOURCING_SUMMARY+="==== Sourcing configuration from: [ $DUE_USER_CONFIG_PATH ]\n"
         source "$DUE_USER_CONFIG_PATH"
     fi
 fi

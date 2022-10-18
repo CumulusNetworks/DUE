@@ -16,7 +16,8 @@ LIBRARY_FILE="/usr/lib/libdue"
 # Set user's default home directory
 DUE_ENV_DEFAULT_HOMEDIR="$HOME"
 
-echo ""
+DUE_CONFIG_SOURCING_SUMMARY=""
+
 if [ "$0" != "$INSTALLED_DUE_PATH" ];then
     if [  -e ./libdue ] && [ -e ./due ];then
         # If both files are in the same directory,
@@ -26,7 +27,9 @@ if [ "$0" != "$INSTALLED_DUE_PATH" ];then
         TOP_LEVEL_DIR=$(pwd)
         LIBRARY_FILE="${TOP_LEVEL_DIR}/libdue"
         # Let the user know they're using the local copy.
-        echo "==== Sourcing DUE files from:     [ $TOP_LEVEL_DIR ]"
+        DUE_CONFIG_SOURCING_SUMMARY="\n==== Sourcing DUE files from:     [ $TOP_LEVEL_DIR ]\n"
+
+        #echo "==== Sourcing DUE files from:     [ $TOP_LEVEL_DIR ]"
     else
         echo "ERROR! Cannot run $0. Missing files. Exiting."
         exit 1
@@ -1307,6 +1310,11 @@ if [ "$DO_DEBUG" = "TRUE" ];then
     set -x
 fi
 
+# Let the user know what files are being pulled in, if they
+# are not the defaults from /bin, /lib/ and /etc/
+if [ "$DUE_CONFIG_SOURCING_SUMMARY" != "" ];then
+    echo -e "$DUE_CONFIG_SOURCING_SUMMARY"
+fi
 #
 # Check for user Docker group membership before any actions.
 # They have to be a member for anything beyond this point
