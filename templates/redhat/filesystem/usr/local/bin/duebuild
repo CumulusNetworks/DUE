@@ -172,6 +172,11 @@ function fxnHelpExamples()
     echo ""
     echo "  Apply patches from mypatches to an extracted source rpm."
     echo "   $0 --extract-source foo.src.rpm --patch-dir ./mypatches/ "
+    echo ""
+    echo "  Get kernel source rpm and build:"
+    echo "   $0 --download-src kernel "
+    echo "   $0 --cbuild kernel-5.19.16-200.fc36.src.rpm "
+    echo ""
 
 }
 
@@ -409,13 +414,12 @@ function fxnDoBuild()
             RPM_BUILD_OPTIONS+=" --noclean --noprep "
         fi
 
-        if [[ $PACKAGE_NAME == 'kernel' ]];then
-            BUILD_KERNEL_MINIMAL=" --without debug --without doc --without perf  --without tools --without debuginfo --without kdump  --without bootwrapper "
-        fi
         buildCommand="rpmbuild $RPM_BUILD_OPTIONS $BUILD_KERNEL_MINIMAL --target=$(uname -p)  $BUILD_TARGET_DIR_NAME/SPECS/${PACKAGE_NAME}.spec"
     fi
 
-
+    fxnMSG "Installing build dependencies for [ $PACKAGE_NAME ] from [ $BUILD_TARGET_DIR_NAME/SPECS/${PACKAGE_NAME}.spec ]"
+    fxnEC sudo $PACKAGE_MANAGER --assumeyes builddep "$BUILD_TARGET_DIR_NAME/SPECS/${PACKAGE_NAME}.spec" || exit 1
+           
     ######################################
     # Build
     ######################################
