@@ -142,6 +142,9 @@ function fxnHelpExamples()
     echo " Debug a failed container build through running it."
     echo "  $0 --run --debug --all --login-shell /bin/bash --login"
     echo ""
+    echo " Run a non-DUE container interactively to debug it."
+    echo "  $0 --run --debug  "
+    echo ""
 
 
 

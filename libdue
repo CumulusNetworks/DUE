@@ -32,6 +32,9 @@ USER_GROUP_NAME=$( getent group "$USER_GROUP_ID" | cut -d: -f1 )
 # default the login shell
 LOGIN_SHELL="/bin/bash --login"
 
+# If debugging a container, this will be set
+OVERRIDE_ENTRY_POINT=""
+
 # Default to restricting results to containers that have been set up.
 FILTER_SHOW_ONLY_DUE="TRUE"
 
@@ -1499,6 +1502,12 @@ function fxnDoLogin()
                 # Set any CONTAINER_SPECIFIC_ARGS
                 fxnSetContainerSpecificArgs "$DUEImageType"
             fi
+        else
+            # Not a DUE image
+            if [ "$DEBUG_LOGIN" = "TRUE" ];then
+                executeProgram=""
+                OVERRIDE_ENTRY_POINT=" --entrypoint $LOGIN_SHELL "
+            fi
         fi
         # Generate a unique hostname
         # Replace any '/' or ':' in name with - as Docker will complain. 
@@ -1708,6 +1717,7 @@ function fxnDoLogin()
         #                --network=\"host\" \
             # Pass any arguments that were set to go directly to docker
         # Pass any arguments that may be container specific
+        # If overriding the container's entry point (for debug), set --entrypoint
         # be  interactive, or not
         # use --rm to delete the container on exit
         # Mount any additional host directories
@@ -1718,6 +1728,7 @@ function fxnDoLogin()
         runCMD="$DOCKER_SPECIFIC_ARGS \
                 $PLATFORM_ARGS \
                 $CONTAINER_SPECIFIC_ARGS \
+                $OVERRIDE_ENTRY_POINT \
                 $doInteractive \
                 --rm \
                 $ADDITIONAL_MOUNTS \
