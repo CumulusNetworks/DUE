@@ -104,6 +104,27 @@ endif
 # If no make target specified, print help
 .DEFAULT_GOAL := help
 
+# If this is a Debian package build, the debian/rules file will have:
+#  export DUE_BEING_PACKAGED_BUILD = TRUE
+# ...and none of the targets in this Makefile will execute
+# Test in a shell with:  DUE_BEING_PACKAGED_BUILD="TRUE" make 
+ifeq ($(DUE_BEING_PACKAGED_BUILD),TRUE)
+help:
+
+	@echo ""
+	@echo "######################################################################"
+	@echo "#                                                                    #"
+	@echo "# Building DUE as a package, so top level Makefile is doing nothing. #"
+	@echo "#                                                                    #"
+	@echo "######################################################################"
+	@echo ""
+
+else
+
+# Set this so the DUE Makefile realizes a packaging
+# build is happening and won't execute.            
+
+
 #
 # Store phony build targets in a variable so they can be
 # printed as part of help.
@@ -305,3 +326,6 @@ test:
 	@echo "Docker to install $(DOCKER_TO_INSTALL)"
 	@echo "Package manager $(PACKAGE_MANAGER)"
 	@echo "Host os $(HOST_OS)"
+
+# Matches DUE_BEING_PACKAGED_BUILD
+endif
