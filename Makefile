@@ -38,6 +38,14 @@ endif
 # Possible values: debian, fedora, suse
 HOST_OS :=	$(shell grep 'ID_LIKE=' /etc/os-release | sed -e 's/^.*=//' -e 's/"//g' )
 
+# Check for directories that would only be present if a .deb or rpm is being built.
+# In this case the Makefile should do nothng if invoked, since it should not
+# be part of the packaging in the first place.
+# Developers can easily override this by changing the name of the packaging file
+# to look for.
+ifneq (,$(wildcard ./debian/control))
+	OS_PACKAGING_MESSAGE := debian/control file found, so Makefile is doing nothing.
+endif
 #
 # If Docker/Podman is not already installed, add one based on host OS.
 #
@@ -104,27 +112,20 @@ endif
 # If no make target specified, print help
 .DEFAULT_GOAL := help
 
-# If this is a Debian package build, the debian/rules file will have:
-#  export DUE_BEING_PACKAGED_BUILD = TRUE
-# ...and none of the targets in this Makefile will execute
-# Test in a shell with:  DUE_BEING_PACKAGED_BUILD="TRUE" make 
-ifeq ($(DUE_BEING_PACKAGED_BUILD),TRUE)
+# If files to package for a particular OS are present, let those rules/spec files
+# handle the make.
+ifneq (,$(OS_PACKAGING_MESSAGE))
 help:
 
 	@echo ""
 	@echo "######################################################################"
 	@echo "#                                                                    #"
-	@echo "# Building DUE as a package, so top level Makefile is doing nothing. #"
+	@echo "# $(OS_PACKAGING_MESSAGE)"
 	@echo "#                                                                    #"
 	@echo "######################################################################"
 	@echo ""
 
 else
-
-# Set this so the DUE Makefile realizes a packaging
-# build is happening and won't execute.            
-
-
 #
 # Store phony build targets in a variable so they can be
 # printed as part of help.
@@ -327,5 +328,5 @@ test:
 	@echo "Package manager $(PACKAGE_MANAGER)"
 	@echo "Host os $(HOST_OS)"
 
-# Matches DUE_BEING_PACKAGED_BUILD
+# Matches OS_PACKAGING_MESSAGE
 endif
