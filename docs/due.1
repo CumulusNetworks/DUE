@@ -102,17 +102,10 @@ user may have to supply a default \[en]username and \[en]userid (usually
 See below )
 .TP
 .B \[en]ignore\-type
-.IP
-.nf
-\f[C]
- When accessing the container, do not attempt to create a user
-\f[R]
-.fi
-.RS
-account for the user logging in, and assume the container was not
-created by DUE.
+When accessing the container, do not attempt to create a user account
+for the user logging in, and assume the container was not created by
+DUE.
 This can be useful with image creation debug.
-.RE
 .TP
 .B \-c, \[en]command [cmd]
 Run [cmd] in the container using the \[en]login\-shell.
@@ -127,9 +120,6 @@ Otherwise the shell where the commands are invoked will take anything
 after the first ;, and treat it as a command to be run locally.
 This can obfuscate things if the command can work inside or out of the
 container.
-.PD 0
-.P
-.PD
 Example: look at /proc and the password file in a container: ./due
 \[en]run \[en]command \[lq]ls \-lrt /proc\[rq] ; \[lq]cat
 /etc/passwd\[rq]
@@ -197,19 +187,19 @@ Name to use when logging in.
 User ID to use when logging in.
 .TP
 .B \[en]groupname [groupname]
-Container user\[cq]s default group
+Container user\[cq]s default group.
 .TP
 .B \[en]groupid [id#]
-ID of container user\[cq]s group
+ID of container user\[cq]s group.
 .TP
 .B \[en]login\-shell [path]
-Program to use as login
+Program to use as login.
 .TP
 .B \[en]help\-runtime
-Invoke runtime help
+Invoke runtime help.
 .TP
 .B \[en]help\-runtime\-examples
-Show examples of use
+Show examples of use.
 .SS \[en]create options
 .PP
 These options are accessed after the \[en]create argument, and,
@@ -254,37 +244,83 @@ Quick image changes can be made by editing the build directory (
 .PP
 The final image will hold a /due\-configuration directory, which holds
 everything that went into the image.
-This is very useful for install script debug inside the container.
+This is very useful for debugging an install script inside the
+container.
 .PP
 A list of available default configurations is provided by running: due
 \[en]create \[en]help This will parse the README.md files under the
 \&./templates directory looking for specific strings.
 This output can be filtered by using wildcard syntax as follows: due
-\[en]create \[en]help \[en]filter
+\[en]create \[en]help \[en]filter \[lq]term\[rq]
 .SS Advanced image creation
 .PP
-DUE 3.0.0 introduced hierarchical template parsing, where a template
-could be a combination of files provided by `sub\-type' directories, to
-reduce file duplication.
-With this, files with identical names and paths will overwrite the ones
-provided by higher directories.
+DUE 3.0.0 introduced hierarchical template parsing ( or a directory
+based class inheritance model, if you prefer) where a template could be
+created from a combination of files provided by `sub\-type' directories
+to reduce file duplication.
+With this, files from deeper directories with identical names and paths
+will overwrite the files provided by higher directories.
 .PP
-Example: Given directory structure:
-due/templates/foo/sub\-type/bar/sub\-type/baz
+Example \- creating a fedora\-package build container.
+.PD 0
+.P
+.PD
+Given these directories:
+.RS
 .PP
-Image creation using the `baz' template will be: 1 \- files from
-templates/common\-templates 2 \- plus files from foo overwriting any
-files with the same relative path from common\-templates 3 \- plus files
-from bar overwriting foo files the same way 4 \- plus files from baz
-overwriting bar files the same way.
+\f[C]./common\-templates/filesystem/usr/local/bin/container\-create\-user.sh\f[R]
+.PD 0
+.P
+.PD
+\f[C]./redhat\f[R]
+.PD 0
+.P
+.PD
+\f[C]./redhat/sub\-type\f[R]
+.PD 0
+.P
+.PD
+\f[C]./redhat/sub\-type/fedora\-package\f[R]
+.PD 0
+.P
+.PD
+\f[C]./redhat/sub\-type/fedora\-package/Dockerfile.config\f[R]
+.PD 0
+.P
+.PD
+\f[C]./redhat/sub\-type/fedora\-package/post\-install\-config.sh.template\f[R]
+.PD 0
+.P
+.PD
+\f[C]./redhat/filesystem/usr/local/bin/duebuild\f[R]
+.RE
 .PP
-While not normally needed, this may be useful for supporting a number of
-Images with minor but important differences.
+Image creation using the \f[C]\[aq]fedora\-package\f[R] template will
+pull files from:
+.PD 0
+.P
+.PD
+1 \- \f[C]templates/common\-templates\f[R]
+.PD 0
+.P
+.PD
+2 \- which may be overwritten by files from
+\f[C]templates/redhat/filesystem\f[R]
+.PD 0
+.P
+.PD
+3 \- which, nt turn, may then be overwritten by files from
+\f[C]templates/redhat/sub\-type/fedora\-package\f[R]
+.PP
+This is useful for supporting a number of Images with minor but
+important differences.
 See templates/README.md for more information.
 .SS Creation example
 .PP
 1 \- Configure an image build directory under due\-build\-merge named
-from \[en]name Mandatory:
+from \[en]name
+.PP
+Mandatory:
 .TP
 .B \[en]from [name:tag]
 Pull name:tag from registry to use as starting point for the image.
@@ -312,6 +348,9 @@ Set in container prompt to [prompt] to provide user context
 Pass arguments to docker build.
 Argument is passed as a single value, so if it contains spaces, it
 should be quoted.
+.PD 0
+.P
+.PD
 \[en]dockerarg can be used multiple times, or can contain multiple
 strings.
 .PD 0
@@ -364,10 +403,11 @@ Save an existing Docker image as a file that can be copied elsewhere.
 If name is not supplied, the user can choose from a menu.
 .TP
 .B \[en]import\-image name
-Import a docker image stored on disk as tar file
+Import a docker image stored on disk as tar file `name'.
 .TP
 .B \[en]copy\-config
-Create a personal DUE configuration file in \[ti]/.config/due/due.config
+Create a personal DUE configuration file in
+\[ti]/.config/due/due.config.
 .TP
 .B \[en]make\-dev\-dir [dir]
 Populate a local directory for DUE container development.
@@ -395,23 +435,37 @@ Overrides the global one.
 \f[C]due \-\-manage \-\-copy\-config\f[R] will set that up for the user.
 .SH ENVIRONMENT
 .PP
-The configuration file sets up the following variables:
+The configuration file may use the following variables:
 .PP
 \f[C]DUE_ENV_DEFAULT_HOMEDIR\f[R] \- evaled to define the user\[cq]s
 home directory.
 This can be useful if there is a naming convention for work directories
 on shared systems, or your home directory is an NFS mount (which can
-create
-.PD 0
-.P
-.PD
-strange behavior when mounted in Docker) or you need to use a bigger
-build directory.
+create strange behavior when mounted in Docker) or you need to use a
+bigger build directory.
 .PP
 \f[C]DUE_USER_CONTAINER_LIMIT\f[R] \- limit the number of containers a
 user is allowed to run.
 Handy on a shared system to remind people of what they have running.
 This can easily be circumvented, though.
+.PP
+\f[C]DUE_ALLOW_USER_CONFIG\f[R] \- if \f[C]TRUE\f[R] the user\[cq]s
+\[ti]/.config/due/due.conf is sourced.
+If \f[C]FALSE\f[R] only the /etc/due/due.conf is sourced.
+DUE will load the /etc/due/due.conf file first to interpret this
+variable.
+.PP
+\f[C]fxnSetContainerSpecificArgs\f[R] \- a Bash function to supply
+default arguments to containers, based on the image\[cq]s
+\f[C]DUEImageType\f[R] label.
+This is useful for always running a particular image type as
+\f[C]\-\-privileged\f[R], or supplying default mount points or any other
+container specific runtime configuration that the end user doesn\[cq]t
+want to have to remember to type every time.
+.PD 0
+.P
+.PD
+Obviously there are security issues here, so use with caution.
 .SH BUGS
 .PP
 See GitHub Issues: [https://github.com/[CumulusNetworks]/[DUE]/issues]
@@ -426,7 +480,7 @@ Copyright (c) 2021,2022 Nvidia Corporation.
 .PD 0
 .P
 .PD
-Copyright (c) 2019,2020 Cumulus Networks, Inc.
+Copyright (c) 2019,2020 Cumulus Networks, Inc.\ 
 .PP
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the
