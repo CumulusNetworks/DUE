@@ -33,7 +33,7 @@ USER_GROUP_NAME=$( getent group "$USER_GROUP_ID" | cut -d: -f1 )
 LOGIN_SHELL="/bin/bash --login"
 
 # If debugging a container, this will be set
-OVERRIDE_ENTRY_POINT=""
+OVERRIDE_ENTRYPOINT=""
 
 # Default to restricting results to containers that have been set up.
 FILTER_SHOW_ONLY_DUE="TRUE"
@@ -1506,7 +1506,7 @@ function fxnDoLogin()
             # Not a DUE image
             if [ "$DEBUG_LOGIN" = "TRUE" ];then
                 executeProgram=""
-                OVERRIDE_ENTRY_POINT=" --entrypoint $LOGIN_SHELL "
+                OVERRIDE_ENTRYPOINT=" --entrypoint $LOGIN_SHELL "
             fi
         fi
         # Generate a unique hostname
@@ -1715,7 +1715,7 @@ function fxnDoLogin()
 
         # Skip network configuration for now
         #                --network=\"host\" \
-            # Pass any arguments that were set to go directly to docker
+        # Pass any arguments that were set to go directly to docker
         # Pass any arguments that may be container specific
         # If overriding the container's entry point (for debug), set --entrypoint
         # be  interactive, or not
@@ -1726,9 +1726,9 @@ function fxnDoLogin()
         # Specify the container
         # Pass the command to execute
         runCMD="$DOCKER_SPECIFIC_ARGS \
+                ${OVERRIDE_ENTRYPOINT} \
                 $PLATFORM_ARGS \
                 $CONTAINER_SPECIFIC_ARGS \
-                $OVERRIDE_ENTRY_POINT \
                 $doInteractive \
                 --rm \
                 $ADDITIONAL_MOUNTS \
@@ -1737,7 +1737,7 @@ function fxnDoLogin()
                 $userNameArg \
                 ${HOSTNAME_ARGS} \
                 ${SELECTED_CONTAINER_ID} \
-                 $executeProgram"
+                $executeProgram"
 
         # Remove spaces for readability when echoing.
         # put one argument per line for readability

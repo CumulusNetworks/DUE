@@ -81,6 +81,11 @@ Starting an image
 to run by restricting them to entries that contain [filter]. If only one image
 matches the filter, it will be invoked without asking the user to choose it.
 
+--entrypoint [shell]
+:   Override the container's ENTRYPOINT to execute [shell] on startup. If [shell]
+is not supplied, DUE will default to running container-create-user.sh. This can
+be very useful in debugging run time issues.
+
 -a, --all
 :	Show all containers on the system. DUE can be used to log in to
 containers that it did not create, but the user may have to supply a default
@@ -129,7 +134,7 @@ DUE. This can be useful with image creation debug.
 images that were not created by DUE. Helpful for internal debug if image
 creation dies running internal configuration scripts.
 
---container-name [name]
+--container-name [name3]
 :	Change the name of the running container. This can provide clarity in a
  build automation environment, where containers may be automatically spun up.
  Note that if the new name does not have 'due' in it, it will be filtered

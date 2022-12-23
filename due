@@ -350,6 +350,8 @@ function fxnHelpRun()
     echo "   -i | --run-image <filter>  Restrict shown images to those that match *filter*."
     echo "                               If only one image matches a line from due --list-images"
     echo "                               it will be run automatically."
+    echo "        --entrypoint <shell>  Override container's ENTRYPOINT. Defaults to create user if no shell path passed."
+    echo ""
     echo "  Image commands:"
     echo "   -c | --command <cmd>       <cmd> will be executed by --login-shell in the container"
     echo "                               NOTE: this must be the last argument,  as everything after"
@@ -445,7 +447,11 @@ function fxnHelpRunExamples()
     echo " Build an RPM from source without logging in to the container."
     echo "   $DUE_NAME --build --cbuild foo.src.rpm"
     echo ""
-
+    echo " Override a container's entrypoint:"
+    echo "  - For interactive login as host user in the container."
+    echo "      $0 --run --entrypoint"
+    echo "  - To debug a container."
+    echo "      $0 --run --debug --entrypoint /bin/sh "
     echo ""
     echo ""
 }
@@ -514,7 +520,24 @@ function fxnPrintAllHelp()
     echo ""
 }
 
-
+# Takes - a string that may be a command option.
+#  Check if the term passed data, rather than a command option.
+#   Since argument parsing functions default to assuming arguments are --options,
+#   this function looks for exceptions and returns TRUE if found, as returning
+#   TRUE or FALSE answers 'argument is data?'
+function fxnArgIsData()
+{
+    if [ "$1" = "" ];then
+        # No argument = not data
+        echo "FALSE"
+    elif [[ "$1" = --* ]];then
+        # if it starts with --, it is an option.
+        echo "FALSE"
+    else
+        # Whatever is left is considered data.
+        echo "TRUE"
+    fi
+}
 
 # Takes - rest of command line after --create
 function fxnParseCreateArgs()
@@ -725,10 +748,15 @@ function fxnDueBuildHelp()
 
 function fxnParseRunArgs()
 {
-
+    # If TRUE, the argument does not start with -- and it is data
+    local nextArgIsData
     while [[ $# -gt 0 ]]
     do
         term="$1"
+
+        # Expect TRUE or FALSE here
+        nextArgIsData=$( fxnArgIsData "$2")
+
         case $term in
             # Parse any help requests first, as they'll result in exit
             -h | --help | help )
@@ -766,6 +794,19 @@ function fxnParseRunArgs()
                 # to filter further
                 FILTER_SHOW_ONLY_DUE="FALSE"
                 shift
+                ;;
+
+            --entrypoint )
+                # Override a container's ENTRYPOINT for interactive login.
+                # Note that if $2 is anything other than a shell it probably won't
+                # work well.
+                if [ "$nextArgIsData" = "TRUE" ];then
+                    OVERRIDE_ENTRYPOINT+="  --entrypoint $2 "
+                    shift
+                else
+                    # Force entry point to be the container-create-user.sh script.
+                    OVERRIDE_ENTRYPOINT+="  --entrypoint /usr/local/bin/container-create-user.sh "
+                fi
                 ;;
 
             -a | --all | --any  )
@@ -1484,5 +1525,3 @@ fi
 
 # Fallthrough exit
 echo "Error: Failed to specify an action like --run or --login or --help"
-
-
