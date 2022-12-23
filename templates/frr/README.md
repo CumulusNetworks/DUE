@@ -1,4 +1,6 @@
 # Free Range Routing
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
+Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 
 This is a first pass at a configuration to build Debian packages
 for Free range routing, so expect some rough edges.

@@ -1,4 +1,6 @@
-# common-templates directory 
+# common-templates directory
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
+
 This directory holds files that are installed in all DUE containers to provide
 common functionality.  
 

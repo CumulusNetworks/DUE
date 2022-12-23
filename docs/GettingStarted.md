@@ -1,4 +1,5 @@
 # Getting Started
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 **Formatting Conventions**  
 If you are viewing this document as a text file, literal commands to type

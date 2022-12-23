@@ -1,4 +1,6 @@
-# example template
+# Example template
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
+
 Use this as a starting point for any container development. Replace the EXAMPLE strings and update text as necessary
 
 This image is configured to EXAMPLE

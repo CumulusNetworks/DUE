@@ -1,4 +1,5 @@
 # Duebuild for building Debian packages.
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 The `duebuild` script handles setup and build for whatever target
 the contiainer supports. As such this will vary from container to

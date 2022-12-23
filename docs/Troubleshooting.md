@@ -1,4 +1,6 @@
 # Troubleshooting
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
+
 ...for when things don't go as expected
 
 # Installing DUE

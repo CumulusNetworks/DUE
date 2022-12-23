@@ -1,4 +1,5 @@
 # Dedicated User Environment (DUE)
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 DUE is a wrapper for Docker to create easy to use build environments.  
 

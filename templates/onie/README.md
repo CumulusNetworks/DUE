@@ -1,4 +1,5 @@
 # Open Network Install Environment
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 Create ONIE build environments using a Debian 8 (Jessie), Debian 9 (Stretch) or Debian 10 (Buster) image.  
 **Note** Most targets build using Debian 9. Debian 10 support is in beta testing.

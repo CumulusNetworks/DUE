@@ -1,4 +1,5 @@
 # opensuse-package template
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 Configure the image to build opensuse packages.
 

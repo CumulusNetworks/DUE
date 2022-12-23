@@ -1,3 +1,6 @@
+#The duebuild script
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
+
 This file is a starting point for documenting the particulars of a container's duebuild script.  
 See the debian-package version for what this might look like in practice.
 

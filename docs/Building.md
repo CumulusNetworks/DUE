@@ -1,4 +1,5 @@
 # Building
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 There are a few ways to build using DUE.
 

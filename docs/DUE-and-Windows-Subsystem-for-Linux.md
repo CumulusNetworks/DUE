@@ -1,4 +1,5 @@
 # DUE and Windows Subsystem For Linux
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 DUE has been confirmed to run on WSL 2 using Ubuntu 20.04 and Podman.
 Other configurations may work, but have not been tested.

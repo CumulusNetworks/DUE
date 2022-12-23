@@ -1,4 +1,5 @@
 # Template directory README
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 This directory holds specific container configurations.
 Note that each sub directory also contains a README.md with

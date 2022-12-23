@@ -1,4 +1,5 @@
 #anything to add to a user's bashrc
+# Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 if [ "TRUE" = "TRUE" ];then
    # Set prompt to print git branch of current directory

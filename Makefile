@@ -130,7 +130,7 @@ else
 # Store phony build targets in a variable so they can be
 # printed as part of help.
 #
-PHONY = help docs depends install uninstall orig.tar debian-package test no-make-default
+PHONY = help docs depends install uninstall orig.tar debian-package test no-make-default copyright-check
 
 # ...and use them as real .PHONY targets
 .PHONY: $(PHONY)
@@ -151,6 +151,7 @@ help:
 	$(Q) echo " depends         - Install DUE's run time dependencies."
 	$(Q) echo " install         - Install DUE and dependencies."
 	$(Q) echo " orig.tar        - Create tarball for packaging."
+	$(Q) echo " copyright-check - Print files without a copyright header."
 	$(Q) echo ""
 	$(Q) echo " Make with 'make V=1' for makefile debug."
 	$(Q) echo ""
@@ -320,6 +321,22 @@ debian: orig.tar
 	@ echo "Building DUE Debian installer package."
 	@ git checkout debian/master
 	@ ./due --build
+
+copyright-check:
+	@echo ""
+	@echo "######################################################################"
+	@echo "#                                                                    #"
+	@echo "# The following files do NOT have a copyright header                 #"
+	@echo "# Ex: Copyright 2021,2022 Nvidia Corporation.  All rights reserved.  #"
+	@echo "#                                                                    #"
+	@echo "######################################################################"
+	@echo ""
+
+#grep -L to find files that do not match for search term. Ignore .git directory
+	@ find ./ -type f  -exec grep -Li 'Copyright' {} \+ | grep -v '.git'
+	@echo ""
+	@echo "Done."
+	@echo ""
 
 test:
 # A target for makefile debug.

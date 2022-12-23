@@ -1,4 +1,5 @@
 # Frequently Asked Questions
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 Well, maybe not _frequently_ but things worth knowing.
 
