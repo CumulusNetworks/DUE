@@ -8,10 +8,12 @@ Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 ## Symptom: Docker (or Podman) isn't installed
 
 ### Installing Docker without a DUE .deb
-If you've downloaded DUE as source, install its dependencies by running:  
+If you've downloaded DUE as source, install its dependencies by running:
 `sudo apt update ; sudo apt install docker.io git rsync binfmt-support qemu qemu-user-static`    
   
-**Note:**  docker.io can be replaced with docker-ce, or podman.
+**Note 1:**  docker.io can be replaced with docker-ce, or podman.
+**Note 2:**  Newer host system distributions may provide the systemd-binfmt package to support
+              the execution of non-native binaries, so that the binfmt-support package is not explicitly needed.
 
 The last three packages there are optional, but necessary if you want to run alternate architectures.
 
@@ -94,7 +96,8 @@ If QEMU is properly and fully installed, DUE should be able to run containers
 of other architectures seamlessly
 If you're reading this, then you've found a seam and should file a bug at:
 [https://github.com/CumulusNetworks/DUE/issues](https://github.com/CumulusNetworks/DUE/issues)
-
+**Note** Be aware that newer host distributions may use systemd-binfmt to handle the running of non-native binaries,
+and as a result, the following binfmt-support suggestions may or may not apply in your environment.
 
 ### Fails with: `standard\_init\_linux.go:211: exec user process caused "exec format error"`
 So far this has been the only time I've seen this die, and I tracked it down to my system's
