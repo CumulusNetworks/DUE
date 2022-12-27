@@ -1510,7 +1510,7 @@ function fxnDoLogin()
             fi
         fi
         # Generate a unique hostname
-        # Replace any '/' or ':' in name with - as Docker will complain. 
+        # Replace any '/' or ':' in name with - as Docker will complain.
         sanitizedContainerName=${SELECTED_CONTAINER_NAME//[\/:]/-}
 
         USE_HOSTNAME="${USER_NAME}_${sanitizedContainerName}_$(date +%s)"
@@ -1714,7 +1714,7 @@ function fxnDoLogin()
         # blank space and not be parsed as arguments.
 
         # Skip network configuration for now
-        #                --network=\"host\" \
+        #                --network=\"host\" 
         # Pass any arguments that were set to go directly to docker
         # Pass any arguments that may be container specific
         # If overriding the container's entry point (for debug), set --entrypoint
