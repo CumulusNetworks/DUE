@@ -11,6 +11,10 @@ DUE_VERSION := $(shell /bin/sh -c "grep -o 'DUE_VERSION=\".*\"' ./libdue | sed -
 # The source tarball
 DUE_ORIG_TAR=due_$(DUE_VERSION).orig.tar.gz
 
+# Branch to use when building a Debian package.
+#DEBIAN_PACKAGE_BRANCH ?= debian/master
+DEBIAN_PACKAGE_BRANCH ?= debian-test
+
 # Uncomment the following to enable more makefile output
 #export DH_VERBOSE = 1
 
@@ -276,7 +280,7 @@ orig.tar:
 	$(Q) touch $@
 
 
-# Create upstream tarball and build DUE .deb file from debian/master branch
+# Create upstream tarball and build DUE .deb file from DEBIAN_PACKAGE_BRANCH
 # changing branches as needed.
 debian-package: orig.tar
 	@echo "######################################################################"
@@ -287,8 +291,8 @@ debian-package: orig.tar
 	@echo ""
 	@echo "# Stashing any local Git changes."
 	$(Q) git stash 
-	@echo "# Checking out debian-test branch."
-	$(Q) git checkout debian-test
+	@echo "# Checking out $(DEBIAN_PACKAGE_BRANCH) branch."
+	$(Q) git checkout $(DEBIAN_PACKAGE_BRANCH)
 	@echo ""
 # Keep the option to extract master tarball in to a directory of
 # strictly Debian files. This would be used only during testing
@@ -302,7 +306,7 @@ debian-package: orig.tar
 	@echo ""
 	@echo "# Deleting files extracted from tar archive."
 	$(Q) git clean -xdf
-	@echo "# Resetting debian/master branch."
+	@echo "# Resetting $(DEBIAN_PACKAGE_BRANCH) branch."
 	$(Q) git reset --hard
 	@echo "# Checking out master branch."
 	$(Q) git checkout master
@@ -319,7 +323,7 @@ debian-package: orig.tar
 
 debian: orig.tar
 	@ echo "Building DUE Debian installer package."
-	@ git checkout debian/master
+	@ git checkout $(DEBIAN_PACKAGE_BRANCH)
 	@ ./due --build
 
 copyright-check:
@@ -340,10 +344,11 @@ copyright-check:
 
 test:
 # A target for makefile debug.
-	@echo "Due version $(DUE_VERSION)"
+	@echo "Due version       $(DUE_VERSION)"
 	@echo "Docker to install $(DOCKER_TO_INSTALL)"
-	@echo "Package manager $(PACKAGE_MANAGER)"
-	@echo "Host os $(HOST_OS)"
+	@echo "Package manager   $(PACKAGE_MANAGER)"
+	@echo "Host OS           $(HOST_OS)"
+	@echo "Deb pkg branch    $(DEBIAN_PACKAGE_BRANCH)"
 
 # Matches OS_PACKAGING_MESSAGE
 endif
