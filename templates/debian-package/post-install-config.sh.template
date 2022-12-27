@@ -40,6 +40,7 @@ PYTHON_SIX_PACKAGE="python-six"
 DEBIAN_FRONTEND=noninteractive \
                apt-get install \
                --assume-yes \
+               --force-yes \
                --no-install-recommends \
                python > /dev/null 2>&1
 if [ $? = 0 ];then
@@ -48,6 +49,7 @@ else
     DEBIAN_FRONTEND=noninteractive \
                    apt-get install \
                    --assume-yes \
+                   --force-yes \
                    --no-install-recommends \
                    python3
     # Newer Python = newer python six
@@ -77,6 +79,7 @@ NICE_TO_HAVE=" tree "
 DEBIAN_FRONTEND=noninteractive \
                apt-get install \
                --assume-yes \
+               --force-yes \
                --no-install-recommends \
                openssh-server \
                iputils-ping \
@@ -107,7 +110,7 @@ if [ -d /due-configuration/post-install-local ];then
         # Install packages (expect dependency errors)
         sudo dpkg -i *.deb
         # Resolve dependency errors with --fix-broken
-        DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --fix-broken || exit 1
+        DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --force-yes --fix-broken || exit 1
         echo "Post installing local software: DONE"
     fi
 fi

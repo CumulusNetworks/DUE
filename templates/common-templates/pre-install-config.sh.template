@@ -94,6 +94,7 @@ fxnConfigureDebian()
     DEBIAN_FRONTEND=noninteractive \
                    apt-get install \
                    --assume-yes \
+                   --force-yes \
                    --no-install-recommends \
                    $BASE_PACKAGES
 
