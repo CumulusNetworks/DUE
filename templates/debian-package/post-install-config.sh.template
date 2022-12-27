@@ -30,24 +30,31 @@ ulimit -n 10000
 apt-get update
 
 #
-# if python can't be installed, try python3
-# Success will vary by distribution...
+# As Python availability varies by release, try to install
+# classic Python and python-six to support older releases.
+# Print a success message if that worked and bury the error
+# message if it failed so the user isn't alarmed by the
+# retry for python3 and python3-six packages.
 #
-
+PYTHON_SIX_PACKAGE="python-six"
 DEBIAN_FRONTEND=noninteractive \
                apt-get install \
                --assume-yes \
                --no-install-recommends \
-               python 2>/dev/null
-if [ $? != 0 ];then
+               python > /dev/null 2>&1
+if [ $? = 0 ];then
+    echo "Installed classic Python package."
+else
     DEBIAN_FRONTEND=noninteractive \
                    apt-get install \
                    --assume-yes \
                    --no-install-recommends \
                    python3
+    # Newer Python = newer python six
+    PYTHON_SIX_PACKAGE="python3-six"
 fi
 # Packages for kernel build, but not essential for Debian packaging
-KERNEL_BUILD_PACKAGES=" build-essential python-six rsync gcc bc bison cpio flex kmod quilt u-boot-tools "
+KERNEL_BUILD_PACKAGES=" build-essential rsync gcc bc bison cpio flex kmod quilt u-boot-tools $PYTHON_SIX_PACKAGE "
 
 # Lintian checks code for errors or questionable implementations
 # in Debian packaging. Adds about 12MB to the container size
