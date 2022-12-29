@@ -29,9 +29,10 @@ be available (./due) or not.
 This is useful if you're debugging on a shared user system and don't want to break everybody else.  
 
 **TIP:** DUE will print out the configuration and library files it is sourcing at the start of a run.  
-**Example** Here DUE was run from a developer directory and is using the system's configuration file.  
-`==== Sourcing DUE files from:     [ /home/adoyle/Dev/DUE ]`  
-`==== Sourcing configuration from: [ /etc/due/due.conf ]`  
+**Example** Here DUE was run from a developer directory and is using the system's configuration file.
+`==== Sourcing DUE files from:     [ /home/adoyle/DUE ]`  
+`====                     due:     [ ./due ]`  
+`====                  libdue:     [ /home/adoyle/DUE/libdue ]`  
 
 
 ## Where do I find more containers?

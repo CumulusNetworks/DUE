@@ -54,11 +54,12 @@ If DUE is invoked with a ./, it will use the copy of `due` in the local director
 **TIP**
 When running locally, DUE will print the source locations of files pulled in from locations other than the system defaults. These are typically `libdue` and perhaps a user's `due.conf` if the sysadmin has set `DUE_ALLOW_USER_CONFIG="TRUE"` in the host system's  `/etc/due/due.conf`.  
 So when running an image from a git checkout, with `due --run`, one could expect to
-see something like this printed after the image to run has been selected.  
+see something like this printed after the image to run has been selected.
+
 `==== Sourcing DUE files from:     [ /home/adoyle/DUE ]`  
-`==== Sourcing configuration from: [ /home/adoyle/.config/due/due.conf ]`  
-
-
+`====                     due:     [ ./due ]`  
+`====                  libdue:     [ /home/adoyle/DUE/libdue ]`  
+`==== Sourcing due.conf  from:     [ /home/adoyle/.config/due/due.conf ]`  
 
 ## Installing DUE
 The preferred method of installing DUE is to build a .deb of it, using the debian/master branch and install the deb.    

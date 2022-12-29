@@ -2117,15 +2117,17 @@ else
     DUE_ALLOW_USER_CONFIG="TRUE"
 fi
 
+
 # The config under /etc will set DUE_ALLOW_USER_CONFIG to TRUE if
 # users are allowed to use their own config files.
 if [ "$DUE_ALLOW_USER_CONFIG" = "TRUE" ];then
     if [ -e "$DUE_USER_CONFIG_PATH" ];then
-        # If ~/.config/due/due.conf, let the user know.
-        DUE_CONFIG_SOURCING_SUMMARY+="==== Sourcing configuration from: [ $DUE_USER_CONFIG_PATH ]\n"
+        # If ~/.config/due/due.conf, let the user know.        
+        DUE_CONFIG_SOURCING_SUMMARY+="==== Sourcing due.conf  from: [ $DUE_USER_CONFIG_PATH ]\n"
         source "$DUE_USER_CONFIG_PATH"
     fi
 fi
+
 ######################################################################
 # Editor hints for sh syntax interpretation
 # Append as necessary.

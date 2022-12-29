@@ -27,7 +27,10 @@ if [ "$0" != "$INSTALLED_DUE_PATH" ];then
         TOP_LEVEL_DIR=$(pwd)
         LIBRARY_FILE="${TOP_LEVEL_DIR}/libdue"
         # Let the user know they're using the local copy.
-        DUE_CONFIG_SOURCING_SUMMARY="\n==== Sourcing DUE files from:     [ $TOP_LEVEL_DIR ]\n"
+        DUE_CONFIG_SOURCING_SUMMARY="\n==== Sourcing DUE files from: [ $TOP_LEVEL_DIR ]"
+        DUE_CONFIG_SOURCING_SUMMARY+="\n====                     due: [ $0 ]"
+        DUE_CONFIG_SOURCING_SUMMARY+="\n====                  libdue: [ $LIBRARY_FILE ]"        
+        DUE_CONFIG_SOURCING_SUMMARY+="\n"
 
         #echo "==== Sourcing DUE files from:     [ $TOP_LEVEL_DIR ]"
     else
@@ -40,9 +43,9 @@ if [ ! -e "$LIBRARY_FILE"  ];then
     exit 1
 fi
 
-
 # Source the installed or checked out version of libdue
 . "$LIBRARY_FILE"
+
 
 # Verbosity level. 0 is terse.
 VERBOSITY_LEVEL=0
@@ -1359,6 +1362,7 @@ fi
 if [ "$DUE_CONFIG_SOURCING_SUMMARY" != "" ];then
     echo -e "$DUE_CONFIG_SOURCING_SUMMARY"
 fi
+
 #
 # Check for user Docker group membership before any actions.
 # They have to be a member for anything beyond this point
