@@ -4,6 +4,7 @@ Upstream-Contact: Alex Doyle <alexddoyle@gmail.com>
 Source: https://github.com/CumulusNetworks/DUE
 
 Files: *
+Copyright: 2021,2022,2023 Nvidia Corporation
 Copyright: 2019,2020 Cumulus Networks, Inc.
 License: MIT
 
