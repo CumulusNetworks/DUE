@@ -7,9 +7,22 @@ are start and end with back ticks like `this`. If you are using a Markdown viewe
 **The point**  
 If you cut and paste from this file, do not copy the `s
 
-# Installing from a .deb
-If you have a .deb file of DUE that was installed with Apt, skip to **A Practical Example** below.  
-If it is just a deb file, `sudo dpkg -i due_*deb` and resolve missing dependencies using Apt.
+# Debian/Ubuntu based hosts
+You have a few install options here:
+## Install a released version with APT
+Newer versions of Debian and Ubuntu have upstreamed versions of DUE, so `sudo apt-get install due` may work for you.
+## Install a prebuilt release .deb file
+.deb files associated with each release are available at DUE's GitHub page here:  
+[https://github.com/CumulusNetworks/DUE/releases](https://github.com/CumulusNetworks/DUE/releases)  
+To install,  
+1. Download the desired .deb using your browser
+2. Install the deb and expect dependency errors with: `sudo dpkg -i due_*all.deb`
+3. Use APT to resolve the dependency errors with: `sudo apt-get install --fix-broken`
+  
+# Red Hat/SUSE based hosts
+Until an .rpm build is available, follow the instructions in **Installing from a Git checkout** below.
+
+
 
 # Installing from a Git checkout
 
@@ -24,19 +37,28 @@ packages:
   *  curl  
   *  and maybe pandoc, if you plan on updating the man pages.
 
-Running `make install` from the `master` Git branch as root will attepmpt to install these packages for both Debian and Red Hat Linux.
+Running `make install` from the `master` Git branch as root will attempt to install these packages for both Debian and Red Hat Linux, as well as placing DUE's files in the appropriate directories on your host system.
 
-## Add yourself to the Docker group 
-Once Docker is installed, add yourself to the docker group with:
+## If you are using Docker, add yourself to the Docker group 
+Podman (which is preferred on Red Hat/SUSE host systems) does not require a group membership for users to run containers, but Docker (preferred on Debian based systems) does. So if Docker is installed, make sure you add yourself to the docker group with:
 
 `sudo /usr/sbin/usermod -a -G docker $(whoami)`
 
-You will probably have to log out and back in for your new membership to take effect.
+Even though running `groups` will show you as a member of the `docker` group, you will probably have to log out and back in for your new membership to take effect.
 
 ## Run DUE locally with ./due
 If DUE is invoked with a ./, it will use the copy of `due` in the local directory (as expected) and use the template files that are under the local directory. This allows users to try it out without installing it on their systems.  
   
 **Ex:** `./due`
+
+**TIP**
+When running locally, DUE will print the source locations of files pulled in from locations other than the system defaults. These are typically `libdue` and perhaps a user's `due.conf` if the sysadmin has set `DUE_ALLOW_USER_CONFIG="TRUE"` in the host system's  `/etc/due/due.conf`.  
+So when running an image from a git checkout, with `due --run`, one could expect to
+see something like this printed after the image to run has been selected.  
+`==== Sourcing DUE files from:     [ /home/adoyle/DUE ]`  
+`==== Sourcing configuration from: [ /home/adoyle/.config/due/due.conf ]`  
+
+
 
 ## Installing DUE
 The preferred method of installing DUE is to build a .deb of it, using the debian/master branch and install the deb.    
@@ -50,7 +72,7 @@ DUE can be used to build itself as a Debian package.
    If you are using Ubuntu, this might look like:  
    `./due --create --from ubuntu:18.04 --description "Package Build for Ubuntu 18.04" --name pkg-u-18.04 --prompt PKGU1804 --tag pkg-ubuntu-18.04 --use-template debian-package`  
    **TIP** `--filter` term  can be used with `due --create --help` to limit the output to entries that match the term.  
-3. At this point you can type `make debian-package`and the makefile will:
+3. At this point you can type `make debian-package`and the makefile will:  
 3a. `make orig.tar`  
 3b. `git checkout debian/master`  
 3c. `due --build`  
@@ -255,8 +277,10 @@ This creates:
   * the build directory oniebuild  
   * and builds the image  
 
-**NOTES:**  
-To build an image clean, you'll want to delete the `<name>` related directories in `due-build-merge`
+###Example: image re-creation
+To modify and rebuild an image, you'll want to wipe out the intermediate directories that were created by the last build of the image. You can manually delete the `<name>` related directories in `due-build-merge`, or run:  
+ `./due --create --clean`    
+to have the directories deleted.
 
 You can build just the Docker image stage with `./due --build-dir <path to name>`
 ##Example: build the Docker image from an existing directory.

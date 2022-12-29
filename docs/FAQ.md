@@ -83,6 +83,9 @@ Yes, although functionality will be limited.
 
 `due --run --any --username root --userid 0` will probably get you a sane environment.
 
+### Can I override the ENTRYPOINT in a container?
+Yes. the `--entrypoint` option can be used to supply a shell to run instead of the binary the image was built to execute by default. This is particularly useful in debugging these purpose built images. If a DUE container was built FROM: one of those images, `--entrypoint` will try to run the container-create-user.sh script to give the invoking user an account in the container, so that the command run includes `--entrypoint /usr/local/bin/container-create-user.sh`. Otherwise a shell should be specified. i.e. `--entrypoint /bin/bash`.  If something other than a shell is supplied, after `--entrypoint` the results will likely not be desirable. 
+
 ## Well, can I log in to containers that DUE did not create?
 Yes - `due --login --any` will show all running containers on the system, although you'll probably want to supply `--username root --userid 0` if the container wasn't created by DUE.  
 Or use `due --login --debug`, which is a shortcut to log you in as root.
@@ -141,8 +144,10 @@ got half of Bash programming figured out already.
 
 3.  Bash scripts aren't architecture dependent, so DUE should run on any Linux system that supports Docker/Podman.  
 
-## Why not another Linux?
-If you read the History section, you'll know DUE came out of working with Debian and some Ubuntu, so most of the development here overlapped with tackling problems that needed immediate solutions and has had better testing in those environments.  
+## What determines supported Linux versions?
+The short answer is it's whatever I've had to work with.
+
+The longer answer starts in the History section, where I mention DUE came out of working with Debian and some Ubuntu, so most of the development here has overlapped with tackling problems that needed immediate solutions and has had better testing in those environments.  
 Recently I've started working with RPM builds and Podman, so support for these environments has been introduced and is being tested in the hopes that it will eventually be as robust as the Debian support (translation - the RPM stuff should be considered a bit 'beta')    
   
 
@@ -153,11 +158,12 @@ Yeah, I asked myself this quite a bit, wondering if I was reinventing the wheel 
 On the development side, I see a few advantages to generating the Dockerfile than directly editing it:  
 1. A **default directory structure** makes adding files to the image very obvious. Ex: files under `filesystem/usr/bin` go in `/usr/bin`.  
 2. **Pre** and **post install scripts** make it obvious where those scripts will execute in the install process.  
-3. **Softlink awareness** allows copying files between templates for assembly without requiring multiple copies of the file. Ex: the FRR template steals the `duebuild` script from the `debian-package` template using a softlink.  
-4. **Template processing** allows for minor detail change details between builds. Ex: setting the container identity with --from allows for a Debian 10 or Ubuntu 16.04 container to be built with exactly the same configuration.  
-5. **Debugging inside the container** is easier as DUE puts all the files used in container creation in the container, and they can be run individually inside to narrow down issues.  
-6. **Current user identity is preserved** by wrapping the Docker invocation (see below)
-6. It allows for **embedding default information** into the container that can be parsed at Runtime (see **Easier Runtime**, below).  
+3. **Softlink awareness** allows copying files between templates for assembly without requiring multiple copies of the file. Ex: the FRR template steals the `duebuild` script from the `debian-package` template using a softlink.
+4. **Directory inheritance** allows similar images (Fedora and RHEL) to share common files (duebuild for RPM) while being different.  
+5. **Template processing** allows for minor detail change details between builds. Ex: setting the container identity with --from allows for a Debian 10 or Ubuntu 16.04 container to be built with exactly the same configuration.  
+6. **Debugging inside the container** is easier as DUE puts all the files used in container creation in the container, and they can be run individually inside to narrow down issues.  
+7. **Current user identity is preserved** by wrapping the Docker invocation (see below)
+8. It allows for **embedding default information** into the container that can be parsed at Runtime (see **Easier Runtime**, below).  
 ...and in the end, there is a Dockerfile created that does all this, but the user doesn't have to do as much work.  
 
 ### Easier run time
