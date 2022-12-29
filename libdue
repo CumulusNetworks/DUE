@@ -1117,6 +1117,9 @@ function fxnSelectContainer()
         #
         # Run a container
         #
+        if [ "$DOCKER_APP" = "podman" ];then
+            fxnPP "Listing local images. This may take a bit with Podman..."
+        fi
         # Podman will add leading spaces that throw off start-of-line pattern matching. Trim them.
         theContainers=$( ${DOCKER_APP} images --format 'table  {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.ID}}' | sed -e 's/^[ \t]*//g' )
         if [ $? != 0 ];then
