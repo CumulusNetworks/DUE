@@ -98,7 +98,7 @@ MASTER_CHANGE_LOG = ChangeLog
 # Rsync is used in merging template directories
 # jq and curl get used to browse docker registries
 # pandoc gets used to turn markdown into man pages, and is optional
-DUE_DEPENDENCIES = git rsync jq curl 
+DUE_DEPENDENCIES = git rsync jq curl
 
 GIT_STASH_MESSAGE = "Preserving master branch"
 #
@@ -214,7 +214,7 @@ depends:
 	@echo "#                                                                    #"
 	@echo "# DUE requires the following packages:                               #"
 	@echo "#                                                                    #"
-	@echo "#   $(DUE_DEPENDENCIES) $(ADDITIONAL_PACKAGES) $(DOCKER_TO_INSTALL)                  "
+	@echo "#   $(DUE_DEPENDENCIES) $(ADDITIONAL_PACKAGES)$(DOCKER_TO_INSTALL)                  "
 	@echo "#                                                                    #"
 	@echo "######################################################################"
 	@echo ""
@@ -233,9 +233,9 @@ install: depends
 	@echo "######################################################################"
 	@echo ""
 
-	sudo cp        ./due               /usr/bin
-	sudo cp        ./libdue            /usr/lib
-	sudo cp        ./docs/due.1        /usr/share/man/man1
+	sudo cp         ./due              /usr/bin
+	sudo cp         ./libdue           /usr/lib
+	sudo cp         ./docs/due.1       /usr/share/man/man1
 
 	sudo mkdir -p  /etc/due
 	sudo cp         ./etc/due/due.conf /etc/due
