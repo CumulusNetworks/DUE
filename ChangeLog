@@ -5,7 +5,7 @@ due (4.0.0-1) unstable; urgency=medium
   * Podman - fixes for WSL, Red Hat, SUSE.
   * Documentation - updated for WSL, Red Hat, SUSE.
   * Stability - Shellcheck and bug fixes.
-  * System and user config files can customize container launches.
+  * Customize - system and user config files can customize container launches.
   * Creation - directory inheritance is used for new containers.
 
  -- Alex Doyle <adoyle@nvidia.com>  Sat, 01 Oct 2022 16:16:16 -0700
