@@ -12,9 +12,12 @@ DUE_VERSION := $(shell /bin/sh -c "grep -o 'DUE_VERSION=\".*\"' ./libdue | sed -
 DUE_ORIG_TAR=due_$(DUE_VERSION).orig.tar.gz
 
 # Branch to use when building a Debian package.
-#DEBIAN_PACKAGE_BRANCH ?= debian/master
-DEBIAN_PACKAGE_BRANCH ?= debian-test
+DEBIAN_PACKAGE_BRANCH ?= debian/master
 
+# Holds the due.spec for building RPMs
+RPM_PACKAGE_BRANCH ?= rpm/master
+
+CURRENT_GIT_BRANCH := $(git rev-parse --abbrev-ref HEAD)
 # Uncomment the following to enable more makefile output
 #export DH_VERBOSE = 1
 
@@ -134,7 +137,7 @@ else
 # Store phony build targets in a variable so they can be
 # printed as part of help.
 #
-PHONY = help docs depends install uninstall orig.tar debian-package test no-make-default copyright-check
+PHONY = help docs depends install uninstall orig.tar debian-package rpm-package test no-make-default copyright-check
 
 # ...and use them as real .PHONY targets
 .PHONY: $(PHONY)
@@ -150,8 +153,10 @@ help:
 	$(Q) echo ""
 	$(Q) echo "Dedicated User Environment make help."
 	$(Q) echo "----------------------------------------"
-	$(Q) echo " debian-package  - Build DUE as .deb file."
-	$(Q) echo "                     Requires debian-package image from ./due --create."
+	$(Q) echo " debian-package  - Build DUE as .deb package."
+	$(Q) echo "                     Requires a package-debian image (Ubuntu, Debian,etc) built from ./due --create."
+	$(Q) echo " rpm-package     - Build DUE as an .rpm package."
+	$(Q) echo "                     Requires a package-rpm image (Fedora, SUSE, etc) build from  ./due --create."
 	$(Q) echo " depends         - Install DUE's run time dependencies."
 	$(Q) echo " install         - Install DUE and dependencies."
 	$(Q) echo " orig.tar        - Create tarball for packaging."
@@ -316,6 +321,48 @@ debian-package: orig.tar
 	@echo "# Parent directory build products:"
 	@echo "# --------------------------------"
 	$(Q) ls -lrt ..
+	@echo ""
+	@echo "# Done."
+	@echo ""
+
+# Create upstream tarball and build DUE .rpm file from RPM_PACKAGE_BRANCH
+# changing branches as needed.
+rpm-package: orig.tar
+	@echo "######################################################################"
+	@echo "#                                                                    #"
+	@echo "# Building DUE RPM installer package.                                #"
+	@echo "#                                                                    #"
+	@echo "######################################################################"
+	@echo ""
+	@echo "# Stashing any local Git changes."
+#use 'git stash drop' if stashed files pile up in the debug of this again.
+	$(Q)  git stash 
+	@echo "# Checking out $(RPM_PACKAGE_BRANCH) branch." 
+	$(Q)  git checkout $(RPM_PACKAGE_BRANCH) 
+	@echo ""
+	@echo "# Creating rpmbuild directory under $(HOME)"
+	$(Q) mkdir -p $(HOME)/rpmbuild/BUILD
+	$(Q) mkdir -p $(HOME)/rpmbuild/RPMS
+	$(Q) mkdir -p $(HOME)/rpmbuild/SOURCES
+	$(Q) mkdir -p $(HOME)/rpmbuild/SPECS
+	$(Q) mkdir -p $(HOME)/rpmbuild/SRPMS
+	@echo "# Coping DUE tar file to $(HOME)/rpmbuild/SOURCES"
+	$(Q) cp ../due_*orig.tar.gz $(HOME)/rpmbuild/SOURCES
+	@echo "# Copying rpm-package/due.spec file to $(HOME)/rpmbuild/SPECS"
+	$(Q) cp rpm-package/due.spec $(HOME)/rpmbuild/SPECS/
+	@echo "# Select an RPM package build container (RedHat/SUSE, etc) to build with:"
+	$(Q) ./due --run --command rpmbuild --target noarch --bb $(HOME)/rpmbuild/SPECS/due.spec
+	@echo "# Deleting generated files."
+	$(Q) git clean -xdf
+	@echo "# Resetting $(DEBIAN_PACKAGE_BRANCH) branch."
+	@echo "# Checking out master branch." 
+	$(Q) git checkout master 
+	@echo "# Applying any local master branch stash changes with git stash pop." 
+	- $(Q) git stash pop ||:
+#Use - to ignore errors if nothing pops, and ||: to avoid warnings if nothing to pop.
+	@echo "# RPM build products:"
+	@echo "# --------------------------------"
+	$(Q) ls -lrt $(HOME)/rpmbuild/RPMS/noarch/
 	@echo ""
 	@echo "# Done."
 	@echo ""
