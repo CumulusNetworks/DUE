@@ -1,3 +1,10 @@
+due (4.0.0-1) unstable; urgency=medium
+
+  * New upstream release
+  * lintian - override repeated-path-segment warnings
+
+ -- Alex Doyle <adoyle@nvidia.com>  Sat, 31 Dec 2022 09:12:13 -0400
+
 due (3.0.0-1) unstable; urgency=medium
 
   * New upstream release
