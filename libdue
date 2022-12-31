@@ -1123,11 +1123,16 @@ function fxnSelectContainer()
         # Podman will add leading spaces that throw off start-of-line pattern matching. Trim them.
         theContainers=$( ${DOCKER_APP} images --format 'table  {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.ID}}' | sed -e 's/^[ \t]*//g' )
         if [ $? != 0 ];then
-            # As this is frequently the first access of the system's Docker daemon,
-            # Fail gracefully if it's not installed.
             echo ""
-            echo "Error: the Docker daemon not seem to be running. Is docker.io installed?  Exiting DUE."
-            echo ""
+            echo "Error: failed to list Docker images."
+
+            if [ "$DOCKER_APP" = "docker" ];then
+                # As this is frequently the first access of the system's Docker daemon,
+                # Fail gracefully if it's not installed.
+                echo ""
+                echo "Error: the Docker daemon not seem to be running. Is docker.io installed?  Exiting DUE."
+                echo ""
+            fi
             exit 1
         fi
 
