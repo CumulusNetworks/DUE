@@ -17,7 +17,11 @@ DEBIAN_PACKAGE_BRANCH ?= debian/master
 # Holds the due.spec for building RPMs
 RPM_PACKAGE_BRANCH ?= rpm/master
 
-CURRENT_GIT_BRANCH := $(git rev-parse --abbrev-ref HEAD)
+# As package builds will check out master/debian or master/rpm branches to get the
+# operating system specifics of the packaging, it is important to keep track of
+# the current branch.
+CURRENT_GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+
 # Uncomment the following to enable more makefile output
 #export DH_VERBOSE = 1
 
@@ -271,18 +275,32 @@ uninstall:
 	sudo rm -rf    /usr/share/due
 
 # Create 'upstream tarball' for use in packaging.
+# Existing tar files have to be manually deleted. A release build requires using the 
+# same original tar file for .deb and .rpm packaging, so it should not be recreated
+# between the two builds.
 orig.tar:
-	@echo "######################################################################"
-	@echo "#                                                                    #"
-	@echo "# Building DUE source tar file: $(DUE_ORIG_TAR)                #"
-	@echo "#                                                                    #"
-	@echo "######################################################################"
-	@echo ""
-	$(Q) git archive --format=tar.gz --prefix=due_$(DUE_VERSION)/  -o ../$(DUE_ORIG_TAR)  master
-	@echo "  Produced tar file [ $(DUE_ORIG_TAR) ]in parent directory."
-	$(Q) ls -lrt ../*.gz
-	@echo ""
-	$(Q) touch $@
+		@echo "######################################################################"
+		@echo "#                                                                    #"
+		@echo "# Building DUE source tar file: $(DUE_ORIG_TAR)                #"
+		@echo "#                                                                    #"
+		@echo "######################################################################"
+		@echo ""
+
+# Reminder. ifneq has to be at the same indentation as the target.
+# Otherwise you get : /bin/sh: 1: Syntax error: word unexpected (expecting ")")
+ifneq ("$(wildcard ../$(DUE_ORIG_TAR))","")
+		@echo "$(DUE_ORIG_TAR) exists."
+		$(Q) ls -lrt ../*.gz
+		@echo ""
+		@echo "Skipping tar file creation."
+		@echo ""
+else
+		$(Q) git archive --format=tar.gz --prefix=due_$(DUE_VERSION)/  -o ../$(DUE_ORIG_TAR)  master
+		@echo "Produced tar file [ $(DUE_ORIG_TAR) ] in [ $(shell dirname $$(pwd)) ] from Git branch [ $(CURRENT_GIT_BRANCH) ]"
+		$(Q) ls -lrt ../*.gz
+		@echo ""
+endif
+#	$(Q) touch $@
 
 
 # Create upstream tarball and build DUE .deb file from DEBIAN_PACKAGE_BRANCH
@@ -305,7 +323,8 @@ debian-package: orig.tar
 # contains snapshots of the versions of DUE files that have been
 # upstreamed, and will only be updated during upstreaming efforts.
 #	@echo "# Extracting tarball."
-	$(Q) tar -xvf ../due_*orig.tar.gz --strip-components=1
+	$(Q) tar -xvf ../$(DUE_ORIG_TAR) --strip-components=1
+	@echo ""
 	@echo "# Select a Debian package build container."
 	$(Q) ./due --duebuild --build-command dpkg-buildpackage -us -uc
 	@echo ""
@@ -318,7 +337,7 @@ debian-package: orig.tar
 	@echo "# Applying any local master branch stash changes with git stash pop."
 #Use - to ignore errors if nothing pops, and ||: to avoid warnings if nothing to pop.
 	- $(Q) git stash pop ||:
-	@echo "# Parent directory build products:"
+	@echo "# Build products in $(shell dirname $$(pwd)):"
 	@echo "# --------------------------------"
 	$(Q) ls -lrt ..
 	@echo ""
@@ -346,15 +365,16 @@ rpm-package: orig.tar
 	$(Q) mkdir -p $(HOME)/rpmbuild/SOURCES
 	$(Q) mkdir -p $(HOME)/rpmbuild/SPECS
 	$(Q) mkdir -p $(HOME)/rpmbuild/SRPMS
-	@echo "# Coping DUE tar file to $(HOME)/rpmbuild/SOURCES"
-	$(Q) cp ../due_*orig.tar.gz $(HOME)/rpmbuild/SOURCES
+	@echo "# Copying DUE tar file to $(HOME)/rpmbuild/SOURCES"
+	$(Q) cp ../$(DUE_ORIG_TAR) $(HOME)/rpmbuild/SOURCES
 	@echo "# Copying rpm-package/due.spec file to $(HOME)/rpmbuild/SPECS"
 	$(Q) cp rpm-package/due.spec $(HOME)/rpmbuild/SPECS/
-	@echo "# Select an RPM package build container (RedHat/SUSE, etc) to build with:"
+	@echo ""
+	@echo "# Select an RPM package build container (Fedora/RHEL/SUSE, etc) to build with:"
 	$(Q) ./due --run --command rpmbuild --target noarch --bb $(HOME)/rpmbuild/SPECS/due.spec
-	@echo "# Deleting generated files."
+	@echo "# Deleting generated and copied in files."
 	$(Q) git clean -xdf
-	@echo "# Resetting $(DEBIAN_PACKAGE_BRANCH) branch."
+	@echo "# Resetting $(RPM_PACKAGE_BRANCH) branch."
 	@echo "# Checking out master branch." 
 	$(Q) git checkout master 
 	@echo "# Applying any local master branch stash changes with git stash pop." 
