@@ -1,11 +1,11 @@
 # Dedicated User Environment (DUE)
 Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
-DUE is a wrapper for Docker to create easy to use build environments.  
+DUE is a wrapper for Docker and Podman to create user friendly Linux build environments.  
 
 ## The TL:DR
 
-Start with a Docker image for your desired Debian based operating system  
+Start with a Docker image for your target Linux based operating system  
 **+**  
 DUE configuration utilities  
 **+**  
@@ -14,7 +14,7 @@ configuration for your build target
 **=**  DUE image.  
 
 The due launcher application will run this image with defaults specified by the image itself, so that
-building, regardless of the target's architecture or operating system, can be as easy as:  
+building your software, regardless of the target's architecture or operating system, can be as easy as:  
 
 ### `due --build`  
 
@@ -25,7 +25,7 @@ to jump right in with the comprehensive command line help and examples.
 
 
 ## The elevator pitch
-Need to build for Debian 8 armel, but only have an x86 host with Ubuntu 18.04?  
+Need to build for Debian 8 armel, but only have an x86 host with Fedora 36?  
 DUE supports building for **different architectures** and **OS versions**.
 
 Tired of users missing a step in configuring the build dependencies for your software?
@@ -59,9 +59,9 @@ and image build testing for what is essentially a tiny operating system.
 I was already using Docker for Debian package builds, and a Dockerfile build environment had already been created for ONIE,
 which left me wondering why there wasn't a set "template" that could be used to set up dedicated build environments?
 Especially for distributed  open source projects where developers can't be sharing the same hardware,
-but could use a common development environment for debug.
+but could use a common development environment for debug. This approach turned out to be wildly successful in reducing support requests and seamlessly providing backwards compatibility for the ONIE code base.
+After Nvidia acquired Cumulus, DUE was upgraded to provide kernel build environments for different releases of Red Hat and SUSE Linux distributions, so the latest release of DUE supports both and is now installable as an .rpm file in addition to a .deb.  
 
-Incidentally, this history explains why most of the starter image templates have a networking focus...  
 
 # Design
 
@@ -73,7 +73,7 @@ Whoever wrote the software I'm trying to build has already solved the
 problem of setting up things to build - why have developers solve the problem again?
 
 2. Easy setup leads to **identical build environments** for debugging build issues.
-There is no more comparing versions of packages installed between systems because everybody is using the same environment.
+There is no more comparing versions of packages installed between systems to debug build problems because everybody is using the same environment.
 
 3.  **Preserve build environments.** I hate it when a software update breaks my ability to build something.
 Changes are almost always well intentioned, but mid-development is frequently not the time to tackle compatibility issues.
@@ -87,7 +87,7 @@ that I'm not.
 
 5.  I want **builds to "just work"** without a 'but'. If I'm currently building for Debian 10 and need to build for
 Ubuntu 16, it's _almost_ the same thing, 'but' package versions are different.
-Well, give me an environment with the different versions and I'll build there.
+DUE can provide build environments that behave the same way, regardless of target or host software versions.
 
 6.  It has to be **easy to use**, because I'll be encouraging people with priorities other than designing build
 environments to use it, and, apart from being friendly, the less the end user has to do, the less support I'll have to do.
@@ -101,7 +101,7 @@ resembles the commands the developers would want to run anyway.
 will use so that bugs caused by environmental discrepancies can be avoided.
 This is a variant of #2, but I think it's significant enough to warrant its own mention.
 
-10.  The framework for this should be **commonly available** so that developers can distribute their own templates and know end users
+10.  The framework for this should be **commonly available** so that developers can distribute their own templates and know that end users
 can easily obtain the framework to turn those templates into build environments.
 
 # Getting started
@@ -110,10 +110,10 @@ See  **docs/GettingStarted.md** for instructions to build and run containers wit
 # Further reading
 See **docs/Troubleshooting.md** and **docs/FAQ.md**
 
-# Build environment support.
+# Build environment support through templates
 
 Currently DUE supports the following templates which demonstrate different image build configurations.
-See their README.md files under the templates/ directory, or run `./due --create --help-examples` for a quick summary.
+See their README.md files under the `templates/` directory, or run `./due --create --help-examples` for a quick summary.
 
 ## example
 
@@ -123,7 +123,7 @@ templates, or a useful test configuration for debugging common image creation is
 
 ## debian-package
 
-As the name implies, this template contains configuration for building Debian packages.
+As the name implies, this template contains configuration for building Debian packages. 
 The user specifies the Debian based release (Debian 9, Ubuntu 18.04, etc ),
 and occasionally architecture ( arm32v5/debian:buster ), to create a directory with a Dockerfile and some additional files.
 One of those additional files is a default build script, `duebuild`, which will handle resolving build dependencies,
@@ -149,11 +149,11 @@ from the `debian-package` template, should you be building FRR for a Debian dist
 
 ## redhat
 
-This covers support for RPM package and kernel builds for Fedora and Red Hat Enterprise Linux, making it easy to build for any version or architecture of those operating systems.
+This includes the `fedora-package`, and `rhel-package` templates which support RPM package and kernel builds for Fedora and Red Hat Enterprise Linux, respectively, providing an easy build experience for any version or architecture of those operating systems.
   
 ## suse
 
-This covers support for OpenSUSE and SLES, which are just different enough from Red Hat to require their own customization to support all of DUE's features.
+This includes the `opensuse-package` and `sles-package` templates which support RPM package and kernel buildsfor OpenSUSE and SLES, which are just different enough from Red Hat to require their own customization to support all of DUE's features.
 
 
 ## Additional Base Images
