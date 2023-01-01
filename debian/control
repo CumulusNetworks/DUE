@@ -6,7 +6,7 @@ Priority: optional
 Rules-Requires-Root: no
 Build-Depends: debhelper-compat (= 13),
 	       git
-Standards-Version: 4.6.0
+Standards-Version: 4.6.1.0
 Homepage: https://github.com/CumulusNetworks/DUE
 Vcs-Browser: https://github.com/CumulusNetworks/DUE/tree/debian/master
 Vcs-Git: https://github.com/CumulusNetworks/DUE.git -b debian/master
