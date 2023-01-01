@@ -147,6 +147,15 @@ an APT repository key and additional sources.list entry to pull build dependenci
 from the FRR package repository. It also uses a relative path link to copy the `duebuild` script
 from the `debian-package` template, should you be building FRR for a Debian distribution.
 
+## redhat
+
+This covers support for RPM package and kernel builds for Fedora and Red Hat Enterprise Linux, making it easy to build for any version or architecture of those operating systems.
+  
+## suse
+
+This covers support for OpenSUSE and SLES, which are just different enough from Red Hat to require their own customization to support all of DUE's features.
+
+
 ## Additional Base Images
 ...can be found at [https://hub.docker.com](https://hub.docker.com/)
 
