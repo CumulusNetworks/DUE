@@ -80,6 +80,9 @@ fxnConfigureRPM()
 # Debian uses APT and .deb
 fxnConfigureDebian()
 {
+    # For older distributions, key expired errors like:
+    # W: GPG error: http://deb.debian.org jessie-updates InRelease: The following signatures were invalid: KEYEXPIRED 1668891673
+    # may be seen. However, apt does not error out on this, so continue.
     apt-get update
     if [ $? != 0 ];then
         echo "$0 ERROR! Failed apt-get update. Exiting."
@@ -90,6 +93,7 @@ fxnConfigureDebian()
     # APT install just these packages.
     # Don't ask questions.
     # Don't get clever.
+    # Use --force-yes to allow older distributions with expired keys to install.
     #
     DEBIAN_FRONTEND=noninteractive \
                    apt-get install \
@@ -107,6 +111,8 @@ fxnConfigureDebian()
     # Check for any local software to install.
     # This code is responsible for being smart enough to handle
     # the format of whatever is found.
+    #  --force-yes is used with apt to support expired distributions,
+    #  and to install what the user has explicitly provided in pre-install-local
     #
     if [ -d /due-configuration/pre-install-local ];then
         echo "Pre installing local software:"
@@ -115,7 +121,7 @@ fxnConfigureDebian()
         # Install packages (expect dependency errors)
         sudo dpkg -i *.deb
         # Resolve dependency errors with --fix-broken
-        apt-get install --assume-yes --fix-broken || exit 1
+        apt-get install --assume-yes --force-yes --fix-broken || exit 1
         echo "Pre installing local software: DONE"
     fi
 
@@ -137,6 +143,8 @@ fi
 # These have to come from the container's package repository
 # The important package here is gnupg, as it is needed for
 # any package repository key additions
+# faketime allows developers to hack around expired keys for older distributions.
+# Ex: sudo faketime '2018-01-01 00:00:01' apt-get update
 
 BASE_PACKAGES="\
     wget \
@@ -144,6 +152,7 @@ BASE_PACKAGES="\
     sudo \
     procps \
     findutils \
+    faketime \
     gnupg "
 
 

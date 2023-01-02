@@ -105,6 +105,7 @@ function fxnHelp()
     echo "   --use-directory <dir>       cd to <dir> before trying to build."
     echo "   --prebuild-script <scr>     Run script at container path <scr> before starting build. Pass 'NONE' to ignore."
     echo "   --script-debug              Enable -x if passed as first argument."
+    echo "   --force-apt                 Apply Apt's --force-yes to override key expired/authentication errors."
     echo ""
     echo "  Debian package build options (use before --cbuild):"
     echo "   --skip-tests                Define DEB_BUILD_OPTIONS=nocheck before build."
@@ -198,6 +199,9 @@ function fxnHelpExamples()
     echo
     echo "  Build source, arch specific and type 'all' (default -uc -us)"
     echo "   $0 --cbuild "
+    echo ""
+    echo "  Force APT to ignore safeguards by applying '--force-yes' when installing dependencies."
+    echo "   $0 --force-apt --cbuild "
     echo ""
     echo "  Insert a string into the version"
     echo "   $0 --dev-version ~1234 --cbuild"
@@ -421,13 +425,14 @@ function fxnIsolatePackageDependencies()
         echo " # Attempting install of [$pkg]"
         echo " #"
         # 2 quiets to kill output
-        sudo apt-get install --quiet --quiet --assume-yes --no-install-recommends "$pkg"
+        # Use --force-yes so older versions of apt will auto-install
+        sudo apt-get install --quiet --quiet --assume-yes $APT_FORCE_YES --no-install-recommends "$pkg"
         if [ "$?" = "0" ];then
             echo "Installed [ $pkg ]"
         else
             # Run a loud install to highlight the failure
             fxnPP "Failed  [ $pkg ]. Retrying the install to get the errors."
-            sudo apt-get install --assume-yes --no-install-recommends "$pkg"
+            sudo apt-get install --assume-yes $APT_FORCE_YES --no-install-recommends "$pkg"
         fi
     done
 
@@ -509,19 +514,19 @@ function fxnDoDebianBuild()
     sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade \
          -o Dpkg::Options::="--force-confdef" \
          -o Dpkg::Options::="--force-confold" \
-         --assume-yes || fxnWARN "apt-get upgrade failed. Continuing with local index."
+         --assume-yes $APT_FORCE_YES || fxnWARN "apt-get upgrade failed. Continuing with local index."
 
     # Make sure the environment has the tools to configure the environment.
     if [ ! -e /usr/bin/mk-build-deps ];then
         fxnPP "Failed to find mk-build-deps. Installing devscripts and equivs."
-        fxnEC sudo DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes equivs devscripts || exit 1
+        fxnEC sudo DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes $APT_FORCE_YES equivs devscripts || exit 1
     fi
 
 
     # Create package with all needed build dependencies
     # install it
     # remove the .deb after to keep git from FREAKING OUT!
-    sudo mk-build-deps --install --remove ./debian/control --tool "apt-get -y"
+    sudo mk-build-deps --install --remove ./debian/control --tool "apt-get --assume-yes $APT_FORCE_YES"
     errorCode="$?"
     echo ""
     if [ "$errorCode" != "0" ];then
@@ -746,7 +751,6 @@ BUILD_ATTEMPTS="1"
 # Default to build after dev version string application
 JUST_DEV_VERSION="FALSE"
 
-# Default to this many build threads
 
 
 # If nproc found, default to ALL THE CORES!
@@ -828,6 +832,16 @@ do
             # Allow stacking multiple sources.list files to copy in.
             ADD_SOURCES_LIST+=" $2 "
             shift
+            ;;
+
+        --force-apt )
+            # Useful for old distributions that throw expired key errors.
+            # NOTE:  --force-yes can apply the following:
+            #  --allow-unauthenticated
+            #  --allow-downgrades
+            #  --allow-remove-essential
+            # --allow-change-held-packages
+            APT_FORCE_YES=" --force-yes "
             ;;
 
         --use-local-repo )
@@ -1190,9 +1204,9 @@ if [ "$INSTALL_DEBS_DIR" != "" ];then
         sudo DEBIAN_FRONTEND=noninteractive dpkg --force-confnew -i -- *.deb
         fxnPP "Ignore any install dependency issues from the above. Resolving with [ apt install -y -f ]"
 
-        #       sudo  apt-get install -y -f -o Dpkg::Options::="--force-confdef" || exit 1
+        # sudo  apt-get install -y -f -o Dpkg::Options::="--force-confdef" || exit 1
 
-        fxnEC sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -f || exit 1
+        fxnEC sudo DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes -f || exit 1
 
     else
         fxnPP "No *.debs in [ $INSTALL_DEBS_DIR ]. Continuing..."
@@ -1255,7 +1269,7 @@ if [ "$DO_BUILD" = "TRUE" ];then
         buildDir=$( ls -1rd -- */ | grep "$packageName" | tail -n 1)
 
         if [ ! -e "$buildDir" ];then
-            fxnERR "Failed to find expected source directory [ $buildDir ] in [ $(pwd) ]. Exiting."         
+            fxnERR "Failed to find expected source directory [ $buildDir ] in [ $(pwd) ]. Exiting."
             exit 1
         fi
 
