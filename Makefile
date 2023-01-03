@@ -304,7 +304,8 @@ endif
 
 
 # Create upstream tarball and build DUE .deb file from DEBIAN_PACKAGE_BRANCH
-# changing branches as needed.
+#  To build the debian-test branch:
+#    make debian-package DEBIAN_PACKAGE_BRANCH=debian-test
 debian-package: orig.tar
 	@echo "######################################################################"
 	@echo "#                                                                    #"
@@ -324,25 +325,48 @@ debian-package: orig.tar
 # upstreamed, and will only be updated during upstreaming efforts.
 #	@echo "# Extracting tarball."
 	$(Q) tar -xvf ../$(DUE_ORIG_TAR) --strip-components=1
+ifneq ($(wildcard ../due_$(DUE_VERSION)*_all.deb),)
+	@echo " Previous due_$(DUE_VERSION)*_all.deb exists. Removing"
+	$(shell rm ../due_$(DUE_VERSION)*_all.deb )
 	@echo ""
-	@echo "# Select a Debian package build container."
-	$(Q) ./due --duebuild --build-command dpkg-buildpackage -us -uc
+endif
 	@echo ""
-	@echo "# Deleting files extracted from tar archive."
+	@echo "# Select a Debian package build container to build in:"
+# The true here forces the Makefile to keep running so the user isn't left with
+# a build that has changes on a different branch.
+# Remove the ; true to debug build behavior.
+	$(Q) ./due --duebuild --build-command dpkg-buildpackage -us -uc ; true
+	@echo ""
+	@echo "# Deleting files extracted from tar archive with: [ git clean -xdf ]"
 	$(Q) git clean -xdf
-	@echo "# Resetting $(DEBIAN_PACKAGE_BRANCH) branch."
+	@echo ""
+	@echo "# Resetting $(DEBIAN_PACKAGE_BRANCH) branch with: [ git reset --hard ]"
 	$(Q) git reset --hard
-	@echo "# Checking out master branch."
-	$(Q) git checkout master
-	@echo "# Applying any local master branch stash changes with git stash pop."
+	@echo ""
+	@echo "# Returning to $(CURRENT_GIT_BRANCH) with: [ git checkout $(CURRENT_GIT_BRANCH) ]"
+	$(Q) git checkout $(CURRENT_GIT_BRANCH)
+	@echo ""
+	@echo "# Applying any local master branch stash changes with: [ git stash pop ]"
 #Use - to ignore errors if nothing pops, and ||: to avoid warnings if nothing to pop.
 	- $(Q) git stash pop ||:
-	@echo "# Build products in $(shell dirname $$(pwd)):"
+ifneq ($(wildcard ../due_$(DUE_VERSION)*_all.deb),)
+	@echo "# New .deb build products are in $(shell dirname $$(pwd)):"
 	@echo "# --------------------------------"
-	$(Q) ls -lrt ..
+	$(Q) ls -lrt ../due_*
 	@echo ""
 	@echo "# Done."
 	@echo ""
+else
+	pwd
+	@echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+	@echo "!                                                                    !"
+	@echo "! Build FAILED. To examine the failure on the $(DEBIAN_PACKAGE_BRANCH) branch   ! "
+	@echo "!  remove the '; true' from the Makefile's build line.               !"
+	@echo "!                                                                    !"
+	@echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+	@echo ""
+
+endif
 
 # Create upstream tarball and build DUE .rpm file from RPM_PACKAGE_BRANCH
 # changing branches as needed.
@@ -369,24 +393,44 @@ rpm-package: orig.tar
 	$(Q) cp ../$(DUE_ORIG_TAR) $(HOME)/rpmbuild/SOURCES
 	@echo "# Copying rpm-package/due.spec file to $(HOME)/rpmbuild/SPECS"
 	$(Q) cp rpm-package/due.spec $(HOME)/rpmbuild/SPECS/
+ifneq ($(wildcard ../due_$(DUE_VERSION)*.noarch.rpm),)
+	@echo " Previous due_$(DUE_VERSION)*.noarch.rpm exists. Removing"
+	$(shell rm ../due_$(DUE_VERSION)*.noarch.rpm )
 	@echo ""
-	@echo "# Select an RPM package build container (Fedora/RHEL/SUSE, etc) to build with:"
-	$(Q) ./due --run --command rpmbuild --target noarch --bb $(HOME)/rpmbuild/SPECS/due.spec
-	@echo "# Deleting generated and copied in files."
+endif
+	@echo ""
+	@echo "# Select an RPM package build container (Fedora/RHEL/SUSE, etc) to build in:"
+	$(Q) ./due --run --command rpmbuild --target noarch --bb $(HOME)/rpmbuild/SPECS/due.spec ; true
+	@echo ""
+	@echo "# Deleting generated and copied in files with: [ git clean -xdf ]"
 	$(Q) git clean -xdf
-	@echo "# Resetting $(RPM_PACKAGE_BRANCH) branch."
-	@echo "# Checking out master branch." 
-	$(Q) git checkout master 
-	@echo "# Applying any local master branch stash changes with git stash pop." 
-	- $(Q) git stash pop ||:
+	@echo ""
+	@echo "# Resetting $(RPM_PACKAGE_BRANCH) branch with: [ git reset --hard ]"
+	$(Q) git reset --hard
+	@echo ""
+	@echo "# Checking out $(CURRENT_GIT_BRANCH) branch with: [ git checkout $(CURRENT_GIT_BRANCH) ]"
+	$(Q) git checkout $(CURRENT_GIT_BRANCH)
+	@echo ""
+	@echo "# Applying any local $(CURRENT_GIT_BRANCH) branch stash changes with: [ git stash pop ]"
 #Use - to ignore errors if nothing pops, and ||: to avoid warnings if nothing to pop.
-	@echo "# RPM build products:"
+	- $(Q) git stash pop ||:
+	@echo ""
+ifneq ($(wildcard $(HOME)/rpmbuild/RPMS/noarch/due-$(DUE_VERSION)*.noarch.rpm),)
+	@echo "# RPM build products are in $(HOME)/rpmbuild/RPMS/noarch/"
 	@echo "# --------------------------------"
 	$(Q) ls -lrt $(HOME)/rpmbuild/RPMS/noarch/
 	@echo ""
 	@echo "# Done."
 	@echo ""
-
+else
+	@echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+	@echo "!                                                                    !"
+	@echo "! Build FAILED. To examine the failure on the $(RPM_PACKAGE_BRANCH) branch      !"
+	@echo "!  remove the '; true' from the Makefile's build line.               !"
+	@echo "!                                                                    !"
+	@echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+	@echo ""
+endif
 
 debian: orig.tar
 	@ echo "Building DUE Debian installer package."
