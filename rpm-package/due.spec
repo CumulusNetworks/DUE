@@ -63,13 +63,15 @@ mkdir -p %{buildroot}/usr/share/man/man1/due.1
 mv %{buildroot}/usr/share/docs/due/due.1  %{buildroot}/usr/share/man/man1/due.1
 # etc conf
 mkdir -p %{buildroot}/etc/due/
-cp %{_builddir}/%{name}-%{version}/etc/due/due.conf %{buildroot}/usr/share/docs/due/
+cp %{_builddir}/%{name}-%{version}/etc/due/due.conf %{buildroot}/etc/due/due.conf
+
 
 
 #tar -xvf %{_sourcedir}/due_4.0.0.orig.tar.gz --strip-components=1 -C %{buildroot}
 # %%make_install
 
 %files
+/etc/due/due.conf
 /usr/bin/due
 /usr/lib/libdue
 /usr/share/due/templates/README.md
