@@ -423,6 +423,11 @@ ifneq ($(wildcard $(HOME)/rpmbuild/RPMS/noarch/due-$(DUE_VERSION)*.noarch.rpm),)
 	@echo "# Done."
 	@echo ""
 else
+# If ~/rpmbuild has NOT already been used for a build, this may print.
+# Try building a second time. In debugging this isue, the wildcard for the RPM
+# _should_ work, and _does_ work on subsequent builds because the RPM _is_ there
+# on a good build and the wildcard matches it.
+# So...yeah.
 	@echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 	@echo "!                                                                    !"
 	@echo "! Build FAILED. To examine the failure on the $(RPM_PACKAGE_BRANCH) branch      !"
