@@ -1699,7 +1699,8 @@ function fxnDoLogin()
         fi
 
         # Determine platform type to pass along so that warnings aren't thrown when an amd64 system runs arm64 code...
-        platformType=$( ${DOCKER_APP} inspect -f '{{.Architecture}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}"  2>/dev/null )
+        # And specify the OS/Architecture to avoid warnings about --platform type not matching contianer.
+        platformType=$( ${DOCKER_APP} inspect -f '{{.Os}}/{{.Architecture}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}"  2>/dev/null )
         if [ "$platformType" != "" ];then
             # Only pass this if a value was returned.
             # It might not be on a partially built container being debugged.
