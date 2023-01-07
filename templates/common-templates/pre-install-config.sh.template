@@ -100,6 +100,7 @@ fxnConfigureDebian()
                    --assume-yes \
                    --force-yes \
                    --no-install-recommends \
+                   $USEFUL_PACKAGES \
                    $BASE_PACKAGES
 
     if [ $? != 0 ];then
@@ -143,8 +144,6 @@ fi
 # These have to come from the container's package repository
 # The important package here is gnupg, as it is needed for
 # any package repository key additions
-# faketime allows developers to hack around expired keys for older distributions.
-# Ex: sudo faketime '2018-01-01 00:00:01' apt-get update
 
 BASE_PACKAGES="\
     wget \
@@ -152,9 +151,12 @@ BASE_PACKAGES="\
     sudo \
     procps \
     findutils \
-    faketime \
     gnupg "
 
+# faketime allows developers to hack around expired keys for older distributions, like Debian 8
+# ...but it may not be available in all distributions.
+# Example of use:  sudo faketime '2018-01-01 00:00:01' apt-get update
+USEFUL_PACKAGES="faketime "
 
 # Pull this in to set variables like ID and NAME
 . /etc/os-release
