@@ -123,6 +123,10 @@ function fxnHelp()
     echo "                                If <repo> starts with a '/' it will be treated as a container-relative"
     echo "                                path for the location of the repository. Otherwise it defaults to the"
     echo "                                directory above the build area."
+    echo " Setup commands:"
+    echo "   --download-src    <deb>      Get a source .deb"
+    echo ""
+    echo "   --lookup         <file>     On a registered system, find the .deb for a file."
     echo ""
     echo "  More information:"
     echo "   --quiet                    Suppress output."
@@ -733,6 +737,42 @@ function fxnResetGit()
     return $returnCode
 }
 
+#
+# Download the source .deb
+#
+function fxnDownloadSourceDeb()
+{
+    local theSrcDeb="$1"
+    local srcListFileName='duebuild-deb-sources.list'
+    local activeDebRepos=$( grep -nr 'deb-src' /etc/apt | grep -v '#' )
+    if [ "$activeDebRepos" = "" ];then
+        #
+        # Most containers do not have deb-src entries, so copy the existing deb
+        # entries and paste them as deb-src in a file under sources.list.d to
+        # leave the original sources.list unchanged.
+        # Ignore any commented out deb-src entries.
+        echo ""
+        echo " Adding deb-src entries from existing /etc/apt/sources.list entries."
+        echo ""
+        cat /etc/apt/sources.list \
+            | grep -v '#' \
+            | sed -e 's/deb http/deb-src http/g' \
+                  > /tmp/1
+        echo ""
+        echo " Creating a file of deb-src URLS under /etc/apt/sources.list.d/$srcListFileName"
+        echo ""
+        fxnEC sudo mv /tmp/1 /etc/apt/sources.list.d/$srcListFileName || exit 1
+    else
+        echo ""
+        echo " deb-src urls exist under /etc/apt/sources.list*. Continuing."
+        echo ""
+    fi
+
+    # Update in case anything under /etc/apt/sources.list* was modified.
+    fxnEC sudo apt-get update || exit 1
+    fxnEC apt-get source $theSrcDeb || exit 1
+}
+
 
 #
 # set any default variables
@@ -1010,6 +1050,23 @@ do
             ;;
 
 
+        --download-src )
+            # Get the source package for a .deb
+            DOWNLOAD_SRC_DEB="$2"
+            if [ "$DOWNLOAD_SRC_DEB" = "" ];then
+                echo "--download-src requires the name of a .deb to download source for. Exiting."
+                exit 1
+            fi
+            shift
+            ;;
+
+        --lookup )
+            # look up what package provides file $2
+            dpkg -S "$2"
+            shift
+            exit
+            ;;
+
         --version )
             # Track version for upgrade purposes
             echo "$SCRIPT_VERSION"
@@ -1072,6 +1129,12 @@ if [ "$version" != "" ];then
     # Jessie apt has a bug where it tries to close 100K plus files in the shell.
     # Set bash ulimit to max at 10000 to speed this up.
     ulimit -n 10000
+fi
+
+if [ "$DOWNLOAD_SRC_DEB" != "" ];then
+    # Get the source deb
+    fxnDownloadSourceDeb "$DOWNLOAD_SRC_DEB"
+    exit
 fi
 
 # Arguments passed to the dpkg build. This gets

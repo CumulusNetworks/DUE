@@ -60,6 +60,10 @@ To print the duebuild help for any build container without logging in to it, run
                                 If (repo) starts with a '/' it will be treated as a container-relative  
                                 path for the location of the repository. Otherwise it defaults to the  
                                 directory above the build area.  
+  
+ **Setup commands:**  
+   `--download-src    <deb>`     Get a source .deb  
+   `--lookup         <file>`     On a registered system, find the .deb for a file.  
 
   
   **More information:**  
