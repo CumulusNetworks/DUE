@@ -1,4 +1,5 @@
 # Dedicated User Environment (DUE)
+<img src="./docs/DUELogo.jpg" alt="projectlogo" width="200"/>  
 Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 DUE is a wrapper for Docker and Podman to create user friendly Linux build environments.  

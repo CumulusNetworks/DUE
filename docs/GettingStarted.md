@@ -1,4 +1,5 @@
 # Getting Started
+<img src="DUELogo.jpg" alt="projectlogo" width="200"/>  
 Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 **Formatting Conventions**  
