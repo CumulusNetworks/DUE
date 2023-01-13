@@ -1,4 +1,6 @@
-# example template
+# Example template
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
+
 Use this as a starting point for any container development. Replace the EXAMPLE strings and update text as necessary
 
 This image is configured to EXAMPLE
@@ -8,9 +10,7 @@ The use of debian:10 here is arbitrary. Any Debian based operating system Docker
 **NOTE** DUE parses these README.md files looking for lines that start with Create to use in the command line help.  
 You'll want to make sure your template follows this convention.
 
-Create defafult Red Hat EXAMPLE with: ./due --create --from fedora:33 --description "Fedora 33 example" --name example-fedora-33 --prompt Ex-fedora-33 --tag example-fedora-33 --use-template example
-
-Create default Debian EXAMPLE with: ./due --create --from debian:10 --description "Debian 10 example" --name example-debian-10 --prompt Ex --tag example-debian-10 --use-template example
+Create default Debian EXAMPLE with: ./due --create --platform linux/amd64    --name example-debian-10       --prompt ExD10        --tag example-debian-10       --use-template example           --from debian:10                             --description "Debian 10 example"  
 
 ### Explanation of the Debian example  above:
   * Use a Debian 10 image

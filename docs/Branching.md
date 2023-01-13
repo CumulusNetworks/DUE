@@ -1,4 +1,5 @@
 # A brief explanation of branches, through change propagation.
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 # master
  This is the upstream - changes are introduced here, and it has some ability to install DUE using the Makefile.

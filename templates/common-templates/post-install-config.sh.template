@@ -1,8 +1,11 @@
 #!/bin/bash
-# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0  
+# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 # SCRIPT_PURPOSE: Run configuration inside the docker container, after package install.
+# NOTE: this script will normally be overridden by one in the container template directory.
+
 # Bash should be installed at this point.
 
+# Copyright 2021,2022 NVIDIA Corporation.  All rights reserved.
 # Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT

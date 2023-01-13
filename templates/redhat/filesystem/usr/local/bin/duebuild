@@ -1,0 +1,979 @@
+#!/bin/bash
+# SCRIPT_PURPOSE: Build abstratction tool for RPM packages.
+# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
+
+# Copyright 2021,2022 NVIDIA Corporation.  All rights reserved.
+# Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
+#
+#  SPDX-License-Identifier:     MIT
+
+# Have last command in a pipe to fail return error code.
+# This prevents use of tee from hiding fails.
+set -o pipefail
+
+# Set top level directory to be where we are now
+if [ "$gTOP_DIR" = "" ];then
+    gTOP_DIR=$(pwd)
+fi
+
+# if command line args for later reference
+INVOKED_WITH="$*"
+
+# Hold any build errors. They can be masked by git reset
+RETURN_CODE="0"
+
+# if this is set as the first argument, enable debug trace
+if [ "$1" = "--script-debug" ];then
+    set -x
+    echo "$0 Enabling --script-debug "
+fi
+
+# Somewhat formatted status messages
+function fxnPP()
+{
+    echo "== $*"
+}
+
+function fxnWARN()
+{
+    echo ""
+    echo "## Warning:  $*"
+    echo ""
+}
+# A universal error checking function. Invoke as:
+# fxnEC <command line> || exit 1
+# Example:  fxnEC cp ./foo /home/bar || exit 1
+function fxnEC ()
+{
+
+    # actually run the command
+    "$@"
+
+    # save the status so it doesn't get overwritten
+    status=$?
+    # Print calling chain (BASH_SOURCE) and lines called from (BASH_LINENO) for better debug
+    if [ $status -ne 0 ];then
+        #echo "ERROR [ $status ] in ${BASH_SOURCE[1]##*/}, line #${BASH_LINENO[0]}, calls [ ${BASH_LINENO[*]} ] command: \"$*\"" 1>&2
+        echo "ERROR [ $status ] in $(caller 0), calls [ ${BASH_LINENO[*]} ] command: \"$*\"" 1>&2
+    fi
+
+    return $status
+}
+
+# Standardized error messaging
+# Line numbers are more of a suggestion than a rule
+function fxnERR
+{
+    # Print script name, and line original macro was on.
+    printf "ERROR at $(caller 0)  :  %s\\n" "$1"
+    echo ""
+}
+
+# Print messages with an offset for improved visibility.
+# MSG_SPACER can be used as needed for
+MSG_SPACER=" ==== "
+function fxnMSG ()
+{
+    echo "$MSG_SPACER"
+    if [ "$1" = "" ];then
+        return 0
+    fi
+    echo "${MSG_SPACER}$1 "
+    echo "$MSG_SPACER"
+
+}
+
+function fxnHelp()
+{
+    echo "Usage  : $(basename "$0"): [options] [--cbuild | --default | --build-command <args> ]"
+    echo "  Script to support building for the container's target."
+    echo ""
+    echo "  Build targets:"
+    echo "   -c|--cbuild      <args>     Default container build command."
+    echo "                                <args> is a list of additional build commands. Must be last argument."
+    echo "   --default                   Try to build with default settings."
+    echo "   --build-command  <args>     Do environment prep and run <args>. Must be last argument on the line."
+    echo "   --help-build-targets        More detailed description of the above options."
+    echo ""
+    echo "  Build options:"
+    echo "   -j|--jobs           <#>     Number of parallel builds to use. Defaults to the number of CPU cores."
+    echo "   --use-extracted             Use build area created by --extract-source, below."
+    echo "   --use-directory   <dir>     cd to <dir> before trying to build."
+    echo "   --prebuild-script <scr>     Run script at container path <scr> before starting build. Pass 'NONE' to ignore."
+    echo "   --script-debug              Enable -x if passed as first argument."
+    echo ""
+    echo "  Kernel patching:"
+    echo "   --extract-source  <rpm src> Extract files in to ~/rpmbuild. Excecute the .spec 'prep' phase."
+    echo "   --patch-dir <dir>           Apply patches from <dir>"
+    echo "   --unpatch <dir>             Revert prior patch operation. Requires dir of patches to get file names to remove."
+    echo ""
+    echo " RPM build options (use before --build)"
+    echo "   --build-env                 Set up rpm build tools."
+    #TODO - this is redundant
+    echo "   --build-targets    <>        Pass to rpmbuild. (Ex: -bc,-bs,-bb, etc) Default is [ $RPM_BUILD_TARGETS ]"
+    echo "   --rpmbuild-option <opt>      Add 'opt' to rpmbuild. Use once per option."
+    echo ""
+    echo " Setup commands:"
+    echo "   --download-src    <rpm>      Get an rpm and its build dependencies."
+    echo "                                If no rpm, download defaults."
+    echo ""
+    echo "   --lookup         <file>     On a registered system, find the rpm for a file."
+    echo "   --list                      List cwd to get rpms to use as a download list."
+    echo ""
+    echo "  More information:"
+    echo "   --quiet                     Suppress output."
+    echo "   --verbose                   More info."
+    echo "   --help                      This message"
+    echo "   --help-examples             Print possible configurations."
+    echo "   --version                   Version of this script."
+    echo ""
+}
+
+#
+# A more detailed breakdown on what exactly gets run with which option.
+#
+function fxnHelpBuildTargets()
+{
+    echo ""
+    echo "duebuild use examples for specifying how to build an RPM from a source RPM."
+    echo ""
+    echo ""
+    echo " Examples"
+    echo "  DUE command:   due --build <src rpm>"
+    echo "   duebuild runs: duebuild --cbuild <src rpm>"
+    echo "  Build command: rpmbuild -bb <src rpm>"
+    echo ""
+
+}
+
+# Demonstrate cases of script usage
+function fxnHelpExamples()
+{
+    echo ""
+    echo " Examples:"
+    echo ""
+    echo "  Build."
+    echo "   $0 --cbuild "
+    echo ""
+    echo "  Build default - a simple/standard build case."
+    echo "   $0 --cbuild --default"
+    echo ""
+    echo "  Build binary from source RPM"
+    echo "   $0 --cbuild foo.src.rpm"
+    echo ""
+    echo "  Build binary and source rpm source RPM"
+    echo "   $0 --cbuild --rpm-build-option -ba --cbuild foo.src.rpm"
+    echo ""
+    echo "  Pass additional arguments to build."
+    echo "   $0 --cbuild  REPLACE_THIS build example"
+    echo ""
+    echo "  Extract source code in to ~/rpmbuild from source rpm."
+    echo "   $0 --extract-source foo.src.rpm"
+    echo ""
+    echo "  Apply patches from mypatches to an extracted source rpm."
+    echo "   $0 --extract-source foo.src.rpm --patch-dir ./mypatches/ "
+    echo ""
+    echo "  Get kernel source rpm and build:"
+    echo "   $0 --download-src kernel "
+    echo "   $0 --cbuild kernel-5.19.16-200.fc36.src.rpm "
+    echo ""
+
+}
+
+# Set an exit trap to log completion.
+function fxnExit()
+{
+
+    local returnCode="$?"
+
+    if [ "$returnCode" = "0" ];then
+        echo "Done - $0 [ $INVOKED_WITH ]"
+    else
+        echo "ERROR - $0 [ $INVOKED_WITH ] failed with return code [ $returnCode ]"
+    fi
+
+    return $returnCode
+}
+trap 'fxnExit $RETURN_CODE' EXIT
+
+#
+# Include script libraries for consistency, fxnPP, fxnEC, etc
+#
+
+# Clearly print what was passed, and any variables set.
+# This makes debugging after the fact way easier
+function fxnPrintConfig()
+{
+    echo " ______________________________________________________________________"
+    echo "|"
+    echo "| $0"
+    echo "| Invoked with:        $INVOKED_WITH"
+    if [ "$DO_DEFAULT" != "" ];then
+        echo "|                        Building with default settings."
+    fi
+    if [ "$RAW_BUILD_COMMAND" != "" ];then
+        echo "| Build command:       $RAW_BUILD_COMMAND"
+    else
+        echo "| Build command:       $BUILD_COMMAND"
+    fi
+    echo "|"
+    echo "| Build  directory     [ $(pwd) ]"
+    echo "| Output directory     [ $BUILD_TARGET_DIR_NAME ]"
+    echo "| Build attempts       [ $BUILD_ATTEMPTS ]"
+    if [ "$PREBUILD_SCRIPT" != "" ];then
+        echo "| Pre build script      [ $PREBUILD_SCRIPT ]"
+    fi
+
+    if [ "$DO_BUILD" = "TRUE" ];then
+        echo "| Build jobs           [ $BUILD_JOBS ]"
+        echo "| Build start at       [ $(date) ]"
+    fi
+
+    echo "|_____________________________________________________________________"
+}
+
+
+#
+# rpm tips
+#
+# Find what package provides a missing file (on a registered system)
+#  dnf whatprovides <term>
+#
+# Download an RPM and everything that it depends on
+#  dnf download <package> --resolve
+#
+# Install local rpms (otherwise rpm does not use local rpms to satisify dependencies.)
+#  sudo dnf/yum install *rpm
+#
+# Built packages will end up here
+#
+
+
+function fxnDoBuildPrep()
+{
+    local runCommand
+    local packageName="$1"
+    local sourceRPM="$2"
+
+    if [ "$USE_EXTRACTED" = "TRUE" ];then
+        echo "Using code already under ~/rpmbuild as --use-extracted was passed."
+        return 0
+    fi
+    if [ "$sourceRPM" = "" ];then
+        fxnERR "fxnDoBuildPrep requires a package name and a source RPM to prep."
+        exit 1
+    fi
+    #
+    # Does a mockbuild user exist?
+    #
+    grep 'mockbuild' /etc/passwd > /dev/null
+    if [ $? != 0 ];then
+        echo "Adding mockbuild user and mock group to keep complaints down."
+        # this will remove 'harmless' mock user errors
+        sudo useradd -s /sbin/nologin mockbuild
+        sudo groupadd mock
+    else
+        echo "Mockbuild user and mock group found. Continuing."
+    fi
+
+
+    ######################################
+    # Update dependencies
+    ######################################
+
+    # Install build dependencies:
+    echo "Installing build dependencies for $packageName"
+    #fxnEC sudo $RESOLVE_DEPENDENCIES ~/rpmbuild/SPECS/${PACKAGE_NAME}.spec || exit 1
+
+    fxnEC sudo $PACKAGE_MANAGER --assumeyes builddep "$sourceRPM" || exit 1
+
+    if [ "$OS_TYPE" = "RedHat" ];then
+        $PACKAGE_MANAGER  list installed yum-utils > /dev/null
+        if [ $? != 0 ];then
+            echo "Installing build packages: $BUILD_PACKAGES."
+            sudo $PACKAGE_MANAGER install $BUILD_PACKAGES
+        else
+            echo "Build packages are installed. Continuing."
+        fi
+    fi
+
+    ######################################
+    # Create the build area
+    ######################################
+
+    if [ ! -e "${BUILD_TARGET_DIR_NAME}/SPECS/${packageName}.spec" ];then
+        echo "Creating $BUILD_TARGET_DIR_NAME directory for [ $SOURCE_RPM ]"
+        # This should create a ~/rpmbuild directory
+        runCommand="rpm $BUILD_ROOT_COMMAND --install --verbose --hash  $SOURCE_RPM"
+        fxnMSG "Unpacking source in ${BUILD_DIRECTORY}/SOURCES and ${BUILD_DIRECTORY}/SPECS using [ $runCommand ]"
+        fxnEC $runCommand || exit 1
+        #fxnEC rpm $BUILD_ROOT_COMMAND --install --verbose --hash $SOURCE_RPM || exit 1
+
+        if [ ! -e "$BUILD_TARGET_DIR_NAME" ];then
+            fxnERR "Failed to create [ $BUILD_TARGET_DIR_NAME ]"
+        fi
+    else
+        echo "Found existing $BUILD_TARGET_DIR_NAME directory for [ $SOURCE_RPM ]"
+    fi
+
+    ######################################
+    # Extract the code
+    ######################################
+
+    runCommand="rpmbuild -bp $BUILD_DIRECTORY/SPECS/${packageName}.spec"
+    fxnMSG "Setting up code and  patches from SOURCE rpm. Executing the 'prep' stage using [ $runCommand ]"
+    #        fxnEC rpmbuild -bp $BUILD_DIRECTORY/SPECS/${packageName}.spec  || exit 1
+    fxnEC $runCommand || exit 1
+
+}
+# If -b - use rpm spec file
+# if -r - use source file
+# Spec file options
+# -bp to unpack and apply patches
+# -bc compile sources
+# -bs build source package
+# -bb build binaries only
+# -ba build all
+RPM_BUILD_OPTIONS_DEFAULT=' -bb '
+# hold any user set options
+RPM_BUILD_OPTIONS=""
+
+# If the root build directory needs to change, use this.
+#BUILD_ROOT_COMMAND=" --buildroot $BUILD_DIRECTORY"
+# Function to build whatever the target is
+function fxnDoBuild()
+{
+
+    ######################################
+    # Sanity check the build environment
+    ######################################
+
+
+
+    # If user invoked --build-command, don't try to fill in the blanks.
+    if [ "$RAW_BUILD_COMMAND" != "" ];then
+        fxnMSG " --build-command was used, so NOT parsing arguments or checking dependencies."
+        buildCommand="$RAW_BUILD_COMMAND"
+    else
+
+        ######################################
+        # Sanity check arguments
+        ######################################
+        # Sanity check
+        if [ "$SOURCE_RPM" = "" ];then
+            echo "Error - no source rpm to --build  was supplied. Exiting."
+            exit 1
+        fi
+
+        # Cut any path info, and everything after the first '-'
+        PACKAGE_NAME="$( basename $SOURCE_RPM | sed -e 's/-[0-9].*//g' )"
+
+        fxnDoBuildPrep "$PACKAGE_NAME" "$SOURCE_RPM"
+
+        ######################################
+        # The whole extract-and-build cycle could be covered with
+        # rpmbuild -bb, but explicitly executing it makes it more obvious to
+        # those unfamilar with RPM builds where patches could insert in
+        # the build process.
+        ######################################
+
+        ######################################
+        # Patch the code
+        ######################################
+
+        # now that an rpmbuild directory exists, try adding patches
+        if [ "$DIR_PATCHES" != "" ];then
+            fxnMSG "Setting up code patches from [ $DIR_PATCHES ]."
+            fxnApplyPatches
+        fi
+
+
+        # Run the %prep stage to apply the patches that have been laid out.
+        runCommand="rpmbuild -bp ${BUILD_DIRECTORY}/SPECS/${PACKAGE_NAME}.spec"
+        fxnMSG "Executing the 'prep' stage using [ $runCommand ]"
+        fxnEC $runCommand || exit 1
+
+        fxnMSG "Files were extracted under ${BUILD_DIRECTORY}/BUILD."
+        fxnMSG  "Perform spec file actions from [ ${BUILD_DIRECTORY}/SPECS ]"
+
+        # Extracting the source is part of a build/patch by default.
+        # If it was explicitly called out, that's all they want.
+        if [ "$DO_SOURCE_EXTRACT" = "TRUE" ];then
+            echo "Exiting as --extract-source was passed."
+            exit
+        fi
+
+        if [ "$RPM_BUILD_OPTIONS" = "" ];then
+            # If not explicitly stated by the user, default.
+            RPM_BUILD_OPTIONS="$RPM_BUILD_OPTIONS_DEFAULT"
+        fi
+
+        if [ "$USE_EXTRACTED" = "TRUE" ];then
+            #Don't overwrite the contents of the extracted source files
+            fxnMSG "Adding --noprep and --noclean to rpmbuild as --use-extracted was passed."
+            RPM_BUILD_OPTIONS+=" --noclean --noprep "
+        fi
+
+        buildCommand="rpmbuild $RPM_BUILD_OPTIONS $BUILD_KERNEL_MINIMAL --target=$(uname -p)  $BUILD_TARGET_DIR_NAME/SPECS/${PACKAGE_NAME}.spec"
+    fi
+
+    fxnMSG "Installing build dependencies for [ $PACKAGE_NAME ] from [ $BUILD_TARGET_DIR_NAME/SPECS/${PACKAGE_NAME}.spec ]"
+    fxnEC sudo $PACKAGE_MANAGER --assumeyes builddep "$BUILD_TARGET_DIR_NAME/SPECS/${PACKAGE_NAME}.spec" || exit 1
+           
+    ######################################
+    # Build
+    ######################################
+
+    sourceRPMDir="$(pwd)"
+    while [ $(( BUILD_ATTEMPTS > 0 )) = 1 ]; do
+        fxnMSG "Building source from [ $sourceRPMDir ] in [ $BUILD_TARGET_DIR_NAME ] with [ $BUILD_ARGS ].  Attempt [ $BUILD_ATTEMPTS ]. "
+
+        BUILD_ATTEMPTS=$(( BUILD_ATTEMPTS - 1 ))
+        echo ""
+
+        # And BUILD_ARGS was set
+
+        if [ "$RAW_BUILD_COMMAND" != "" ];then
+            buildCommand="$RAW_BUILD_COMMAND"
+        fi
+
+        failMsg="$buildCommand failed with error."
+        fxnMSG "Building in [ $BUILD_TARGET_DIR_NAME ] with [ $BUILD_ARGS ].  Attempt [ $BUILD_ATTEMPTS ]. "
+
+        fxnMSG "bash -c $buildCommand "
+        bash -c "$buildCommand"
+
+        #        bash -c " echo 'Build command goes here in duebuild script.'"
+        result="$?"
+
+
+        case "$result" in
+            0 )
+                echo "Success: [ $buildCommand ]"
+                BUILD_ATTEMPTS='0'
+                ;;
+            * )
+                # Retry until the tries run out.
+                echo "Build failed with error code [ $result ]."
+                if [ "$BUILD_ATTEMPTS" = "0" ];then
+                    fxnERR "Build $BUILD_ARGS failed with [ $result ]"
+                    exit $result
+                fi
+        esac
+
+    done
+    echo ""
+
+    fxnMSG "Built [ $BUILD_TARGET_DIR_NAME ] - list follows:"
+
+    find "$BUILD_TARGET_DIR_NAME" -iname \*.rpm
+
+    echo "Started at [ $BUILD_START_TIME ]"
+    echo "Ended   at [ $(date) ]"
+
+    echo ""
+}
+
+#Pathing around rpmbuild
+
+# Add patches to build
+function fxnApplyPatches()
+{
+
+    local patchList=""
+    local patchNumber="999000"
+
+    if [ ! -e "$DIR_PATCHES" ];then
+        echo "ERROR! Must supply a --patch-dir with patches. Exiting."
+        exit 1
+    fi
+
+    # Get a list of all patches to apply
+    # Pipe to sort if need be.
+    patchList=$( ls -1 "$DIR_PATCHES"  )
+
+    if [ -e "$KERNEL_SPEC" ];then
+
+        fxnMSG "Staging patches."
+
+        if [ ! -e "$BACKUP_KERNEL_SPEC" ];then
+            echo "Creating a backup of the kernel spec at [ $BACKUP_KERNEL_SPEC ]"
+            fxnEC cp "$KERNEL_SPEC" "$BACKUP_KERNEL_SPEC" || exit 1
+        else
+            echo "Backup of the kernel spec exists at [ $BACKUP_KERNEL_SPEC ]"
+        fi
+
+        #copy the patches in to the directory
+        for patch in  ${patchList[@]}
+        do
+            fxnMSG "Copying [ $patch ] to [ $DIR_SOURCES ]"
+            fxnEC cp "${DIR_PATCHES}/$patch" "$DIR_SOURCES" || exit 1
+            echo "    Adding it to [ $KERNEL_SPEC ]"
+
+            grep -q  "ApplyOptionalPatch $patch" "$KERNEL_SPEC"
+            if [ $? -eq 0 ];then
+                echo "    Patch was already applied:  $patch"
+            else
+                # Do one sed call per insert. This could be one call, but nobody will notice the
+                # speed improvement and this will be very clear where it is failing.
+
+                # Search for ApplyOptionalPatch linux-kernel-test.patch and insert patches above it.
+                # First patches should get bumped up as new ones are inserted above the match point,
+                # keeping them in sequence.
+                echo "    Inserting $path reference to $KERNEL_SPEC after ApplyOptionalPatch."
+                fxnEC sed -i "/^ApplyOptionalPatch linux-kernel-test.patch/i ApplyOptionalPatch $patch" "$KERNEL_SPEC" || exit 1
+                echo "    Searching for [ # empty final patch ] reference"
+                # key off of Patch999999: linux-kernel-test.patch, and insert patches above it.
+                fxnEC sed -i  "/^Patch999999:/i  Patch${patchNumber}: $patch" "$KERNEL_SPEC" || exit 1
+                echo "    Done! Added  [ $patch ] reference to [ $KERNEL_SPEC ]"
+            fi
+
+            # Increment for next patch, to be unique and pass over any applied patches.
+            patchNumber=$(( patchNumber + 1 ))
+        done
+    fi
+    # Edit the file to reference them
+
+
+}
+
+# Restore things to an original state
+function fxnRevertKernelPatch()
+{
+
+    echo "Reverting patch operation."
+
+    if [ ! -e "$DIR_PATCHES" ];then
+        echo "ERROR! Must supply a --patch-dir to get a list of patches to remove. Exiting."
+        exit 1
+    fi
+
+    if [ -e "$BACKUP_KERNEL_SPEC" ];then
+        echo "Reerting by applying a backup of the kernel spec at [ $BACKUP_KERNEL_SPEC ]"
+        cp "$BACKUP_KERNEL_SPEC" "$KERNEL_SPEC"
+    fi
+
+    for patch in  "${patchList[@]}"
+    do
+        echo "Deleting ${DIR_SOURCES}/${patch}"
+        rm "${DIR_SOURCES}/$patch"
+    done
+
+}
+
+# Takes: optional rpm name
+# Does:   downloads the rpm and its dependencies, or the default list of rpms.
+function fxnDownloadSourceRPMs()
+{
+    local dependencyDir
+    #    local i686dir="i686-packages"
+    # Get the item and things that it depends on
+    if [ "$1" = "" ];then
+        fxnERR " --download-src requires a source rpm name. Exiting."
+        exit 1
+    else
+        # if the user passed in an rpm, resolve it.
+        RPMS_TO_GET="$1"
+    fi
+
+    # may need to enable this repository for Red Hat
+    #sudo subscription-manager repos --enable=codeready-builder-for-rhel-9-x86_64-rpms
+    dependencyDir="${RPMS_TO_GET}-build-deps"
+    echo "Downloading source package."
+    fxnEC $PACKAGE_MANAGER download --source $RPMS_TO_GET  || exit 1
+
+    if [ ! -e "$dependencyDir" ];then
+        fxnEC mkdir "$dependencyDir" || exit 1
+    fi
+    cd "$dependencyDir"
+    echo "Resolving build dependencies."
+    fxnEC $PACKAGE_MANAGER download $RPMS_TO_GET --resolve || exit 1
+    #   echo "Moving any downloaded i686 packages to [ $i686dir ]"
+    #    mv *i686*rpm $i686dir 2>/dev/null
+}
+
+function fxnSetUpBuildEnvironment()
+{
+    echo "Setting up build environment"
+
+    # zypper doesn't default to caching packages. Yum does
+    if [ "$OS_TYPE" = 'Suse' ];then
+        # Cache all downloaded packages
+        echo "Setting "$PACKAGE_MANAGER" package downloads to be cached"
+        echo "Packages should be under  /var/cache/zypp/packages"
+        sudo zypper mr --keep-packages --all
+    fi
+    # Get everything for rpm build
+
+    # this pulls a bunch of standard dependencies
+    # bzip2 dwz gettext-runtime gettext-tools libtextstyle0
+    #  rpm-build tar-1.34 xz-5.2.3 python-rpm-macros
+
+    # sudo zypper source-install rpm-build
+    echo "Installing all dependencies for rpm-build"
+    sudo "$PACKAGE_MANAGER" install rpm-build
+
+}
+
+
+
+#
+
+# set any default variables
+#
+# provide a version for use in upgrades
+SCRIPT_VERSION="1.0"
+# Default to one build attempt
+BUILD_ATTEMPTS="1"
+
+# If nproc found, default to ALL THE CORES!
+# Else try 4 cores.
+BUILD_JOBS=$(nproc 2>/dev/null || echo "4" )
+
+# RPMs default to building in the user's home directory.
+BUILD_TARGET_DIR_NAME="${HOME}/rpmbuild"
+
+
+# If -b - use spec file
+# if -r - use source file
+# Spec file options
+# -bp to unpack and apply patches
+# -bc compile sources
+# -bs build source package
+# -bb build binaries only
+# -ba build all
+RPM_BUILD_TARGETS=' -bb '
+
+# Mark the start of build to have an idea how long it took.
+
+BUILD_START_TIME="unset"
+
+# Could be yum
+PACKAGE_MANAGER=" dnf "
+PACKAGE_APP=" rpm "
+
+BUILD_DIRECTORY="${HOME}/rpmbuild"
+DIR_SOURCES="${BUILD_DIRECTORY}/SOURCES"
+BACKUP_KERNEL_SPEC="${BUILD_DIRECTORY}/backup-kernel.spec"
+DIR_SPECS="${BUILD_DIRECTORY}/SPECS"
+KERNEL_SPEC="${DIR_SPECS}/kernel.spec"
+
+##################################################
+#                                                #
+# MAIN  - script processing starts here          #
+#                                                #
+##################################################
+
+
+
+if [ "$#" = "0" ];then
+    # Require an argument for action.
+    # Always trigger help messages on no action.
+    fxnHelp
+    exit 0
+fi
+
+# Track this. --jobs and -j* by themselves don't count as a non-default
+#  build command.
+TOTAL_COMMAND_LINE_ARGS="$#"
+
+#
+# Gather arguments and set action flags for processing after
+# all parsing is done. The only functions that should get called
+# from here are ones that take no arguments.
+while [[ $# -gt 0 ]]
+do
+    term="$1"
+
+    case $term in
+
+        --script-debug )
+            # Catch the debug flag here
+            echo "[ $0 ] Script debug is ON"
+            ;;
+
+        --use-directory )
+            # as package builds put the build products in the directory above
+            # the source, the build may have been started a level above and
+            # will have to go into that directory.
+            BUILD_DIR="$2"
+            shift
+            ;;
+
+
+        # Take --build as a synonym for --cbuild, although --cbuild is clearer.
+        -c | --cbuild | --build  )
+            # Default to build everything in container context.
+            # skip over --cbuild
+            DO_BUILD="TRUE"
+            if [ "$2" != "" ];then
+                SOURCE_RPM="$2"
+                shift
+                if [ "$2" != "" ];then
+                    # The rest of the arguments passed should be given verbatim to
+                    # whatever the build command is.
+                    ADDITIONAL_BUILD_ARGS="$*"
+                fi
+            fi
+            ;;
+
+        --build-command )
+            # Default to build everything in container context
+            DO_BUILD="TRUE"
+            if [ "$2" != "" ];then
+                # More arguments?
+                # skip over --build-command
+                shift
+                # The rest of the arguments passed should be given verbatim to
+                # whatever the build command is.
+                RAW_BUILD_COMMAND="$*"
+            fi
+            break
+            ;;
+
+        --default )
+            DO_DEFAULT="TRUE"
+            # Default, for now, will just look for a local src rpm to build.
+            if [ "$SOURCE_RPM" = "" ];then
+                # Pick off the first rpm
+                SOURCE_RPM=$(ls -1 *.src.rpm | head -n 1)
+                if [ "$SOURCE_RPM" = "" ];then
+                    fxnERR "--default failed to find any *.src.rpm file in $(pwd). Try --cbuild <src rpm name>. Exiting."
+                    exit 1
+                else
+                    BUILD_COMMAND="rpmbuild -bb $SOURCE_RPM"
+                fi
+            fi
+
+
+            # --default is an exported hook that can be be called by DUE
+            # when this container is run. The intent is to do a very
+            # basic build operation to demonstrate functionality
+            # and hopefully cover common cases.
+            # For Debian package build, the --cbuild option conveniently
+            # does all this, so use it.
+            DO_BUILD="TRUE"
+            ;;
+
+        -j* )
+            # number of build job threads
+            BUILD_JOBS="${term#-j}"
+            # If only jobs were specified, do default build
+            if [ "$TOTAL_COMMAND_LINE_ARGS" = 1 ];then
+                DO_DEFAULT="TRUE"
+                DO_BUILD="TRUE"
+            fi
+            ;;
+
+        --jobs )
+            # number of build job threads
+            BUILD_JOBS="$2"
+            if [ "$2" = "" ];then
+                fxnERR "--jobs requires a #"
+                exit 1
+            fi
+            # If only jobs were specified, do default build
+            if [ "$TOTAL_COMMAND_LINE_ARGS" = 2 ];then
+                DO_DEFAULT="TRUE"
+                DO_BUILD="TRUE"
+            fi
+            shift
+            ;;
+
+        --use-extracted )
+            # flag to use an already extracted build area
+            USE_EXTRACTED="TRUE"
+            ;;
+
+        --prebuild-script )
+            # Run this before starting package build. Probably contains commands
+            # to generate ./debian/* files
+            # Allow the option of it just being a placeholder if 'NONE' is passed.
+            if [ "$2" != "NONE" ];then
+                PREBUILD_SCRIPT="$2"
+                shift
+            fi
+            ;;
+
+        --build-attempts )
+            # Sometimes the first try isn't the charm.
+            BUILD_ATTEMPTS="$2"
+            if [ "$2" = "" ];then
+                fxnERR "--build-attempts requires a number. Ex: --build-attempts 2.  Exiting."
+                exit 1
+            fi
+            shift
+            ;;
+
+
+        --version )
+            # Track version for upgrade purposes
+            echo "$SCRIPT_VERSION"
+            exit 0
+            ;;
+
+        -h|--help)
+            fxnHelp
+            exit 0
+            ;;
+
+        --help-examples)
+            # Show examples of script invocation
+            fxnHelpExamples
+            exit 0
+            ;;
+
+        --help-build-targets)
+            # Examples of what gets invoked for each build option.
+            fxnHelpBuildTargets
+            exit 0
+            ;;
+
+        --verbose )
+            # Unused for now
+            DO_VERBOSE="TRUE"
+            ;;
+
+        --quiet )
+            # Unused for now
+            DO_QUIET="TRUE"
+            ;;
+
+        --extract-source )
+            DO_SOURCE_EXTRACT="TRUE"
+            if [ "$2" != "" ];then
+                SOURCE_RPM="$2"
+            fi
+            DO_BUILD="TRUE"
+            shift
+            ;;
+
+        --unpatch )
+            # Revert a patch operation
+            DO_UNPATCH="TRUE"
+            ;;
+
+        --patch-dir )
+            # Directory of patches to apply
+            DIR_PATCHES="$2"
+            shift
+            ;;
+        --build-env )
+            fxnSetUpBuildEnvironment
+            exit
+            ;;
+
+        --build-targets )
+            RPM_BUILD_TARGETS="$2"
+            shift
+            ;;
+
+        --rpmbuild-option )
+            # additional options to rpmbuild
+            RPM_BUILD_OPTIONS+=" $2 "
+            shift
+            ;;
+
+        --download-src )
+            DOWNLOAD_SRC_RPM="$2"
+            shift
+            ;;
+
+        --lookup )
+            echo "This only works on a registered system, so check."
+            $PACKAGE_MANAGER whatprovides $2
+            shift
+            break;
+            ;;
+        --list )
+            echo "Listing current working directory of packages to create a list."
+            ls -1 *.rpm | sed -e 's/-[0-9].*/ \\/g'
+            exit
+            ;;
+
+        *)
+            fxnHelp
+            echo "Unrecognized option [ $term ]. Exiting"
+            exit 1
+            ;;
+
+    esac
+    shift # skip over argument
+
+done
+
+# Building from top level if not specified otherwise
+if [ "$BUILD_DIR" = "" ];then
+    BUILD_DIR="$gTOP_DIR"
+fi
+
+if [ "$DOWNLOAD_SRC_RPM" != "" ];then
+    fxnDownloadSourceRPMs "$DOWNLOAD_SRC_RPM"
+    exit
+fi
+
+# Arguments passed to the dpkg build. This gets
+# appended by fxnParseBuildArgs
+if [ "$DO_BUILD" = "TRUE" ];then
+
+    if [ "$ADDITIONAL_BUILD_ARGS" != "" ];then
+        # User is overriding defaults.
+        # take it literally with no defaults.
+        BUILD_ARGS="$ADDITIONAL_BUILD_ARGS"
+    fi
+
+fi
+
+
+# Add parallel build
+if [ "$BUILD_JOBS" != "" ];then
+    BUILD_ARGS+=" -j${BUILD_JOBS} "
+fi
+
+
+if [ "$BUILD_DIR" != "" ];then
+    if [ ! -e "$BUILD_DIR" ];then
+        fxnERR "--use-directory [ $BUILD_DIR ] does not exist in $(pwd)"
+        exit 1
+    fi
+    fxnEC cd "$BUILD_DIR" || exit 1
+fi
+
+#
+# Dump what's being run
+#
+fxnPrintConfig
+
+if [ "$PREBUILD_SCRIPT" != "" ];then
+    fxnHeader "Running pre build script [ $PREBUILD_SCRIPT ]"
+    bash "$PREBUILD_SCRIPT"
+fi
+
+#
+# Take actions now that all arguments have been passed.
+#
+if [ "$DO_BUILD" = "TRUE" ];then
+
+    BUILD_LOG_FILE="Redhat-build.log"
+    #
+    # actually do the build
+    #
+    BUILD_START_TIME="$(date)"
+    fxnPP "Building with dev version $DEV_PACKAGE_VERSION"
+    fxnDoBuild  2>&1 | tee -a  "$BUILD_LOG_FILE"
+fi
+
+# Preserve exit code through exit trap
+RETURN_CODE=${PIPESTATUS[0]}
+
+
+if [ "$RETURN_CODE" = "0" ];then
+    fxnPP "Success"
+    # Add post build actions
+    fxnPP "Build started at  [ $BUILD_START_TIME ]"
+    fxnPP "Build finished at [ $(date) ]"
+else
+    fxnERR "Build FAILED with return code [ $RETURN_CODE ] at [ $(date) ]"
+fi
+
+exit "$RETURN_CODE"

@@ -1,3 +1,27 @@
+due (4.0.0-1) unstable; urgency=medium
+
+  * Version bump to 4.0.0
+  * Compatibility - Red Hat, SUSE, and Windows Subsystem for Linux support.
+  * Podman - fixes for WSL, Red Hat, SUSE.
+  * Documentation - updated for WSL, Red Hat, SUSE.
+  * Stability - Shellcheck and bug fixes.
+  * Customize - system and user config files can customize container launches.
+  * Expired release support for Debian 8 Jessie.
+  * Creation - directory inheritance is used for new containers.
+
+ -- Alex Doyle <adoyle@nvidia.com>  Sat, 01 Oct 2022 16:16:16 -0700
+
+due (3.1.0-1) unstable; urgency=medium
+
+  * Version bump to 3.1.0
+  * Podman - user should keep their host identity in a container.
+  * RedHat - use of 'adduser' only supplies supported arguments.
+  * Example template - default user 'bob' added for test/demonstration.
+  * Shellcheck - cleanup performed.
+  * Makefile - debian-package command builds .debs using debian-test.
+
+ -- Alex Doyle <adoyle@nvidia.com>  Sat, 05 Mar 2022 14:14:14 -0700
+
 due (3.0.0-1) unstable; urgency=medium
 
   * Version bump to 3.0.0

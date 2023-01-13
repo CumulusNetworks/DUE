@@ -1,5 +1,6 @@
-post_install_local/  
---------------------
+# post_install_local directory
+------------------------------
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 The `post-install-config.sh.template` 
 will use the contents of this directory to perform any additional operations at the end of container configuration.   

@@ -1,0 +1,146 @@
+#!/bin/bash
+# SCRIPT_PURPOSE: Run configuration inside the docker container, after package install.
+# Bash should be installed at this point.
+# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
+
+# Copyright 2021,2022 NVIDIA Corporation.  All rights reserved.
+#
+#  SPDX-License-Identifier:     MIT
+
+. /due-configuration/install-config-common.lib
+
+# The default post install operations exist as a function
+# for easy invocation (or not) in overriding scripts.
+fxnPostInstallCommon
+
+EMULATION=" qemu-kvm libvirt virt-install virt-viewer "
+
+#
+# Install development packages
+# Note at this stage, any changes to the container's upstream repositories
+# will have happened.
+#
+
+
+dnf check-update
+result="$?"
+case $result in
+    100 )
+        echo "Updates are available."
+        ;;
+    0 )
+        echo "No updates are available."
+        ;;
+    * )
+        echo "$0 ERROR! dnf check-update failed with [ $result ] Exiting."
+        exit 1
+        ;;
+esac
+
+
+INSTALL_COMMAND="dnf install --assumeyes "
+
+#
+# if python can't be installed, try python3
+# Success will vary by distribution...
+#
+
+$INSTALL_COMMAND  python 2>/dev/null
+if [ $? != 0 ];then
+    $INSTALL_COMMAND python3
+fi
+
+# Packages for kernel build
+KERNEL_BUILD_PACKAGES=" ncurses-devel python-six rsync gcc bc cpio  kmod  zlib-devel openssl-devel "
+
+# If cross compiling to ARM
+CROSS_BUILD_PACKAGES=""
+
+# If you expect to do development in the container, these are useful.
+EDITORS=" vim "
+
+# Any packages that you always use
+NICE_TO_HAVE=" time yum-utils "
+
+# Catchall for rpms specific to a release
+RELEASE_SPECIFIC=""
+
+# Pull this in to set variables like ID and NAME
+source /etc/os-release
+
+# 'rhel' starts with a limited selection of packages and requires
+# a subscription to get the rest.
+
+# RedHat requires a subscription for full access
+RELEASE_SPECIFIC=" subscription-manager "
+
+# If the system is arm64, it doesn't  need a cross compiler for itself.
+if [ "$( arch )" = 'aarch64' ];then
+    CROSS_BUILD_PACKAGES=""
+fi
+
+MAN_PAGES=""
+
+#
+# Packages included by variables are optional.
+# They can be removed and packages should still build, if storage
+# space is a concern.
+#
+
+
+# What's available in Red Hat/Fedora
+DEVELOPMENT_PACKAGES="
+               openssh-server \
+               git \
+               $CROSS_BUILD_PACKAGES \
+               $KERNEL_BUILD_PACKAGES \
+               $EDITORS \
+               $NICE_TO_HAVE \
+               $MAN_PAGES \
+"
+
+$INSTALL_COMMAND $DEVELOPMENT_PACKAGES
+if [ $? != 0 ];then
+    echo "$0 ERROR! Failed dnf install. Exiting."
+    exit 1
+fi
+
+#
+# Check for any local software to install.
+# This code is responsible for being smart enough to handle
+# the format of whatever is found.
+#
+
+if [ -d /due-configuration/post-install-local ];then
+    cd /due-configuration/post-install-local || exit 1
+
+    # Use find for package detection so that subdirectories can be used for organization
+    # Install packages that:
+    #   Work on any architecture
+    #   Match this container's architecture.
+    PACKAGES=$( find ./ \( -name "*noarch.rpm" -o -name "*.$(uname -p).rpm" \) )
+
+    # As packages are the only post install currently supported,
+    # list them if present and install. Otherwise, ignore.
+    if [ "$PACKAGES" != "" ];then
+        echo "Installing local packages found in post-install-local."
+
+        # Yum will look at all rpms it is passed to resolve dependency issues. RPM does not.
+        # --assumeyes - do the install
+        #       sudo yum --assumeyes install *noarch.rpm *.$(uname -p).rpm
+        sudo yum --assumeyes install $PACKAGES
+
+        # Additional dependency install required?
+        echo "Post install of local packages completed with exit status [ $? ]"
+    fi
+fi
+
+# Hook to add any additional local package repositories the container
+# may need to access.
+LOCAL_PACKAGE_REPO_ADD="rhel-9-$(uname -p)-local-package-repo-add.sh"
+if [ -e /usr/local/bin/${LOCAL_PACKAGE_REPO_ADD} ];then
+    echo "Adding additional local package repositories."
+    cd /usr/local/bin/ || exit 1
+    $LOCAL_PACKAGE_REPO_ADD
+fi
+echo "$0 completed with exit status [ $? ]"

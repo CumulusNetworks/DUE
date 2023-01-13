@@ -1,23 +1,29 @@
 # Template directory README
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 This directory holds specific container configurations.
 Note that each sub directory also contains a README.md with
 specific information about the contents of that directory.
 
 # Current configurations:
-**common-templates** - Files common to all DUE images
 
-**debian-package**    - Tools for Debian package build
+|                                                  |   |
+|------------------------------------------------- |---|
+|[common-templates](./common-templates)            |- Files common to all DUE images|
+|[example](./example)                              |- The bare minimum of DUE build infrastructure. A good starting point for new templates.|
+|[debian-package](./debian-package)                |- Tools for Debian package build|
+|[ONIE](./onie)                                    |- Build the Open Network Install Environment|
+|[frr](./frr)                                      |- Build the Free Range Routing package|
+|[sles-package](./suse/sub-type/sles-package)      |- SUSE Enterprise Linux Server build environment base image|
+|[opensuse-package](suse/sub-type/opensuse-package)|- OpenSUSE build environment base image|
+|[rhel-package](redhat/sub-type/rhel-package)      |- Red Hat Enterprise Linux base image |
+|[fedora-package](redhat/sub-type/fedora-package)  |- Fedora build environment base image|
 
-**ONIE**             - build the Open Network Install Environment
 
-**frr**              - build the Free Range Routing package
-
-**example**          - The bare minimum of DUE build infrastructure. A good starting point for new templates.
 
 # Create a Docker image from these templates
 The easiest was to do this is to:  
-  1. Run `./due --create help`  
+  1. Run `./due --create --help`  
   2. Cut and paste an example command to create an image.   
 
 
@@ -90,6 +96,10 @@ a kind of class inheritance to reduce file repetition. Each `sub-type` directory
 added to the merge directory the container is created out of. 
 
 **Note:** it is still possible to reduce file duplication by having relative soft links between template directories. The files the links reference will get copied in just fine.
+
+## Practical Example
+See the [redhat](./redhat) and [suse](./suse) directories for sub-types.  
+
 
 ## Abstract Example
 Given a directory path:  

@@ -1,4 +1,4 @@
-% DUE(1) Version 3.0.0 | Dedicated User Environment
+% DUE(1) Version 4.0.0 | Dedicated User Environment
 
 # NAME
 
@@ -81,13 +81,18 @@ Starting an image
 to run by restricting them to entries that contain [filter]. If only one image
 matches the filter, it will be invoked without asking the user to choose it.
 
+--entrypoint [shell]
+:   Override the container's ENTRYPOINT to execute [shell] on startup. If [shell]
+is not supplied, DUE will default to running container-create-user.sh. This can
+be very useful in debugging run time issues.
+
 -a, --all
 :	Show all containers on the system. DUE can be used to log in to
 containers that it did not create, but the user may have to supply a default
 --username and --userid (usually --username root and --userid 0. See below )
 
 --ignore-type
-:		 When accessing the container, do not attempt to create a user
+:	When accessing the container, do not attempt to create a user
 account for the user logging in, and assume the container was not created by
 DUE. This can be useful with image creation debug.
 
@@ -101,7 +106,7 @@ DUE. This can be useful with image creation debug.
  shell where the commands are invoked will take anything after the first ;, and
  treat it as a command to be run locally.
  This can obfuscate things if the command can work inside or out of the container.  
- Example: look at /proc and the password file in a container:
+:   Example: look at /proc and the password file in a container:
           ./due --run --command "ls -lrt /proc"  \; "cat /etc/passwd"  
 
 --build | --duebuild
@@ -129,7 +134,7 @@ DUE. This can be useful with image creation debug.
 images that were not created by DUE. Helpful for internal debug if image
 creation dies running internal configuration scripts.
 
---container-name [name]
+--container-name [name3]
 :	Change the name of the running container. This can provide clarity in a
  build automation environment, where containers may be automatically spun up.
  Note that if the new name does not have 'due' in it, it will be filtered
@@ -150,7 +155,9 @@ creation dies running internal configuration scripts.
 Logging in to a running container
 -------
 -l, --login
-:	Choose an existing container to log in to.
+:	Choose an existing container to log in to. If the user logging in is not the
+ same one that started the container, a /home/$USER directory will be created for
+ them in the container.
 
 --username  [username]
 :	Name to use when logging in.
@@ -159,19 +166,19 @@ Logging in to a running container
 :	User ID to use when logging in.
 
 --groupname [groupname]
-:	Container user's default group
+:	Container user's default group.
 
 --groupid   [id#]
-:	ID of container user's group
+:	ID of container user's group.
 
 --login-shell [path]
-:	Program to use as login
+:	Program to use as login.
 
 --help-runtime
-:	Invoke runtime help
+:	Invoke runtime help.
 
 --help-runtime-examples
-:	Show examples of use
+:	Show examples of use.
 
 --create options
 -------
@@ -195,7 +202,7 @@ the resulting image will be named 'debian-package-10'
 2 - The contents of the debian-package template directory copied in to the 
     debian-package-10-template-merge directory and will overwrite any files with identical names.  
 3 - Any REPLACE_ fields in the template files are replaced with values supplied from
-    the command line (such as the starting container image)  and all files are copied to
+    the command line (such as the starting container image) and all files are copied to
 	./due-build-merge/debian-package-10  
 4 - The ./due-build-merge/debian-package-10/Dockerfile.create file is used to create the image
     from this build directory. 
@@ -207,40 +214,48 @@ Quick image changes can be made by editing the build directory ( ./due-build-mer
 and re running ./due --create --build-dir ./due-build-merge/debian-package-10
 
 The final image will hold a /due-configuration directory, which holds everything that went into the image.
-This is very useful for install script debug inside the container.
+This is very useful for debugging an install script inside the container.
 
 A list of available default configurations is provided by running:
 due --create --help
 This will parse the README.md files under the ./templates directory looking for specific strings.
 This output can be filtered by using wildcard syntax as follows:
-due --create --help --filter <term>
+due --create --help --filter "term"
 
 Advanced image creation
 -------
 
-DUE 3.0.0 introduced hierarchical template parsing, where a template could be a
-combination of files provided by 'sub-type' directories, to reduce file duplication.
-With this, files with identical names and paths will overwrite the ones provided
-by higher directories.
+DUE 3.0.0 introduced hierarchical template parsing ( or a directory based class 
+inheritance model, if you prefer) where a template could be created from a
+combination of files provided by 'sub-type' directories to reduce file duplication.
+With this, files from deeper directories with identical names and paths will overwrite 
+the files provided by higher directories.
 
-Example:
-Given directory structure:
-due/templates/foo/sub-type/bar/sub-type/baz
+Example - creating a fedora-package build container.  
+Given these directories:
+    
+> `./common-templates/filesystem/usr/local/bin/container-create-user.sh`  
+`./redhat`  
+`./redhat/sub-type`  
+`./redhat/sub-type/fedora-package`  
+`./redhat/sub-type/fedora-package/Dockerfile.config`  
+`./redhat/sub-type/fedora-package/post-install-config.sh.template`  
+`./redhat/filesystem/usr/local/bin/duebuild`  
 
-Image creation using the 'baz' template will be:
-1 - files from templates/common-templates
-2 - plus files from foo overwriting any files with the same relative path from common-templates
-3 - plus files from bar overwriting foo files the same way
-4 - plus files from baz overwriting bar files the same way.
+Image creation using the `'fedora-package` template will pull files from:  
+1 - `templates/common-templates`  
+2 - which may be overwritten by files from `templates/redhat/filesystem`  
+3 - which, nt turn, may then be overwritten by files from `templates/redhat/sub-type/fedora-package`  
 
-While not normally needed, this may be useful for supporting a number of Images with minor but important differences.
+This is useful for supporting a number of Images with minor but important differences.
 See templates/README.md for more information.
 
 
 Creation example
 -------
 
-1 - Configure an image build directory under due-build-merge named from --name
+1 - Configure an image build directory under due-build-merge named from --name  
+
 Mandatory:
 
 --from [name:tag]
@@ -258,8 +273,17 @@ Mandatory:
 
 Optional:
 
+--platform [os/arch]
+:	Specify that the image has a different architecture than the host. Ex: linux/aarch64
+
 --prompt [prompt]
 :	Set in container prompt to [prompt] to provide user context
+
+--dockerarg [argument]
+:	Pass arguments to docker build. Argument is passed as a single
+	value, so if it contains spaces, it should be quoted.  
+	--dockerarg can be used multiple times, or can contain multiple strings.  
+	Example: --dockerarg '--build-arg HTTP_PROXY=http://10.20.30.2:1234' 
 
 --no-image
 :   With --create, allow directories to be created, but do not try
@@ -307,10 +331,10 @@ make working with containers/images easier.
 	 user can choose from a menu.
 
 --import-image [name]
-:    Import a docker image stored on disk as tar file <name>
+:    Import a docker image stored on disk as tar file 'name'.
 
 --copy-config
-:    Create a personal DUE configuration file in ~/.config/due/due.config
+:    Create a personal DUE configuration file in ~/.config/due/due.config.
 
 --make-dev-dir [dir]
 :    Populate a local directory for DUE container development.
@@ -344,16 +368,28 @@ FILES
 
 ENVIRONMENT
 ===========
-The configuration file sets up the following variables:
+The configuration file may use the following variables:
 
 `DUE_ENV_DEFAULT_HOMEDIR` - evaled to define the user's home directory.
 This can be useful if there is a naming convention for work directories
-on shared systems, or your home directory is an NFS mount (which can create  
+on shared systems, or your home directory is an NFS mount (which can create
 strange behavior when mounted in Docker) or you need to use a bigger build directory.
 
 `DUE_USER_CONTAINER_LIMIT` - limit the number of containers a user
 is allowed to run. Handy on a shared system to remind people of 
 what they have running. This can easily be circumvented, though. 
+
+`DUE_ALLOW_USER_CONFIG` - if `TRUE` the user's ~/.config/due/due.conf is sourced. 
+If `FALSE` only the /etc/due/due.conf is sourced. DUE will load the /etc/due/due.conf
+file first to interpret this variable.
+
+`fxnSetContainerSpecificArgs` - a Bash function to supply default arguments to containers,
+based on the image's `DUEImageType` label. This is useful for always running a particular
+image type as `--privileged`, or supplying default mount points or any other container 
+specific runtime configuration that the end user doesn't want to have to remember to type
+every time.  
+Obviously there are security issues here, so use with caution.
+
 
 BUGS
 ====
@@ -369,8 +405,8 @@ COPYRIGHT
 =========
 SPDX-License-Identifier:     MIT
 
-Copyright (c) 2021 Nivia Corporation.  
-Copyright (c) 2019,2020 Cumulus Networks, Inc.
+Copyright (c) 2021,2022 Nvidia Corporation.  
+Copyright (c) 2019,2020 Cumulus Networks, Inc.  
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

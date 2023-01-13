@@ -1,4 +1,5 @@
 # Duebuild for building Debian packages.
+Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 The `duebuild` script handles setup and build for whatever target
 the contiainer supports. As such this will vary from container to
@@ -41,6 +42,7 @@ To print the duebuild help for any build container without logging in to it, run
    `--use-directory (dir)`       cd to (dir) before trying to build.  
    `--prebuild-script (scr)`     Run script at container path (scr) before starting build. Pass 'NONE' to ignore.  
    `--script-debug`              Enable -x if passed as first argument.  
+   `--force-apt`                 Apply Apt's --force-yes to override key expired/authentication errors.
   
   **Debian package build options:**  
    `--skip-tests`                Define DEB_BUILD_OPTIONS=nocheck before build.  
@@ -58,6 +60,10 @@ To print the duebuild help for any build container without logging in to it, run
                                 If (repo) starts with a '/' it will be treated as a container-relative  
                                 path for the location of the repository. Otherwise it defaults to the  
                                 directory above the build area.  
+  
+ **Setup commands:**  
+   `--download-src    <deb>`     Get a source .deb  
+   `--lookup         <file>`     On a registered system, find the .deb for a file.  
 
   
   **More information:**  
@@ -125,6 +131,10 @@ duebuild examples of additional build options.
   Build source, arch specific and type 'all' (default -uc -us)  
    `./duebuild --cbuild`  
 
+  Force APT to ignore safeguards by applying '--force-yes' when installing dependencies.  
+ `/usr/local/bin/duebuild --force-apt --cbuild`   
+
+
   Insert a string into the version  
    `./duebuild --cbuild --dev-version ~1234`  
 
@@ -149,11 +159,15 @@ The container's `/usr/local/bin/due-manage-local-repo.sh` script is responsible 
   Do environmental setup and run dpkg-buildpackage -uc -us -j8  
    `./duebuild --build-command dpkg-buildpackage -uc -us -j8`  
 
-  Examples from DUE:  
+  **Examples from DUE:**  
    Build package with 'nostrip' and 'debug' options,   
    unsigned source, unsinged changes file, build binary, 5 jobs,  
    and reference local package repository 'myLocalRepo'  
      due `--build `--jobs 5 `--deb-build-option nostrip   
      --deb-build-option debug `--use-local-repo myLocalRepo   
      --cbuild -us -uc -b`  
+  
+
+
+
      

@@ -1,29 +1,51 @@
-#!/bin/bash 
+#!/bin/bash
 # SCRIPT_PURPOSE: Dedicated User Environment CLI
 
-# Copyright 2021 Nvidia Corporation.  All rights reserved.
+# Copyright 2021,2022 Nvidia Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
 
+# If a piped operation fails, die on the first error.
+set -o pipefail
+
+INSTALLED_DUE_PATH="/usr/bin/due"
 INSTALLED_DUE_DIR="/usr/share/due"
 LIBRARY_FILE="/usr/lib/libdue"
-if [  -e ./libdue ];then
-    # Use local copy if it exists. We are running from a source
-    # checkout and probably want the current file, rather than
-    # the installed one
-    TOP_LEVEL_DIR=$(pwd)
-    LIBRARY_FILE="${TOP_LEVEL_DIR}/libdue"
-fi
 
+# Set user's default home directory
+DUE_ENV_DEFAULT_HOMEDIR="$HOME"
+
+DUE_CONFIG_SOURCING_SUMMARY=""
+
+if [ "$0" != "$INSTALLED_DUE_PATH" ];then
+    if [  -e ./libdue ] && [ -e ./due ];then
+        # If both files are in the same directory,
+        # it is probably running from a source checkout
+        # should use the library from the corrent
+        # directory, rather than the installed one.
+        TOP_LEVEL_DIR=$(pwd)
+        LIBRARY_FILE="${TOP_LEVEL_DIR}/libdue"
+        # Let the user know they're using the local copy.
+        DUE_CONFIG_SOURCING_SUMMARY="\n==== Sourcing DUE files from: [ $TOP_LEVEL_DIR ]"
+        DUE_CONFIG_SOURCING_SUMMARY+="\n====                     due: [ $0 ]"
+        DUE_CONFIG_SOURCING_SUMMARY+="\n====                  libdue: [ $LIBRARY_FILE ]"        
+        DUE_CONFIG_SOURCING_SUMMARY+="\n"
+
+        #echo "==== Sourcing DUE files from:     [ $TOP_LEVEL_DIR ]"
+    else
+        echo "ERROR! Cannot run $0. Missing files. Exiting."
+        exit 1
+    fi
+fi
 if [ ! -e "$LIBRARY_FILE"  ];then
     echo "ERROR! Failed to find [ $LIBRARY_FILE ]. Exiting."
     exit 1
 fi
 
-
 # Source the installed or checked out version of libdue
 . "$LIBRARY_FILE"
+
 
 # Verbosity level. 0 is terse.
 VERBOSITY_LEVEL=0
@@ -71,7 +93,7 @@ function fxnHelp ()
     echo ""
     echo " Usage: $DUE_NAME [ option ]"
     echo ""
-    echo " due is a wrapper to use Docker containers as Debian build environments."
+    echo " DUE is a wrapper application that uses Docker containers as build environments."
     echo ""
     echo "   -c | --create             Build an image using configuration from DIR"
     echo "        --delete <term>      Generate a script to delete all images containing <term> "
@@ -83,8 +105,8 @@ function fxnHelp ()
     echo "        --version            Print version of DUE."
     echo ""
     echo "   -h | --help               Top level help (this message)."
-    echo "                              Also provides context specific help when used"
-    echo "                              with the arguments above."
+    echo "        --help <command>      Command level help if command is one of:"
+    echo "                              [--build|--manage|--create|--run]"
     echo "   --help-examples           Specific examples of use when used with the arguments above."
     echo "   --help-topics             Summary of all help sections, with access instructions."
     echo "   --help-about              A description of what DUE can do."
@@ -119,6 +141,15 @@ function fxnHelpExamples()
     echo ""
     echo "See topic specific help for topic specific examples."
     echo " Ex: $0 --help-examples --build"
+    echo ""
+    echo " Debug a failed container build through running it."
+    echo "  $0 --run --debug --all --login-shell /bin/bash --login"
+    echo ""
+    echo " Run a non-DUE container interactively to debug it."
+    echo "  $0 --run --debug  "
+    echo ""
+
+
 
 }
 
@@ -143,14 +174,14 @@ function fxnHelpManage()
     echo "   --export-container <name>  Save a running container as a Docker image named [name]"
     echo "   --export-image <name>      Export a docker image as a file. [name] is optional."
     echo "   --import-image <name>      Import Docker image file named [name]"
-	echo ""
-	echo "   --browse <registry >       Browse a docker registry. Ex: due --manage --browse localhost:5000"
-	echo ""
+    echo ""
+    echo "   --browse <registry >       Browse a docker registry. Ex: due --manage --browse localhost:5000"
+    echo ""
     echo "   --copy-config              Create a personal DUE configuration file in ~/.config/due/due.config"
     echo "   --make-dev-dir <dir>       Populate a local directory for DUE container development."
     echo "   --list-templates           List available templates."
-    echo "   --docker-clean             Run 'docker system prune ; docker image prune' to reclaim disk space."	
-    echo ""	
+    echo "   --docker-clean             Run 'docker system prune ; docker image prune' to reclaim disk space."
+    echo ""
     echo "   --stop  <match>            Stop a running container. Optional pattern <match>"
     echo "   --delete-matched [term]    Delete containers that contain this term. USE WITH CAUTION!"
     echo ""
@@ -228,20 +259,24 @@ function fxnHelpCreate()
     echo "      Mandatory:"
     echo "     --from <name:tag>          Pull name:tag from registry to use as starting point for the image."
     echo "     --use-template <role>      Use files from templates/<role> to generate the config directory."
-    echo "     --description \"desc\"       Quoted string to describe the container on login."
+    echo "     --description \"desc\"     Quoted string to describe the container on login."
     echo "     --name <name>              Name for resulting image and config directory."
     echo "                                  Ex: debian-stretch-build, ubuntu-18.04-build, etc"
     echo "      Optional:"
-    echo "    --prompt <prompt>           Set in container prompt to <prompt> to provide user context"
-    echo "    --no-image                  Allow build directory to be created. Do not build the image."
+    echo "     --platform <os/arch>       Specify that the image has architecture different from host."
+    echo "                                  Ex: linux/aarch64"
+    echo "     --prompt <prompt>          Set in container prompt to <prompt> to provide user context"
+    echo "     --no-image                 Allow build directory to be created. Do not build the image."
     echo ""
     echo "  2 - Build a Docker image from the image build directory."
     echo ""
-    echo "   --build-dir <dirname>       Build using an existing configuration directory."
+    echo "     --build-dir <dirname>      Build using an existing configuration directory."
+    echo "     --dockerarg <arg>          Pass <arg> to the Docker build invocation."
+    echo "                                Use multiple times for multiple args, or pass one long quoted string."
     echo ""
     echo "   --clean                      Remove due-build-merge directory."
     echo "   --help                       This help."
-    echo "   --filter <term>             With --help, filter output to contain <term>"
+    echo "   --filter <term>              With --help, filter output to contain <term>"
     echo "   --create --help-examples     Examples of using create."
 
     echo ""
@@ -273,6 +308,12 @@ function fxnHelpCreateExamples()
     echo ""
     echo " Ex: filter creation examples to only show those containing 'foo' "
     echo " $0 --create --help --filter foo"
+    echo ""
+    echo " Ex: pass proxy arguments to Docker build, using --create and --dockerarg:"
+    echo " $0  --create --from debian:10 --description 'Debian 10 example' --name example-debian-10 \\ "
+    echo "     --prompt Ex --tag example-debian-10 --use-template example \\ "
+    echo "     --dockerarg '--build-arg HTTP_PROXY=http://10.20.30.2:1234' \\ "
+    echo "     --dockerarg ' --build-arg FTP_PROXY=http://40.50.60.5:4567' \\ "
     echo ""
 }
 
@@ -308,46 +349,46 @@ function fxnHelpRun()
     echo "        --all                 Do not filter list of available containers."
     echo "        --ignore-type         Treat container as if it was not made by DUE."
     echo "        --debug               Debug partially built container. Defaults to setting:"
-    echo "                              --any --username root --userid 0"
+    echo "                               --any --username root --userid 0"
     echo "   -i | --run-image <filter>  Restrict shown images to those that match *filter*."
-    echo "                              If only one image matches a line from due --list-images"
-    echo "                              it will be run automatically."
+    echo "                               If only one image matches a line from due --list-images"
+    echo "                               it will be run automatically."
+    echo "        --entrypoint <shell>  Override container's ENTRYPOINT. Defaults to create user if no shell path passed."
+    echo ""
     echo "  Image commands:"
     echo "   -c | --command <cmd>       <cmd> will be executed by --login-shell in the container"
-    echo "                              NOTE: this must be the last argument,  as everything after"
-    echo "                              --command will be interpreted as the command."
-    echo "                              NOTE2:  Quote \"\" your arguments if using multiple commands!"
-    echo "                              NOTE3:  \ any ; so everything after the ; goes to DUE"
+    echo "                               NOTE: this must be the last argument,  as everything after"
+    echo "                                --command will be interpreted as the command."
+    echo "                               NOTE2:  Quote \"\" your arguments if using multiple commands!"
+    echo "                               NOTE3:  \ any ; so everything after the ; goes to DUE"
     echo "        --build               Invoke container's /usr/local/bin/duebuild script"
-    echo "                              (if present in container) in current directory."
+    echo "                               (if present in container) in current directory."
     echo "        --duebuild            Same as --build, but appending --help will run"
-    echo "                               duebuild --help in a container you select."
+    echo "                               'duebuild --help' in the container you select."
     echo "        --container-name <n>  Change the name of the container to <n>"
     echo ""
-    echo " Pass commands to Docker "
+    echo " Pass commands to Docker/Podman:"
     echo "        --dockerarg <arg>     <arg> will be applied directly to the Docker invocation."
     echo "                               use multiple times for multiple args."
     echo ""
     echo " Host directories to mount in the container:"
-    echo "        --home-dir <host path> Absolute path on host system to mount as container user home directory"
-    echo "                              Default: $HOST_HOME_DIR"
-    echo "                              Pass 'container' as path to use home dir that comes with the container."
+    echo "        --home-dir < path>    Absolute path on host system to mount as container user home directory"
+    echo "                               Default: $DUE_ENV_DEFAULT_HOMEDIR"
+    echo "                               Pass 'container' as path to use home dir that comes with the container."
     echo "        --mount-dir <hp:cp>   Mount absolute path to host directory hp at location cp in container."
     echo "                               Ex: mount host /tmp in container /var/build:  --mount-dir /tmp:/var/build "
     echo ""
-    echo "  Log in to an active container"
+    echo " Log in to an active container:"
     echo "   -l | --login               Choose existing running container to log in to."
     echo "   -a | --all                 Log into any container as root using sh"
-    echo "  Log in as a particular user:"
+    echo ""
+    echo "   Log in as a particular user:"
     echo "        --username  <username>  Name to use when logging in.    Default: $USER_NAME"
     echo "        --userid    <id#>       User ID to use when logging in. Default: $USER_ID"
     echo "        --groupname <groupname> Container user's default group  Default: $USER_GROUP_NAME"
     echo "        --groupid   <id#>       ID of container user's group    Default: $USER_GROUP_ID"
     echo "        --login-shell <path>    Program to use as login         Default: $LOGIN_SHELL"
     echo ""
-    echo ""
-    #experimental
-    #   echo "   --debug                 Pass a debug flag to the container."
     echo ""
     echo " Help:"
     echo "   --help --run                 This message."
@@ -405,6 +446,15 @@ function fxnHelpRunExamples()
     echo "   $DUE_NAME --run --run-image due-package-debian-10:latest --command duebuild \\"
     echo "       --use-directory /home/username/mypackage/ \\"
     echo "       --build --dev-version ~789 --source"
+    echo ""
+    echo " Build an RPM from source without logging in to the container."
+    echo "   $DUE_NAME --build --cbuild foo.src.rpm"
+    echo ""
+    echo " Override a container's entrypoint:"
+    echo "  - For interactive login as host user in the container."
+    echo "      $0 --run --entrypoint"
+    echo "  - To debug a container."
+    echo "      $0 --run --debug --entrypoint /bin/sh "
     echo ""
     echo ""
 }
@@ -473,7 +523,24 @@ function fxnPrintAllHelp()
     echo ""
 }
 
-
+# Takes - a string that may be a command option.
+#  Check if the term passed data, rather than a command option.
+#   Since argument parsing functions default to assuming arguments are --options,
+#   this function looks for exceptions and returns TRUE if found, as returning
+#   TRUE or FALSE answers 'argument is data?'
+function fxnArgIsData()
+{
+    if [ "$1" = "" ];then
+        # No argument = not data
+        echo "FALSE"
+    elif [[ "$1" = --* ]];then
+        # if it starts with --, it is an option.
+        echo "FALSE"
+    else
+        # Whatever is left is considered data.
+        echo "TRUE"
+    fi
+}
 
 # Takes - rest of command line after --create
 function fxnParseCreateArgs()
@@ -577,6 +644,13 @@ function fxnParseCreateArgs()
                 shift
                 ;;
 
+            --platform )
+                # Specify an image os/architecture different from the host system.
+                # Ex: linux/aarch64 to get an ARMV8 version of a container.
+                PLATFORM="$2"
+                shift
+                ;;
+
             --tag )
                 # optional version tag for image
                 DOCKER_IMAGE_TAG="$2"
@@ -584,6 +658,12 @@ function fxnParseCreateArgs()
                     fxnERR "--tag Docker image tag [ $DOCKER_IMAGE_TAG ]must be lower case only."
                     exit 1
                 fi
+                shift
+                ;;
+            --dockerarg )
+                # Append addtional argument to pass through to docker build
+                # $2 should be passed as a quoted string
+                DOCKER_SPECIFIC_BUILD_ARGS+=" $2 "
                 shift
                 ;;
 
@@ -606,8 +686,8 @@ function fxnParseCreateArgs()
                         fxnPP "Setting --use-template path to $MERGE_IN_TEMPLATE_PATH"
                     else
                         # The target may be nested under /sub-type/ directories, in
-						# which case the merged template will be the contents of a
-						# series of sub-type directories merged together.
+                        # which case the merged template will be the contents of a
+                        # series of sub-type directories merged together.
                         MERGE_IN_TEMPLATE_PATH=$( find "$SPECIFIC_TEMPLATE_PATH" -name $MERGE_IN_TEMPLATE_PATH )
                         if [ ! -e "$MERGE_IN_TEMPLATE_PATH" ];then
                             fxnERR "Failed to find template directory [ $2 ] or [ $SPECIFIC_TEMPLATE_PATH ]. Exiting."
@@ -671,10 +751,15 @@ function fxnDueBuildHelp()
 
 function fxnParseRunArgs()
 {
-
+    # If TRUE, the argument does not start with -- and it is data
+    local nextArgIsData
     while [[ $# -gt 0 ]]
     do
         term="$1"
+
+        # Expect TRUE or FALSE here
+        nextArgIsData=$( fxnArgIsData "$2")
+
         case $term in
             # Parse any help requests first, as they'll result in exit
             -h | --help | help )
@@ -714,6 +799,19 @@ function fxnParseRunArgs()
                 shift
                 ;;
 
+            --entrypoint )
+                # Override a container's ENTRYPOINT for interactive login.
+                # Note that if $2 is anything other than a shell it probably won't
+                # work well.
+                if [ "$nextArgIsData" = "TRUE" ];then
+                    OVERRIDE_ENTRYPOINT+="  --entrypoint $2 "
+                    shift
+                else
+                    # Force entry point to be the container-create-user.sh script.
+                    OVERRIDE_ENTRYPOINT+="  --entrypoint /usr/local/bin/container-create-user.sh "
+                fi
+                ;;
+
             -a | --all | --any  )
                 # Run any downloaded image
                 #and log in as root
@@ -741,11 +839,14 @@ function fxnParseRunArgs()
                 # Settings to debug a failed container creation.
                 # Default to root account,
                 # Show containers not labeled as created by DUE
+                # Bash may not be installed, so /bin/sh should be safe.
                 USER_NAME="root"
                 USER_ID="0"
                 FILTER_SHOW_ONLY_DUE="FALSE"
-
+                DEBUG_LOGIN="TRUE"
+                LOGIN_SHELL="/bin/sh"
                 ;;
+
             -b | --build | --duebuild )
                 # execute /usr/local/bin/duebuild
                 if [ "$term" = "--duebuild" ];then
@@ -761,6 +862,17 @@ function fxnParseRunArgs()
                 if [ "$2" != "" ];then
                     # Seems the run help would be useful here.
                     case $2 in
+                        --home-dir )
+                            USE_HOMEDIR="$3"
+                            if [ ! -e "$USE_HOMEDIR" ];then
+                                fxnERR "Failed to find --home-dir [ $USE_HOMEDIR ]. Exiting."
+                                exit 1
+                            fi
+                            # Shift these args out of the command line passed to duebuild
+                            shift
+                            shift
+                            ;;
+
                         -h | --help | help )
                             fxnHelpRun
                             exit
@@ -832,6 +944,7 @@ function fxnParseRunArgs()
                 # Run this when logging into a container
                 # Typically /bin/bash or /bin/sh for non DUE containers
                 LOGIN_SHELL="$2"
+                OVERRIDE_LOGIN="TRUE"
                 shift
                 ;;
 
@@ -887,6 +1000,9 @@ function fxnParseRunArgs()
                 if [ "$term" != "" ];then
                     # Flag bad arguments
                     echo "Unrecognized --run argument [ $term ]"
+                    if [ "$DOCKER_SPECIFIC_ARGS" != "" ];then
+                        echo " Tip: Were dockerarg arguments quoted? Ex: --dockerarg '--flag value'"
+                    fi
                 fi
                 exit
                 ;;
@@ -926,20 +1042,20 @@ function fxnParseManageArgs()
                 fi
                 ;;
 
-			--browse )
-				# URL to browse
-				if [ "$2" = "" ];then
-					fxnERR " --browse requres a registry URL"
-					echo "Maybe one of these on [ localhost | $(hostname --fqdn ) ] ?"
-					# search for docker instances using port 5000."
-					${DOCKER_APP} ps | grep "registry"
-					exit 1
-				fi
-				fxnBrowseRegistry "$2"
-				shift
-				exit 0
-				;;
-			
+            --browse )
+                # URL to browse
+                if [ "$2" = "" ];then
+                    fxnERR " --browse requres a registry URL"
+                    echo "Maybe one of these on [ localhost | $(hostname --fqdn ) ] ?"
+                    # search for docker instances using port 5000."
+                    ${DOCKER_APP} ps | grep "registry"
+                    exit 1
+                fi
+                fxnBrowseRegistry "$2"
+                shift
+                exit 0
+                ;;
+
             -l |--list-images )
                 # dump the docker header
                 ${DOCKER_APP} images | head -n 1  | sed -e 's/                //g'
@@ -1105,10 +1221,11 @@ function fxnPrintArgs()
 
 }
 #
-# Read in any defaults set by the user.
+# Read in any defaults set by the user, or create the config file.
 #
 
-fxnReadConfigFile
+fxnCreateConfigFile
+
 
 # For any image creation, default to building the image in one step.
 DO_CREATE_IMAGE_NOW="TRUE"
@@ -1126,7 +1243,7 @@ fi
 # Are probably using docker, but it might be podman instead...
 DOCKER_APP="docker"
 if [ -e "/usr/bin/podman" ];then
-	DOCKER_APP="podman"
+    DOCKER_APP="podman"
 fi
 
 while [[ $# -gt 0 ]]
@@ -1240,22 +1357,29 @@ if [ "$DO_DEBUG" = "TRUE" ];then
     set -x
 fi
 
+# Let the user know what files are being pulled in, if they
+# are not the defaults from /bin, /lib/ and /etc/
+if [ "$DUE_CONFIG_SOURCING_SUMMARY" != "" ];then
+    echo -e "$DUE_CONFIG_SOURCING_SUMMARY"
+fi
 
 #
 # Check for user Docker group membership before any actions.
 # They have to be a member for anything beyond this point
-# to work.
+# to work...unless they're running Podman.
 #
-groups | grep -q "docker"
-if [ $? != 0 ];then
-    fxnWarn "You are not an active member of the Docker group."
-    echo " You can fix this by doing the following:"
-    echo "  1 - run: sudo /usr/sbin/usermod -a -G docker $(whoami)"
-    echo "  2 - log out and back in again for the addition to take effect."
-    echo ""
-    exit 1
-fi
+if [ "$DOCKER_APP" = "docker" ];then
 
+    groups | grep -q "docker"
+    if [ $? != 0 ];then
+        fxnWarn "You are not an active member of the Docker group."
+        echo " You can fix this by doing the following:"
+        echo "  1 - run: sudo /usr/sbin/usermod -a -G docker $(whoami)"
+        echo "  2 - log out and back in again for the addition to take effect."
+        echo ""
+        exit 1
+    fi
+fi
 #
 # if logging in to a running container
 #
@@ -1274,15 +1398,18 @@ if [ "$DO_LOGIN" = "TRUE" ];then
     # they have to pick from all possible containers.
 fi
 
-# This gets read from the DUE_CONFIG_ABSOLUTE_PATH
-if [ "$DUE_ENV_DEFAULT_HOMEDIR" != "" ];then
-    if [ ! -e "$DUE_ENV_DEFAULT_HOMEDIR" ];then
-        fxnWarn "DUE_ENV_DEFAULT_HOMEDIR [ $DUE_ENV_DEFAULT_HOMEDIR ] does not exist."
-    else
-        USE_HOMEDIR="$DUE_ENV_DEFAULT_HOMEDIR"
+
+# If home directory is not explicitly set by the user
+if [ "$USE_HOMEDIR" = "" ];then
+    # This gets read from the DUE_CONFIG_ABSOLUTE_PATH
+    if [ "$DUE_ENV_DEFAULT_HOMEDIR" != "" ];then
+        if [ ! -e "$DUE_ENV_DEFAULT_HOMEDIR" ];then
+            fxnWarn "DUE_ENV_DEFAULT_HOMEDIR [ $DUE_ENV_DEFAULT_HOMEDIR ] does not exist."
+        else
+            USE_HOMEDIR="$DUE_ENV_DEFAULT_HOMEDIR"
+        fi
     fi
 fi
-
 
 #
 # If verbosity was requested, print the invocation arguments
@@ -1309,7 +1436,7 @@ if [ "$DO_CREATE_NEW_IMAGE" = "TRUE" ];then
     fi
 
     # Make an image using one of the directory configurations
-    fxnMakeNewDockerImage "$FROM_IMAGE_TYPE" "$NEW_IMAGE_NAME"
+    fxnMakeNewDockerImage "$FROM_IMAGE_TYPE" "$NEW_IMAGE_NAME" $PLATFORM
     exit
 fi
 
@@ -1344,7 +1471,7 @@ if [ "$DO_CREATE_DIRECTORY" = "TRUE" ];then
     fi
 
     # Make an image using one of the directory configurations
-    fxnMakeNewDockerImage "$FROM_IMAGE_TYPE" "$NEW_IMAGE_NAME"
+    fxnMakeNewDockerImage "$FROM_IMAGE_TYPE" "$NEW_IMAGE_NAME" $PLATFORM
     exit
 fi
 
@@ -1402,5 +1529,3 @@ fi
 
 # Fallthrough exit
 echo "Error: Failed to specify an action like --run or --login or --help"
-
-

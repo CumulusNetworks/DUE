@@ -22,6 +22,46 @@ fxnInstallSourcesList
 fxnPostInstallCommon
 
 
+# Detect expired releases
+if [[ $NAME = *Debian* ]];then
+    # Useful for old distributions that throw expired key errors.
+    # Though key update can be forced with: sudo apt-key adv --recv-keys
+    # Debian 8 Jessie is the first of these tested.
+    # NOTE:  --force-yes can apply the following:
+    #  --allow-unauthenticated
+    #  --allow-downgrades
+    #  --allow-remove-essential
+    # --allow-change-held-packages
+
+    # VERSION_ID and VERSION variables are sourced from /etc/os-release
+    if [ $((VERSION_ID < 9 )) = 1 ];then
+        APT_FAKE_TIME=" faketime "
+        APT_FORCE_YES=" --force-yes "
+
+        # Pretend to be an earlier date so keys are not yet expired.
+        APT_FAKE_DATE="2018-01-01"
+        # Ex: sudo faketime '2018-01-01 00:00:01' apt-get update
+
+        # I suspect additional fake times will have to be
+        # added.
+        case $VERSION_ID in
+            '8' )
+                APT_FAKE_DATE="2018-01-01"
+                ;;
+            * )
+                echo "ERROR! $0 Failed to set fake time for $VERSION. Exiting."
+                exit 1
+                ;;
+
+        esac
+        echo ""
+        echo "WARNING: detected expired release $NAME $VERSION_ID "
+        echo " APT install will use faketime and --force-yes in $0"
+        echo ""
+    fi
+fi
+
+
 #
 # Container specific configuration
 #
@@ -68,7 +108,8 @@ DEBIAN_RELEASE=$( grep "Debian GNU/Linux" /etc/issue | awk '{print$3}')
 #
 case $DEBIAN_RELEASE in
     "8" )
-        echo "Debian 8: Skipping Secure boot packages, sbsigntool and python-sphinx"
+        # Platforms that built with Debian 8 do not support Secure Boot.
+        echo "Debian 8: Skipping Secure boot packages, monkeysphere, sbsigntool and python-sphinx"
         DEBIAN_VERSION_PACKAGES="realpath"
         ;;
 
@@ -78,7 +119,7 @@ case $DEBIAN_RELEASE in
 
         # Packages used for secure boot (amd64 hard code is fine as this is Intel only)
         #linux-headers-amd64?
-        SECURE_BOOT=" qemu-utils ovmf gnu-efi libfile-slurp-perl "
+        SECURE_BOOT=" qemu-utils ovmf gnu-efi libfile-slurp-perl monkeysphere"
 		SPHINX_NAME=" python-sphinx"
         ;;
 
@@ -87,7 +128,7 @@ case $DEBIAN_RELEASE in
 
         # Packages used for secure boot (amd64 hard code is fine as this is Intel only)
         #linux-headers-amd64?
-        SECURE_BOOT=" qemu-utils ovmf gnu-efi libfile-slurp-perl grub-common psmisc "
+        SECURE_BOOT=" qemu-utils ovmf gnu-efi libfile-slurp-perl grub-common psmisc monkeysphere "
 		SPHINX_NAME=" python-sphinx"
 		
         # make sure this is in a container
@@ -103,7 +144,7 @@ case $DEBIAN_RELEASE in
 
         # Packages used for secure boot (amd64 hard code is fine as this is Intel only)
         #linux-headers-amd64?
-        SECURE_BOOT=" qemu-utils ovmf gnu-efi libfile-slurp-perl grub-common psmisc "
+        SECURE_BOOT=" qemu-utils ovmf gnu-efi libfile-slurp-perl grub-common psmisc monkeysphere "
 		SPHINX_NAME=" python3-sphinx"		
         ;;
 
@@ -119,10 +160,12 @@ esac
 #
 
 # Note: packages after xorriso are optional, but convenient to have.
-apt-get update
+set -x
+$APT_FAKE_TIME $APT_FAKE_DATE  apt-get update
 
 
 DEBIAN_FRONTEND=noninteractive \
+               $APT_FAKE_TIME $APT_FAKE_DATE \
                apt-get install \
                --assume-yes \
                --no-install-recommends \
@@ -158,7 +201,6 @@ DEBIAN_FRONTEND=noninteractive \
                libssl-dev \
                libtool \
                libtool-bin \
-			   monkeysphere \
                mtools \
                pkg-config \
                openssl \
@@ -219,7 +261,7 @@ git config --global user.email "oniebuild@localhost"
 # Only pull it in on Debian containers, as that is
 # 'official build environment'. Let other distributions build
 # without it ( or change the initial check below to include it.
-
+set -x
 if [ "$DEBIAN_RELEASE" != "" ];then
     if [ "$DEBIAN_RELEASE" = "8" ];then
         echo "Not installing $SPHINX_NAME You'll have to get creative."
@@ -232,6 +274,7 @@ if [ "$DEBIAN_RELEASE" != "" ];then
 
         # Get it
         DEBIAN_FRONTEND=noninteractive \
+                       $APT_FAKE_TIME $APT_FAKE_DATE \
                        apt-get install \
                        --assume-yes \
                        --no-install-recommends \
@@ -253,8 +296,11 @@ HUB_VERSION="2.12.8"
 HUB_URL="https://github.com/github/hub/releases/download/v${HUB_VERSION}/hub-linux-amd64-${HUB_VERSION}.tgz"
 
 echo "Installing optional package 'hub' version $HUB_VERSION as a GitHub utility in /usr/local/bin."
-echo "wget $HUB_URL"
-wget $HUB_URL                                               || exit 1
+echo "curl --remote-name --remote-header-name --location $HUB_URL"
+# This was wget instead of curl until wget developed an issue with redirects
+# where it would rapidly loop and then exceed the --max-redirect.
+# Curl gets it on the first try.
+curl --remote-name --remote-header-name --location $HUB_URL || exit 1
 tar -xvf hub-linux-amd64-${HUB_VERSION}.tgz                 || exit 1
 cp hub-linux-amd64-${HUB_VERSION}/bin/hub /usr/local/bin    || exit 1
 

@@ -2,6 +2,7 @@
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 # SCRIPT_PURPOSE: Dynamically add a user to a docker container
 
+# Copyright 2021,2022 Nvidia Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
@@ -23,9 +24,48 @@
 # Default to Debian, unless otherwise specified.
 OS_TYPE="Debian"
 
-if [ -e /etc/redhat-release ];then
-    OS_TYPE="RedHat"
-fi
+DO_DEBUG="FALSE"
+
+# Source this to set variables like NAME
+source /etc/os-release
+
+case "$ID" in
+    # Red Hat variants
+    'fedora' | 'rhel' )
+        OS_TYPE="RedHat"
+        ;;
+
+    # SUSE variants
+    # Suse Linux Enterprise Server | Desktop
+    'opensuse-leap' | 'sles' | 'sled' )
+        # Suse is close enough to Red Hat to share code.
+        OS_TYPE="Suse"
+        ;;
+
+    # Default to Debian variants
+    * )
+        OS_TYPE="Debian"
+        ;;
+
+esac
+
+# A basic help function
+function fxnHelp()
+{
+    echo "Usage  : $(basename "$0"): [options]"
+    echo "  Script to add a user in a container. "
+    echo ""
+    echo " --username <user>"
+    echo " --userid   <UID>"
+    echo " --groupid  <GID>"
+    echo " --groupname <name>"
+    echo ""
+
+    echo "$0 has to be run as root, and should be smart enough to not"
+    echo "   overwrite any account configuration that may have been"
+    echo "   supplied by Docker/Podman."
+    echo ""
+}
 
 function fxnPP()
 {
@@ -45,7 +85,7 @@ function fxnEC ()
     status=$?
     # Print calling chain (BASH_SOURCE) and lines called from (BASH_LINENO) for better debug
     if [ $status -ne 0 ];then
-        echo "ERROR [ $status ] in ${BASH_SOURCE[1]##*/}, line #${BASH_LINENO[0]}, calls [ ${BASH_LINENO[*]} ] command: \"$@\"" 1>&2
+        echo "ERROR [ $status ] in ${BASH_SOURCE[1]##*/}, line #${BASH_LINENO[0]}, calls [ ${BASH_LINENO[*]} ] command: \"$*\"" 1>&2
     fi
 
     #$resetDebug
@@ -61,7 +101,6 @@ function fxnERR
     echo ""
 }
 
-SEND_ERRORS="/dev/null"
 #
 # This creates a user on the fly for the container,
 # Unless that user already exists.
@@ -72,7 +111,21 @@ function fxnAddUserInContainer()
 {
     local containerUserName
     local containerUID
+    local addGroupID=""
+    local userShell="/bin/bash"
+    # Check for namespace collisions
+    local userAlreadyExistsInContainer="FALSE"
+    local userIDAlreadyUsedBy=""
+    
+    # Arguments to create a home directory in the container
+    local makeHomeDir=""
 
+    # Message to put in home directories that will vanish with
+    # the container.
+    local homeDirMountStatus="THIS_IS_A_CONTAINER_DIRECTORY"
+    # Program that adds users
+    local addUserProgram=""
+    
     echo " ___________________________________________________________________________"
     echo "|                                                                           |"
 
@@ -90,147 +143,215 @@ function fxnAddUserInContainer()
         # In case it is NOT overridden by command line arguments
         containerUID=$( grep  ^"${USER_NAME}": /etc/passwd | awk -F ':' '{print$3}' )
 
-        echo "| User account [ $containerUserName ]:[ $containerUID ] exists in container."
+        echo "| $USER_NAME : Account exists in container with user id [ $containerUID ]."
+        userAlreadyExistsInContainer="TRUE"
     fi
 
     #
     # Sanity check passed in user ID and user name against existing user
     # names and IDs present in the container. There are four possible outcomes:
     #
-    if [ "$containerUserName" = "$USER_NAME" ];then
+    if [ "$userAlreadyExistsInContainer" = "TRUE" ];then
         #
         # The passed in user name already exists in the container
-        #
-        echo "| Using container account [ $containerUserName ]"
-        if [ "$containerUID" = "$USER_ID" ];then
-            #
-            # If the user wants to use the existing ID, they have to
-            # explicitly pass it in.
-            #
-            echo "| Using container account UID [ $containerUID ]"
-        else
-            # USER_ID comes in by default and is set to the invoking user's ID,
-            # unless explicitly passed in.
+        # Go with whatever the container settings are, as there may
+        # be internal dependencies on the user id/groups.
+        # The user can specify a --home-dir for the container account,
+        # or run as a non conflicting user.
+        if [ "$containerUID" != "$USER_ID" ];then
 
-            #
-            # Passed in user ID is different, but does not match any user IDs in use.
-            # Run as existing container user, but set user ID to passed in, so that
-            # any created files are owned by the invoking user.
-            #
-            echo "| $USER_NAME : using existing container account. "
-            echo "|              Changing UID from [ $containerUID ] to [ $USER_ID ]"
-            echo "|              (this may take a while...)"
+            echo "|   Warning: Container already has [ $containerUserName ]:[ $containerUID ]. Using those."
 
-            if [ ! -e /etc/.alreadySetUserID ];then
-                # Change the user ID so that any files created by this account will be
-                # owned by the user running it
-                usermod -u "$USER_ID" "${USER_NAME}" 2> $SEND_ERRORS
-                touch /etc/.alreadySetUserID
+            USER_ID="$containerUID"
+            GROUP_ID="$(id --group "$USER_NAME" )"
+            GROUP_NAME="$(id --name --group "$USER_NAME")"
+
+
+        fi
+    fi
+
+    #
+    # Sanity check the user's group id.
+    # Things can only go wrong here, so don't print status, just errors.
+    #
+
+    # Only try to set this if it was passed
+    # otherwise it evaluates to a blank line.
+    if [ "$GROUP_ID" != "" ];then
+        # Stash this for use during user account creation
+        addGroupID=" --gid $GROUP_ID "
+
+        if [ "$GROUP_NAME" != "" ];then
+            # Does the group exist in the container already
+            grep -q "^${GROUP_NAME}:" /etc/group
+            if [ $? = 0 ];then
+                # group exists. If the IDs don't match, we're cooked
+                containerGroupID=$( grep "^${GROUP_NAME}:" /etc/group | awk -F ':' '{print$3}' )
+                if [ "$containerGroupID" != "$GROUP_ID" ];then
+                    echo "ERROR! Passed in group ID of [ $GROUP_ID ] conflicts with [ $containerGroupID ] for group [ $GROUP_NAME ]. Exiting."
+                    exit 1
+                fi
+                # IDs match and group exists. That's fortunate. Carry on.
+            else
+                # Group name does not exist. Time to make it.
+                # Use --non-unique so if there is another group with the same ID,
+                # the new name will be created with the same ID in /etc/groups
+                # so that there are two different names with the same ID.
+                # The goal is to have host-consistent groups on the files when
+                # the contiainer exits, and to have the correct ID associated
+                # with either group name inside the container.
+                groupadd --non-unique --gid "$GROUP_ID" "$GROUP_NAME"
+                if [ $? != 0 ];then
+                    echo "ERROR! In container, failed to create group [ $GROUP_NAME] with ID [ $GROUP_ID ]. Exiting."
+                    exit 1
+                fi
+                # Now the group the user will be added to exists.
             fi
         fi
-    else
-        #
-        # The passed in user name does not exist in the container
-        #
-        if [ "$containerUID" != "$USER_ID" ];then
-            #
-            # User name and ID are unique: create the user
-            #
-            echo "| $USER_NAME : Creating user UID [ $USER_ID ] GID [ $GROUP_ID ] Group [ $GROUP_NAME ]"
-            # if a home directory exists, do not create it
-            if [ -e /home/"$USER_NAME" ];then
-                makeHomeDir=" --no-create-home "
-                echo "| $USER_NAME : /home directory exists. Not creating."
-            else
-                echo "| $USER_NAME : /home directory does not exist. Creating..."
-            fi
+    fi
 
-            # Only try to set this if it was passed
-            # otherwise it evaluates to a blank line.
-            if [ "$GROUP_ID" != "" ];then
-                addGroupID=" --gid $GROUP_ID "
-
-                if [ "$GROUP_NAME" != "" ];then
-                    # Does the group exist in the container already
-                    grep -q "$GROUP_NAME" /etc/group
-                    if [ $? = 0 ];then
-                        # group exists. If the IDs don't match, we're cooked
-                        containerGroupID=$( grep "$GROUP_NAME" /etc/group | awk -F ':' '{print$3}' )
-                        if [ "$containerGroupID" != "$GROUP_ID" ];then
-                            echo "ERROR! Passed in group ID of [ $GROUP_ID ] conflicts with [ $containerGroupID ] for group [ $GROUP_NAME ]. Exiting."
-                            exit 1
-                        fi
-                        # IDs match and group exists. That's fortunate. Carry on.
-                    else
-                        # Group does not exist. Time to make it.
-                        groupadd --gid "$GROUP_ID" "$GROUP_NAME"
-                        if [ $? != 0 ];then
-                            echo "ERROR! In container, failed to create group [ $GROUP_NAME] with ID [ $GROUP_ID ]. Exiting."
-                            exit 1
-                        fi
-                        # Now the group the user will be added to exists.
-                    fi
-                fi
-            fi
-            # Don't create home directory - we presume it is getting mounted
-            # use --gecos "" to supply blank data for Full Name, Room number, etc
-            if [ "$OS_TYPE" = "RedHat" ];then
-				if [ ! -d /home/"$USER_NAME" ];then
-					# useradd throws warnings if this already exists
-					makeHomeDir=" --home-dir /home/ $USER_NAME" 
-				fi
-                useradd $makeHomeDir \
-                        --gid "$GROUP_ID" \
-                        --shell /bin/bash \
-                        --uid "$USER_ID" \
-                        "$USER_NAME"
-                # Allow this user to become root
-                fxnPP "| $USER_NAME : adding to sudoers file."
-                usermod -aG wheel "$USER_NAME"
-
-            else
-                fxnEC adduser --home /home/"$USER_NAME" \
-                      $makeHomeDir \
-                      --shell /bin/bash \
-                      --uid "$USER_ID" \
-                      $addGroupID \
-                      --gecos "" \
-                      --disabled-password "$USER_NAME" > /dev/null || exit 1
-
-                # Allow this user to become root
-                fxnPP "| $USER_NAME : adding to sudoers file."
-                fxnEC adduser "$USER_NAME" sudo > /dev/null || exit 1
-
-            fi
-
-            # Do not require password to become root via 'sudo su'
-            echo "$USER_NAME       ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
-
-            # If this container has Docker installed and will be using it.
-            if [ "$HOST_DOCKER_GID" != "" ];then
-                # Make sure the user a member of the docker group.
-                if grep -q "docker:" /etc/group ; then
-                    fxnPP "| Adding user to docker group "
-                    fxnEC adduser "$USER_NAME" docker > /dev/null || exit 1
-                fi
-            fi
-
-            if [ -e /etc/due-bashrc ];then
-                echo "|___________________________________________________________________________|"
-                echo "|                                                                           |"
-                echo "|               Appending container /etc/due-bashrc                         |"
-                echo "|___________________________________________________________________________|"
-
-                . /etc/due-bashrc
-            fi
-        else
+    #
+    # Make sure the user ID isn't already in use by somebody else.
+    #
+    userIDAlreadyUsedBy=$(getent passwd "$USER_ID")
+    # If it is not in use, then proceed.
+    if [[ "$userIDAlreadyUsedBy" != "" ]];then
+        # If it is already associated with the user account, then proceed,
+        # since that is what we are aiming for anyway...
+        if [[ "$userIDAlreadyUsedBy" != "${USER_NAME}:"* ]];then
             #
             # user name is unique, but user ID is in use elsewhere. Fail the operation.
             #
-            fxnERR "Cannot create user $USER_NAME with UID [ $USER_ID ]. UID in use by $(getent passwd "$USER_ID")"
+            fxnERR "Cannot create user $USER_NAME with UID [ $USER_ID ]. UID in use by $userIDAlreadyUsedBy"
             exit 1
-
         fi
+    fi
+    #
+    # The passed in user name does not exist in the container.
+    # Create it.
+    #
+    if [ "$userAlreadyExistsInContainer" = "FALSE" ];then
+        #
+        # Set arguments for adding a user in different base containers
+        #
+        case $OS_TYPE in
+            'Suse' )
+                makeHomeDir+=" --create-home --home-dir /home/$USER_NAME"
+                addUserProgram="useradd"
+                # Add the 'wheel' group. Exits with 0 if group already exists.
+                groupadd --force wheel
+                # Add 'mail' group to avoid errors on user creation.
+                groupadd --force mail
+                ;;
+            'RedHat' )
+                makeHomeDir+=" --home-dir /home/$USER_NAME"
+                addUserProgram="adduser"
+                ;;
+            * )
+                # Debian variants
+                # use --gecos "" to supply blank data for Full Name, Room number, etc
+                DEBIAN_ADDUSER_ARGUMENTS=" --gecos ''  --disabled-password "
+                makeHomeDir+=" --home /home/$USER_NAME"
+                addUserProgram="adduser"
+                ;;
+        esac
+        
+        #
+        # User name and ID are unique: create the user
+        #
+        echo "| $USER_NAME : Creating with: UID $USER_ID, GID $GROUP_ID, group $GROUP_NAME "
+        # if a home directory exists, do not create it
+        if [ -e /home/"$USER_NAME" ];then
+            makeHomeDir=" --no-create-home "
+            echo "| $USER_NAME : /home/$USER_NAME already exists. Not creating."
+            # Do not leave a message indicating home directory is in a container.
+            homeDirMountStatus=""
+        else
+            # Specify that the home directory should be created if it
+            # does not already exist.
+            echo "| $USER_NAME : /home/$USER_NAME directory does not exist. Creating in CONTAINER ONLY."
+        fi
+
+        # Use for debug
+        if [ "$DO_DEBUG" = "TRUE" ];then
+            echo "| Adding user with: $addUserProgram $makeHomeDir --shell $userShell --uid $USER_ID $addGroupID $DEBIAN_ADDUSER_ARGUMENTS $USER_NAME"
+        fi
+        #
+        # Add the user
+        #
+        fxnEC $addUserProgram \
+                  $makeHomeDir \
+                  --shell "$userShell" \
+                  --uid "$USER_ID" \
+                  $addGroupID \
+                  $DEBIAN_ADDUSER_ARGUMENTS \
+                  "$USER_NAME" \
+                  > /dev/null || exit 1
+
+        # Leave a reminder that the home directory is not mounted.
+        if [ "$homeDirMountStatus" != "" ];then
+            # Leave a reminder about the home directory being local to the container.
+            touch /home/$USER_NAME/$homeDirMountStatus
+        fi
+    fi
+
+    #
+    # Configure the user account, which may have been created by
+    # the program running the container by default, and needs to
+    # be updated to reflect what the current user is running.
+    # If the account was just created, then this is redundant, but fast.
+    #
+    fxnPP "| $USER_NAME : Can sudo without password, uses shell [ $userShell ]."
+
+    if [ "$DO_DEBUG" = "TRUE" ];then
+        echo "|  usermod --shell $userShell $addGroupID $USER_NAME" 
+    fi
+    # Usermod may echo 'no changes' to stderr, so filter that.
+    # If there is a real problem, it'll exit.
+    fxnEC usermod \
+          --shell "$userShell" \
+          $addGroupID \
+          "$USER_NAME"  > /dev/null 2>&1 || exit 1
+    
+    #
+    # Set up passwordless sudo, depending on OS run.
+    #
+    if [ "$OS_TYPE" = "Debian" ];then
+        # Allow this user to become root
+        fxnEC adduser "$USER_NAME" sudo > /dev/null || exit 1
+        # Make sure the in-contianer password is empty.
+        # This is about convenience, not security.
+        fxnEC passwd -d "$USER_NAME" > /dev/null || exit 1
+    else
+        # Allow this user to become root
+        usermod -aG wheel "$USER_NAME"
+		# Sudo may be hampered by requiring a password in the container, so don't ask.
+        if [ ! -e /etc/sudoers.d/due-wheel-no-password ];then
+            # Configure wheel group to not require a password
+            echo "%wheel        ALL=(ALL)       NOPASSWD: ALL" > /etc/sudoers.d/due-wheel-no-password
+            # make it non-writeable
+            chmod a-w /etc/sudoers.d/due-wheel-no-password
+        fi
+    fi
+
+    # Do not require password to become root via 'sudo su'
+    echo "$USER_NAME       ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+    # If this container has Docker installed and will be using it.
+    if [ "$HOST_DOCKER_GID" != "" ];then
+        # Make sure the user a member of the docker group.
+        if grep -q "docker:" /etc/group ; then
+            fxnPP "| Adding [ $USER_NAME ] to docker group. "
+            fxnEC adduser "$USER_NAME" docker > /dev/null || exit 1
+        fi
+    fi
+    echo "|___________________________________________________________________________|"
+    if [ -e /etc/due-bashrc ];then
+        echo "|                                                                           |"
+        echo "|               Appending container /etc/due-bashrc                         |"
+        echo "|___________________________________________________________________________|"
+
+        . /etc/due-bashrc
     fi
 }
 
@@ -240,7 +361,7 @@ function fxnAddUserInContainer()
 function fxnRunAsUser()
 {
     local result
-    echo "|___________________________________________________________________________"
+
     # To pass a build command in, so that the build happens as the user,
     # use the format:
     #  due --run --command /usr/local/bin/duebuild
@@ -254,7 +375,7 @@ function fxnRunAsUser()
         # run the rest of it in a shell in case there's multiple commands in there
         # Suggested format for chaining commands in command list: cmd1 && cmd2 && cmd3
         # Run as specified user
-        /bin/su - ${USER_NAME} bash -c "$COMMAND_LIST"
+        /bin/su - "${USER_NAME}" bash -c "$COMMAND_LIST"
         result=$?
         echo " ___________________________________________________________________________"
         echo "|                                                                           |"
@@ -269,15 +390,24 @@ function fxnRunAsUser()
         echo "|___________________________________________________________________________|"
         echo ""
 
-        if [ "$OS_TYPE" = "RedHat" ];then
-			# Login behaves differently here, but su and cd _seem_ to be equivalent...
-			cd "$(sudo -u $USER_NAME sh -c 'echo $HOME')"
-            su "${USER_NAME}"
+        case "$OS_TYPE" in
+            'RedHat' | 'Suse'  )
+                # Login behaves differently here, but su and cd _seem_ to be equivalent...
+                fxnEC cd "$(sudo -u "$USER_NAME" sh -c 'echo $HOME')" || exit 1
+                su "${USER_NAME}"
+                ;;
 
-        else
-            # Log in interactively with no password as new user
-            login -p -f  "${USER_NAME}"
-        fi
+            'Debian' )
+                # Log in interactively with no password as new user
+                login -p -f  "${USER_NAME}"
+                ;;
+
+            * )
+                # Should never hit this as 'Debian' should be the default.
+                fxnERR "Unrecognized OS type for container user creation."
+                exit 1
+        esac
+
     fi
 }
 
@@ -286,7 +416,15 @@ function fxnRunAsUser()
 #
 if [ "$1" = "--debug" ];then
     set -x
+    DO_DEBUG="TRUE"
     shift
+fi
+
+if [ "$#" = "0" ];then
+    # Require an argument for action.
+    # Always trigger help messages on no action.
+    fxnHelp
+    exit 0
 fi
 
 #
@@ -324,7 +462,7 @@ do
             # if a command was passed in, it's now the rest of these arguments
             # get --command off the list
             shift
-            COMMAND_LIST="$@"
+            COMMAND_LIST="$*"
             # parsing stops here
             break
             ;;
@@ -361,14 +499,14 @@ fi
 # If an image-specific /etc/hosts file was present for creaton,
 # append its entries at run time. Docker will replace the /etc/hosts
 # at run time, so this re-applies what the author intended to be there.
-# Typical use would be to handle hostname resolution issues for		
+# Typical use would be to handle hostname resolution issues for
 #  the container
 if [ -e /due-configuration/filesystem/etc/hosts ];then
-	# If the changes are not there yet, append them
-	diff /due-configuration/filesystem/etc/hosts /etc/hosts \
-		| grep '>' > /dev/null  && { 
-		sudo bash -c "cat /due-configuration/filesystem/etc/hosts >> /etc/hosts"
-	}
+    # If the changes are not there yet, append them
+    diff /due-configuration/filesystem/etc/hosts /etc/hosts \
+        | grep '>' > /dev/null  && {
+        sudo bash -c "cat /due-configuration/filesystem/etc/hosts >> /etc/hosts"
+    }
 fi
 
 # at the user to the container

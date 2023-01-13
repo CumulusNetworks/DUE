@@ -1,32 +1,32 @@
-# /bin/bash syntax
+#! /bin/bash syntax
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 # SCRIPT_PURPOSE: Run configuration inside the docker container, after package install.
 # Bash should be installed at this point.
 
+# Copyright 2021,2022 NVIDIA Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
 
-#
-# Red Hat uses a different package manager, so abstract that out.
-# Ex: sudo $PACKAGE_UPDATE  ; sudo $PACKAGE_INSTALL rsync
-#
-if [ -e /etc/redhat-release ];then
-    OS_TYPE="RedHat"
-    PACKAGE_UPDATE=" dnf check-update"
-    PACKAGE_INSTALL=" dnf install "
-    #
-    # Defaults for Red Hat systems have nosuid set when Docker runs,
-    # preventing the mount of the user's home directory.
-    # There may be a better work around, but for now,
-    #  default to running --privileged
-    #
-    DOCKER_SPECIFIC_ARGS=" --privileged "
-else
-    OS_TYPE="Debian"
-    PACKAGE_UPDATE=" apt-get update "
-    PACKAGE_INSTALL=" apt-get install "
-fi
+
+# Pull this in to set variables like ID and NAME
+source /etc/os-release
+
+case "$ID" in
+    # Red Hat variants
+    'fedora' | 'rhel' )
+        OS_TYPE="RedHat"
+        ;;
+
+    # SUSE variants
+    'opensuse-leap' | 'sles' )
+        OS_TYPE="Suse"
+        ;;
+
+    * )
+        OS_TYPE="Debian"
+        ;;
+esac
 
 # expect files to install into the container to be found here
 # the Dockerfile.create should have made /due-configuration and copied
@@ -36,19 +36,19 @@ CONF_DIR="/due-configuration/filesystem"
 # Some functions are Debian only
 function fxnFailIfNotDebian()
 {
-	if [ "$OS_TYPE" != "Debian" ];then
-		echo "ERROR! trying Debian operations on non-Debian system"
-		exit 1
-	fi
+    if [ "$OS_TYPE" != "Debian" ];then
+        echo "ERROR! trying Debian operations on non-Debian system"
+        exit 1
+    fi
 }
 
 # Some functions are Red Hat only
 function fxnFailIfNotRedHat()
 {
-	if [ "$OS_TYPE" != "RedHat" ];then
-		echo "ERROR! trying Red Hat operations on non-Red Hat system"
-		exit 1
-	fi
+    if [ "$OS_TYPE" != "RedHat" ];then
+        echo "ERROR! trying Red Hat operations on non-Red Hat system"
+        exit 1
+    fi
 }
 
 
@@ -57,78 +57,78 @@ function fxnFailIfNotRedHat()
 # not running it at all
 function fxnPostInstallCommon()
 {
-	echo " ___________________________________________________________________________"
-	echo "|"
-	echo "| Running REPLACE_IMAGE_NAME post install configuration."
-	echo "|___________________________________________________________________________"
+    echo " ___________________________________________________________________________"
+    echo "|"
+    echo "| Running REPLACE_IMAGE_NAME post install configuration."
+    echo "|___________________________________________________________________________"
 
-	echo "Container configured by Dedicated User Environment (DUE) on $(date)" >> /due-configuration/README.txt
+    echo "Container configured by Dedicated User Environment (DUE) on $(date)" >> /due-configuration/README.txt
 
-	# Dockerfile should have copied the configuration directory into the
-	# container as due-configuration
-	cd $CONF_DIR
+    # Dockerfile should have copied the configuration directory into the
+    # container as due-configuration
+    cd $CONF_DIR || exit 1
 
 
-	# List DUE files to be copied onto the filesystem,
-	# and delete leading . to get absolute paths
-	FILES=$( /usr/bin/find ./ -type f | sed -e 's#^\.##g' )
+    # List DUE files to be copied onto the filesystem,
+    # and delete leading . to get absolute paths
+    FILES=$( /usr/bin/find ./ -type f | sed -e 's#^\.##g' )
 
-	#
-	# Preserve original container files before overwrite
-	#
-	BACKUP_DIR="/due-configuration/original-filesystem"
-	mkdir -p $BACKUP_DIR
-	if [ $? != 0 ];then
-		echo "$0 ERROR! Failed to make backup directory. Exiting!"
-		exit 1
-	fi
+    #
+    # Preserve original container files before overwrite
+    #
+    BACKUP_DIR="/due-configuration/original-filesystem"
+    mkdir -p $BACKUP_DIR
+    if [ $? != 0 ];then
+        echo "$0 ERROR! Failed to make backup directory. Exiting!"
+        exit 1
+    fi
 
-	# Leave some fingerprints behind
-	echo "Original container files DUE replaced on $(date) are here." >> ${BACKUP_DIR}/README.txt
-	echo ""
-	# Now, do any of the files to be installed overwrite existing files?
-	for path in ${FILES[@]}
-	do
-		if [ -e "$path" ];then
-			# this will get overwritten.
-			# Make a directory under the backup dir that has the original path
-			destDir=${BACKUP_DIR}$(dirname $path)
-			mkdir -p $destDir
-			echo "$0 Backup original $path to $destDir"
-			# copy the file in there so it is clear where it came from.
-			cp -a "$path" $destDir
-		fi
-	done
+    # Leave some fingerprints behind
+    echo "Original container files DUE replaced on $(date) are here." >> ${BACKUP_DIR}/README.txt
+    echo ""
+    # Now, do any of the files to be installed overwrite existing files?
+    for path in "${FILES[@]}"
+    do
+        if [ -e "$path" ];then
+            # this will get overwritten.
+            # Make a directory under the backup dir that has the original path
+            destDir="${BACKUP_DIR}$(dirname "$path")"
+            mkdir -p "$destDir"
+            echo "$0 Backup original $path to $destDir"
+            # copy the file in there so it is clear where it came from.
+            cp -a "$path" "$destDir"
+        fi
+    done
 
-	#
-	# Now overwrite and install
-	#
-	echo ""
-	echo "$0 Copying files in container $CONF_DIR into /"
+    #
+    # Now overwrite and install
+    #
+    echo ""
+    echo "$0 Copying files in container $CONF_DIR into /"
 
-	# Using --update gets around files being busy, like qemu-static
-	cp -ar --update  ${CONF_DIR}/* /
-	if [ $? != 0 ];then
-		echo "$0 ERROR! Failed to copy over existing file system files. Exiting."
-		exit 1
-	fi
+    # Using --update gets around files being busy, like qemu-static
+    cp -ar --update  ${CONF_DIR}/* /
+    if [ $? != 0 ];then
+        echo "$0 ERROR! Failed to copy over existing file system files. Exiting."
+        exit 1
+    fi
 
-	# add the due-bashrc to the login, which defaults to using /etc/bash.bashrc
-	if [ -e /etc/due-bashrc ];then
-		if [ -e /etc/bash.bashrc ];then
-			echo "$0 Appending /etc/due-bashrc to /etc/bashrc "
-			echo "#Source DUE bashrc. Set on $(date)" >> /etc/bash.bashrc
-			echo " . /etc/due-bashrc "                >> /etc/bash.bashrc
-		fi
-	fi
+    # add the due-bashrc to the login, which defaults to using /etc/bash.bashrc
+    if [ -e /etc/due-bashrc ];then
+        if [ -e /etc/bash.bashrc ];then
+            echo "$0 Appending /etc/due-bashrc to /etc/bashrc "
+            echo "#Source DUE bashrc. Set on $(date)" >> /etc/bash.bashrc
+            echo " . /etc/due-bashrc "                >> /etc/bash.bashrc
+        fi
+    fi
 
-	# If an /etc/hosts is there (container has DNS issues?)
-	# copy that over before doing more package updates
-	if [ -e ${CONF_DIR}/etc/hosts ];then
-#		mv /etc/hosts /etc/apt/original-sources.list
-		echo "$0 Replacing /etc/hosts with new copy."
-		cp ${CONF_DIR}/etc/hosts /etc/hosts
-	fi
+    # If an /etc/hosts is there (container has DNS issues?)
+    # copy that over before doing more package updates
+    if [ -e ${CONF_DIR}/etc/hosts ];then
+        #       mv /etc/hosts /etc/apt/original-sources.list
+        echo "$0 Replacing /etc/hosts with new copy."
+        cp ${CONF_DIR}/etc/hosts /etc/hosts
+    fi
 
 }
 
@@ -138,20 +138,20 @@ function fxnPostInstallCommon()
 #
 function fxnInstallSourcesList()
 {
-	fxnFailIfNotDebian
-	
-	if [ -e ${CONF_DIR}/etc/apt/sources.list ];then
-		echo "$0 Moving existing sources.list to original-sources.list"
-		mv /etc/apt/sources.list /etc/apt/original-sources.list
-		echo "$0 Replacing sources.list with new copy."
-		cp ${CONF_DIR}/etc/apt/sources.list /etc/apt/sources.list
-	fi
+    fxnFailIfNotDebian
 
-	if [ -e ${CONF_DIR}/etc/apt/sources.list.d/ ];then
-		echo "$0 Adding additional sources.list file(s) to /etc/apt/sources.list.d"
-		cp ${CONF_DIR}/etc/apt/sources.list.d/* /etc/apt/sources.list.d/
-		ls -l  ${CONF_DIR}/etc/apt/sources.list.d/*
-	fi
+    if [ -e ${CONF_DIR}/etc/apt/sources.list ];then
+        echo "$0 Moving existing sources.list to original-sources.list"
+        mv /etc/apt/sources.list /etc/apt/original-sources.list
+        echo "$0 Replacing sources.list with new copy."
+        cp ${CONF_DIR}/etc/apt/sources.list /etc/apt/sources.list
+    fi
+
+    if [ -e ${CONF_DIR}/etc/apt/sources.list.d/ ];then
+        echo "$0 Adding additional sources.list file(s) to /etc/apt/sources.list.d"
+        cp ${CONF_DIR}/etc/apt/sources.list.d/* /etc/apt/sources.list.d/
+        ls -l  ${CONF_DIR}/etc/apt/sources.list.d/*
+    fi
 }
 
 #
@@ -160,18 +160,18 @@ function fxnInstallSourcesList()
 # Add the keys first so they are available for update
 function fxnInstallAptKeys()
 {
-	fxnFailIfNotDebian
-	
-	if [ -e "${CONF_DIR}/etc/apt/trusted.gpg.d" ];then
-		echo "$0 Adding new gpg keys to apt. This may be slow."
-		cp ${CONF_DIR}/etc/apt/trusted.gpg.d/* /etc/apt/trusted.gpg.d/
-		apt-key add ${CONF_DIR}/etc/apt/trusted.gpg.d/*
-		if [ $? != 0 ];then
-			echo "$0 ERROR! Failed running apt-key add of $(	ls -l ${CONF_DIR}/etc/apt/trusted.gpg.d/ )"
-			exit 1
-		fi
-		ls -l ${CONF_DIR}/etc/apt/trusted.gpg.d/
-	fi
+    fxnFailIfNotDebian
+
+    if [ -e "${CONF_DIR}/etc/apt/trusted.gpg.d" ];then
+        echo "$0 Adding new gpg keys to apt. This may be slow."
+        cp ${CONF_DIR}/etc/apt/trusted.gpg.d/* /etc/apt/trusted.gpg.d/
+        apt-key add ${CONF_DIR}/etc/apt/trusted.gpg.d/*
+        if [ $? != 0 ];then
+            echo "$0 ERROR! Failed running apt-key add of $(    ls -l ${CONF_DIR}/etc/apt/trusted.gpg.d/ )"
+            exit 1
+        fi
+        ls -l ${CONF_DIR}/etc/apt/trusted.gpg.d/
+    fi
 }
 
 ######################################################################

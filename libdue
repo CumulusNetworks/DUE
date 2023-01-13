@@ -1,6 +1,7 @@
-# /bin/bash  syntax
+#!/bin/bash  syntax
 # SCRIPT_PURPOSE: A function library for Dedicated User Environment (DUE)
 
+# Copyright 2021,2022 Nvidia Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
@@ -13,7 +14,7 @@
 shopt -s extglob
 
 # Documentation and changelog builds get the official version from here.
-DUE_VERSION="3.0.0"
+DUE_VERSION="4.0.0"
 
 # Debian packages required for DUE to run
 REQUIRED_PACKAGES=" docker.io rsync bsdutils git"
@@ -27,9 +28,12 @@ USER_ID=$( id -u )
 USER_GROUP_ID=$( id -g )
 # Get the name of the group if it has to be created in the container
 USER_GROUP_NAME=$( getent group "$USER_GROUP_ID" | cut -d: -f1 )
-HOST_HOME_DIR=$( realpath ~/)
+
 # default the login shell
 LOGIN_SHELL="/bin/bash --login"
+
+# If debugging a container, this will be set
+OVERRIDE_ENTRYPOINT=""
 
 # Default to restricting results to containers that have been set up.
 FILTER_SHOW_ONLY_DUE="TRUE"
@@ -37,17 +41,21 @@ FILTER_SHOW_ONLY_DUE="TRUE"
 # default tag to latest
 DOCKER_IMAGE_TAG="latest"
 
+# Options passed to Docker build, using --dockerarg
+DOCKER_SPECIFIC_BUILD_ARGS=""
+
 # List of example images
 KNOWN_IMAGES="
- debian:10
  debian:11
- ubuntu:18.04
  ubuntu:20.04
  arm32v5/debian:jessie
  arm32v7/debian:10
- arm64v8/debian:10
  arm64v8/debian:11
  ppc64le/debian:10
+ redhat/ubi9
+ opensuse/leap
+ bci/bci-base-15.3
+ fedora-33/fedora-33
 "
 
 # Max number of containers per user.
@@ -91,26 +99,38 @@ DUE_IMAGE_TYPE_LABEL="default-type"
 # Put build steps here
 BUILD_MERGE_DIR="$(pwd)/due-build-merge"
 
-#
-# Red Hat uses a different package manager, so abstract that out.
-# Ex: sudo $PACKAGE_UPDATE  ; sudo $PACKAGE_INSTALL rsync
-#
-if [ -e /etc/redhat-release ];then
-    OS_TYPE="RedHat"
-    PACKAGE_UPDATE=" dnf check-update"
-    PACKAGE_INSTALL=" dnf install "
-    #
-    # Defaults for Red Hat systems have nosuid set when Docker runs,
-    # preventing the mount of the user's home directory.
-    # There may be a better work around, but for now,
-    #  default to running --privileged
-    #
-    DOCKER_SPECIFIC_ARGS=" --privileged "
-else
-    OS_TYPE="Debian"
-    PACKAGE_UPDATE=" apt-get update "
-    PACKAGE_INSTALL=" apt-get install "
-fi
+
+# Pull this in to set variables like ID
+source /etc/os-release
+
+case "$ID" in
+    # Red Hat variants
+    'fedora' | 'rhel' | 'opensuse-leap' | 'sles' )
+        #
+        # Red Hat uses a different package manager, so abstract that out.
+        # Ex: sudo $PACKAGE_UPDATE  ; sudo $PACKAGE_INSTALL rsync
+        #
+        OS_TYPE="RedHat"
+        PACKAGE_UPDATE=" dnf check-update"
+        PACKAGE_INSTALL=" dnf install "
+        #
+        # Defaults for Red Hat systems have nosuid set when Docker runs,
+        # preventing the mount of the user's home directory.
+        # There may be a better work around, but for now,
+        #  default to running --privileged
+        #
+        DOCKER_SPECIFIC_ARGS=" --privileged "
+        ;;
+
+
+    * )
+        # Default to Debian variants
+        OS_TYPE="Debian"
+        PACKAGE_UPDATE=" apt-get update "
+        PACKAGE_INSTALL=" apt-get install "
+        ;;
+esac
+
 ######################################################################
 # Common utility functions
 ######################################################################
@@ -142,14 +162,15 @@ function fxnListContainersForCreation()
 
         # To simplify parsing, this counts on the example line in the README.md files being formatted
         # in exactly the same way for all, with everything up to the 'with:' getting deleted,
-        # and the last field being --use-template, as that gets prepended to the example string
+        # and the 12th field being --platform, as that gets prepended to the example string
         # via awk to specify the type of container being created.
+
         foundExamples=$( find "${SPECIFIC_TEMPLATE_PATH}" \
                               -name README.md \
                               -exec grep "^Create" {} \; \
-                             | grep -- --from \
+                             | grep -- --platform \
                              | sed -e 's/^.*with://g' \
-                             | awk '{printf "%-20s %s\n", $NF, $0}' | sort )
+                             | awk '{printf "%-20s %s\n", $12, $0}' | sort )
         echo ""
 
         if [ "$outputFormat" != "" ];then
@@ -259,7 +280,7 @@ function fxnDeleteImage()
 {
     if [ "$DELETE_TERM" = "" ];then
         echo "Existing images"
-        ${DOCKER_APP} images | sed -e 's/^[ \t]*//g' 
+        ${DOCKER_APP} images | sed -e 's/^[ \t]*//g'
         echo ""
         echo "Pass a string to wildcard delete."
     fi
@@ -272,9 +293,9 @@ function fxnDeleteImage()
         | grep "$DELETE_TERM" \
         | awk '{printf "# Delete: %s Tag: %s Image ID %s, Created %s %s %s, Size %s \n REPLACE_DOCKER_APP rmi --force %s \n", $1, $2, $3, $4, $5, $6, $7, $3}' \
               >> "$DELETE_SCRIPT"
-	# Set the applicatio 
-	sed -i "s/REPLACE_DOCKER_APP/$DOCKER_APP/g" "$DELETE_SCRIPT"
-	
+    # Set the applicatio
+    sed -i "s/REPLACE_DOCKER_APP/$DOCKER_APP/g" "$DELETE_SCRIPT"
+
     echo " ________________________________________________________________________"
     echo "|                                                                       "
     echo "| Run [ ./$DELETE_SCRIPT ]                                "
@@ -481,10 +502,20 @@ function fxnPreProcessInstallConfigLib()
 # Create a new Docker Image
 # Takes: FROM_IMAGE_TYPE    - source image to build on
 #        NEW_IMAGE_NAME     - Local name for image (my-stretch-build, for example)
+#        PLATFORM           - specify architecture that may be different from the host. (optional)
 function fxnMakeNewDockerImage()
 {
     local imageFrom="$1"
     local imageName="$2"
+    local platformArg
+    # if the architecture is different from the host
+    local platformArch
+    # If image should be pulled from remote registry
+    local pullImage
+    local imageID
+    local imageTag
+    # Store the build command to be run, so it can be printed out to the user
+    local dockerBuildCommand=""
 
     if [ "$2" = "" ];then
         # 3rd argument is optional
@@ -501,6 +532,13 @@ function fxnMakeNewDockerImage()
         exit 1
     fi
 
+    if [ "$3" != "" ];then
+        # pass the platform specifying architecture specification along.
+        # Ex: linux/aarch64
+        platformArg=" --platform $3"
+        platformArch=${3##*/}
+    fi
+
     # DOCKER_IMAGE_TAG will have been initialized to 'latest' by default,
     # or will have been overridden by the user.
     # Leaving this around in case there's a need to reference the base
@@ -510,7 +548,7 @@ function fxnMakeNewDockerImage()
     # Name of image and corresponding tag
     CONFIGURED_NAME_AND_TAG=due-${imageName}:${DOCKER_IMAGE_TAG}
 
-    if [ "$(which ${DOCKER_APP})" = "" ];then
+    if [ "$(command -v "${DOCKER_APP}")" = "" ];then
         if [ -e /.dockerenv ];then
             fxnERR "Docker or podman was not found, but you are already running in a container."
         else
@@ -591,16 +629,74 @@ function fxnMakeNewDockerImage()
         # So, has the image already been pulled?
         imageArchitecture=$( ${DOCKER_APP} inspect -f '{{.Architecture}}' "${imageFrom}" 2>/dev/null )
         if [ "$imageArchitecture" = "" ];then
+            # Do not have an image with that name
+            fxnPP "No image [ $imageFrom ] found. Will pull."
+            pullImage="TRUE"
+        else
+            fxnPP "Found existing image [ $imageFrom ]. Will not pull. Use --platform linux/amd64|aarch64 to override."
+        fi
+        if [ "$platformArg" != "" ];then
+            # If the user specified a platform for the image, and it is not here.
+            if [ "$imageArchitecture" != "$platformArch" ];then
+                fxnPP "Specified $platformArg and there was no match for [ $imageFrom ]. Will pull."
+                pullImage="TRUE"
+            fi
+        fi
+
+        if [ "$pullImage" = "TRUE" ];then
             # Well, get a copy.
             fxnPP "[ $imageFrom ] not found. Pulling an image to check it's architecture before proceeding."
-            fxnEC ${DOCKER_APP} pull "$imageFrom"  || exit 1
-            imageArchitecture=$( ${DOCKER_APP} inspect -f '{{.Architecture}}' "${imageFrom}" )
-            if [ "$imageArchitecture" = "" ];then
-                # If the architecture can't be determined at this point, it is a bad sign,
-                # but maybe not fatal. Continue and see what happens.
-                fxnWarn "Failed to determine architecture of [ $imageFrom ]. Guessing same as host."
-                imageArchitecture="$HOST_ARCH"
+            fxnEC "${DOCKER_APP}" pull $platformArg "$imageFrom"  || exit 1
+
+            # Use image id rather than name here. Red Hat images use the same name for arm64 and x86 images, so
+            # if both are present, one will hide the other. Tag the image with the architecture to keep track.
+            # the host's.
+
+            # inspect handles finding the latest image in case there are mutliple, and will take an imageFrom
+            #  string that may have more than one '/' in it, in case there are multiple.
+            # However, it returns the ID with 'sha256:' stuck to the front.
+            imageID=$( "${DOCKER_APP}"  inspect --format "{{.ID}}" "${imageFrom}" | sed -e 's/sha256://' )
+            if [ "$imageID" = "" ];then
+                fxnERR "Failed to properly id [ $imageFrom ]. Exiting."
+                exit 1
             fi
+
+            # May want to remove platformArg logic and just key off of Docker vs Podman
+            if [ "$platformArg" != "" ];then
+                if [ "${DOCKER_APP}" = 'docker' ];then
+                    # Print only the fields to the left and right of the last '/' to strip registry references.
+                    imageFrom=$( echo $imageFrom |  awk -F '/' '{print$(NF-1)"/"$NF}' )
+                fi
+            fi
+
+            imageArchitecture=$( ${DOCKER_APP} inspect -f '{{.Architecture}}' "$imageID" )
+            if [ "$platformArg" != "" ];then
+                # Print only the fields to the left and right of the last '/' to strip registry references.
+                #               imageFrom=$( echo $imageFrom |  awk -F '/' '{print$(NF-1)"/"$NF}' )
+                # Sanitize the tag and source by changing any : to -, as having
+                # multiple will break the auto-tagging below.
+                imageFrom=${imageFrom//:/-}
+                # Isolate the architecture
+                imageTag=${platformArg##*/}
+                # Tag to use
+                imageTag=${imageTag//:/-}
+
+
+                if [ "$imageArchitecture" = "" ];then
+                    # If the architecture can't be determined at this point, it is a bad sign,
+                    # but maybe not fatal. Continue and see what happens.
+                    fxnWarn "Failed to determine architecture of [ $imageFrom ]. Guessing same as host."
+                    imageArchitecture="$HOST_ARCH"
+                fi
+
+                # Tag it with the architecture
+                imageTag="$imageArchitecture"
+
+                # Tag the non-host architecture image, as it's name may not be different on a per-architecture basis.
+                fxnEC "${DOCKER_APP}" tag $imageID ${imageFrom}:${imageTag} || exit 1
+                fxnPP "Tagged new image with ${imageFrom}:${platformArg##*/}"
+            fi
+
         fi
 
         #
@@ -622,12 +718,18 @@ function fxnMakeNewDockerImage()
             fxnPP "Adding qemu-${imageArchitecture}-static to $imageName/filesystem/usr/bin/qemu-${imageArchitecture}-static."
             # qemu-user
 
-            if [ ! -e /usr/bin/qemu-"${imageArchitecture}"-static ];then
-                fxnERR "Host system must have qemu-${imageArchitecture}-static to run an ${imageArchitecture} container. Try: sudo $PACKAGE_INSTALL qemu-user-static."
-                # Clean this up so that a re-run does not report success despite not having the emulation support.
-                echo "Deleting partially built image at: ${BUILD_MERGE_DIR}/${imageName}"
-                rm -rf "${BUILD_MERGE_DIR}/${imageName}"
-                exit 1
+            STATIC_QEMU_SOURCE="/usr/bin/qemu-${imageArchitecture}-static"
+            if [ ! -e $STATIC_QEMU_SOURCE ];then
+                fxnWarn "Host system must have qemu-${imageArchitecture}-static to run an ${imageArchitecture} container. Try: sudo $PACKAGE_INSTALL qemu-user-static."
+                echo "Trying using the template's filesystem/usr/bin/"
+                STATIC_QEMU_SOURCE="${USE_TEMPLATE_PATH}/filesystem/usr/local/bin/qemu-${imageArchitecture}-static"
+                if [ ! -e "$STATIC_QEMU_SOURCE" ];then
+                    fxnERR "Failed to find [ $STATIC_QEMU_SOURCE ] to run an ${imageArchitecture} container. Try copying it in under there."
+                    # Clean this up so that a re-run does not report success despite not having the emulation support.
+                    echo "Deleting partially built image at: ${BUILD_MERGE_DIR}/${imageName}"
+                    rm -rf "${BUILD_MERGE_DIR}/${imageName}"
+                    exit 1
+                fi
             fi
 
             if [ ! -e /proc/sys/fs/binfmt_misc/qemu-${imageArchitecture} ];then
@@ -640,7 +742,10 @@ function fxnMakeNewDockerImage()
             if [ ! -e "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin ];then
                 mkdir -p "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin
             fi
-            fxnEC cp -a /usr/bin/qemu-${imageArchitecture}-static "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin/qemu-${imageArchitecture}-static || exit 1
+            # if no static qemu already there, copy the system's in.
+            if [ ! -e "${BUILD_MERGE_DIR}/$imageName/filesystem/usr/bin/qemu-${imageArchitecture}-static" ];then
+                fxnEC cp -a "$STATIC_QEMU_SOURCE" "${BUILD_MERGE_DIR}"/"$imageName"/filesystem/usr/bin/qemu-${imageArchitecture}-static || exit 1
+            fi
             # Set this to pass to Dockerfile configuration so that qemu-static
             # will be present in the image _before_ Docker executes any commands in the image.
             QEMU_STATIC="qemu-${imageArchitecture}-static"
@@ -696,7 +801,10 @@ function fxnMakeNewDockerImage()
         if [ "$DO_CREATE_IMAGE_NOW" = "TRUE" ];then
             # Create it all in one shot
             fxnHeader "Creating the new image with: $0 --create --build-dir ${BUILD_MERGE_DIR}/$imageName"
-            $0 --create --build-dir "${BUILD_MERGE_DIR}/$imageName" --tag "$DOCKER_IMAGE_TAG"
+            $0 --create \
+               --build-dir "${BUILD_MERGE_DIR}/$imageName" \
+               --tag "$DOCKER_IMAGE_TAG" \
+               --dockerarg "$DOCKER_SPECIFIC_BUILD_ARGS"
         else
             fxnHeader " To create the new image, run: $0 --create --build-dir ${BUILD_MERGE_DIR}/$imageName"
         fi
@@ -726,23 +834,41 @@ function fxnMakeNewDockerImage()
         # if this doesn't exist at this point, things have gone very wrong.
         fxnEC cd "${BUILD_MERGE_DIR}/$imageName" || exit 1
 
-        if [ ! -e /var/run/docker.sock ];then
-            fxnERR "Communication error with Docker!"
-            result=$( dpkg -l | grep ${DOCKER_APP} )
-            if [ "$result" != ""  ];then
-                echo "Looks like ${DOCKER_APP} is installed:"
-                echo "[ $result ]"
-                fxnERR "Is it running?"
-                exit 1
-            else
-                fxnERR "Has ${DOCKER_APP} been installed?"
+        # Sanity check the code doing most of the work
+        # Podman/Docker should return success
+        DockerAppPath=$( which "$DOCKER_APP" )
+        if [ "$DockerAppPath" = "" ];then
+            fxnERR "Failed to find path for [ $DOCKER_APP ]. Is it installed?"
+            exit 1
+        fi
+        if [ "$DOCKER_APP" = 'docker' ];then
+            # Check if the Docker daemon is running.
+            if [ ! -e /var/run/docker.sock ];then
+                fxnERR "Is Docker running?"
                 exit 1
             fi
         fi
+
         #
         # Create the image based off the contents of ./$imageName
         # This allows the user to test incremental changes without starting from scratch.
-        fxnEC ${DOCKER_APP} build --no-cache=true --tag "${CONFIGURED_NAME_AND_TAG}" --file=./Dockerfile.create . || exit 1
+        # NOTE: it seems that adding --platform linux/arm64 here _should_
+        #  'request a specific platform' and avoid the subsequent:
+        #      "[Warning] The requested image's platform (linux/arm64) does not match the
+        #      detected host platform (linux/amd64) and no specific platform was requested"
+        #  messages when building for arm64 on an amd64 system, but it does not.
+        #  As the resulting containers run fine, the solution is to ignore the warning, for now.
+        dockerBuildCommand="${DOCKER_APP} build \
+              --no-cache=true \
+              $DOCKER_SPECIFIC_BUILD_ARGS \
+              --tag ${CONFIGURED_NAME_AND_TAG} \
+              --file=./Dockerfile.create \
+              ."
+        # Print the build command, turning all whitespace in to one space.
+        fxnHeader "Building with: $( echo $dockerBuildCommand | sed -e 's/[[:space:]]\+/ /g')"
+
+        # Run it.
+        fxnEC $dockerBuildCommand ||  exit 1
     fi
 
     # Done.
@@ -775,15 +901,15 @@ function fxnSaveContainer()
 
     # commit saves the container as an image, so all layers are captured.
     fxnPP "Saving container $SELECTED_CONTAINER_ID as image  ${exportImageName}"
-    fxnEC ${DOCKER_APP} commit  "$SELECTED_CONTAINER_ID"  "${exportImageName}"
+    fxnEC "${DOCKER_APP}" commit  "$SELECTED_CONTAINER_ID"  "${exportImageName}"
 
     # Now export the saved image
     fxnPP "Saving selected image as [ ${exportImageName}.tar ]"
-    fxnEC ${DOCKER_APP} save "${exportImageName}" > "${exportImageName}".tar
+    fxnEC "${DOCKER_APP}" save "${exportImageName}" > "${exportImageName}".tar
 
     # Delete the local save. If you want to keep it as an image, rather
     # than a tar file, import it.
-    fxnEC ${DOCKER_APP} rmi --force "$exportImageName"
+    fxnEC "${DOCKER_APP}" rmi --force "$exportImageName"
 
     fxnPP "Exported container is in $(pwd) "
     ls -l | grep  "${exportImageName}".tar
@@ -804,23 +930,23 @@ function fxnDoExport()
     fxnSelectContainer "export" $exportFilter
 
     # fxnSelectContainer will have set this.
-	# If the name has a / in it, replace that with a -
-	# Podman names do this, and we don't want it interpreted
-	#  as a subdirectory.
-    exportImageName="${SELECTED_CONTAINER_NAME//\//-}"	
+    # If the name has a / in it, replace that with a -
+    # Podman names do this, and we don't want it interpreted
+    #  as a subdirectory.
+    exportImageName="${SELECTED_CONTAINER_NAME//\//-}"
 
     # check for file overwrite
-    if [ -e ${exportImageName}.tar ];then
+    if [ -e "${exportImageName}.tar" ];then
         fxnERR "File: [ ${exportImageName}.tar ] already exists. Not overwriting.Exiting."
         exit 1
     fi
 
     # Now export the saved image
     fxnPP "Saving selected image as [ ${exportImageName}.tar ]"
-	# Use the ID associated with the image
-	# Use 'save' rather than 'export' to save all layers.
-	#    fxnEC ${DOCKER_APP} save  $SELECTED_CONTAINER_ID > ${exportImageName}.tar
-    fxnEC ${DOCKER_APP} save  $SELECTED_CONTAINER_ID -o ${exportImageName}.tar	foo:bar
+    # Use the ID associated with the image
+    # Use 'save' rather than 'export' to save all layers.
+    #    fxnEC ${DOCKER_APP} save  $SELECTED_CONTAINER_ID > ${exportImageName}.tar
+    fxnEC "${DOCKER_APP}" save  "$SELECTED_CONTAINER_ID" -o "${exportImageName}.tar"
 
     fxnPP "Exported container is in $(pwd) "
     ls -l | grep  ${exportImageName}.tar
@@ -851,15 +977,15 @@ function fxnDoImport()
 
     fxnPP "Importing [ $fileName ] as [ $dueName ]"
 
-	#
-	# Use 'load' as it goes with 'save' - gathering all layers
-	# Do not mix 'import' and 'export' with 'load' and 'save'
-	# The former do not preserve all filesystem layers, and
-	# mixing the two creates failures that only show at run time.
-	# 
-	fxnEC ${DOCKER_APP} load --input $fileName  || exit 1
-	#tar -c "$fileName"  | docker image import - "$dueName"	
-	#${DOCKER_APP} import $fileName $dueName
+    #
+    # Use 'load' as it goes with 'save' - gathering all layers
+    # Do not mix 'import' and 'export' with 'load' and 'save'
+    # The former do not preserve all filesystem layers, and
+    # mixing the two creates failures that only show at run time.
+    #
+    fxnEC "${DOCKER_APP}" load --input "$fileName"  || exit 1
+    #tar -c "$fileName"  | docker image import - "$dueName"
+    #${DOCKER_APP} import $fileName $dueName
     # Show the user the result
     ${DOCKER_APP} images | sed -e 's/^[ \t]*//g' | grep "$dueName"
 
@@ -997,14 +1123,22 @@ function fxnSelectContainer()
         #
         # Run a container
         #
-		# Podman will add leading spaces that throw off start-of-line pattern matching. Trim them.
+        if [ "$DOCKER_APP" = "podman" ];then
+            fxnPP "Listing local images. This may take a bit with Podman..."
+        fi
+        # Podman will add leading spaces that throw off start-of-line pattern matching. Trim them.
         theContainers=$( ${DOCKER_APP} images --format 'table  {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.ID}}' | sed -e 's/^[ \t]*//g' )
         if [ $? != 0 ];then
-            # As this is frequently the first access of the system's Docker daemon,
-            # Fail gracefully if it's not installed.
             echo ""
-            echo "Error: the Docker daemon not seem to be running. Is docker.io installed?  Exiting DUE."
-            echo ""
+            echo "Error: failed to list Docker images."
+
+            if [ "$DOCKER_APP" = "docker" ];then
+                # As this is frequently the first access of the system's Docker daemon,
+                # Fail gracefully if it's not installed.
+                echo ""
+                echo "Error: the Docker daemon not seem to be running. Is docker.io installed?  Exiting DUE."
+                echo ""
+            fi
             exit 1
         fi
 
@@ -1051,11 +1185,12 @@ function fxnSelectContainer()
         #
         # select existing container
         #
-		# Podman doesn't print the header returning from a query. 
-		if [ "${DOCKER_APP}" = "podman" ];then
-			theContainers="NAMES              IMAGE    CONTAINER ID  COMMAND 
-"
-		fi
+        # Podman doesn't print the header returning from a query.
+        # ..but new versions do. Disable this for now, but leave it to check against older Podman versions.
+        #if [ "${DOCKER_APP}" = "podman" ];then
+        #     theContainers="NAMES              IMAGE    CONTAINER ID  COMMAND
+        #"
+        #fi
 
         if [ "$VERBOSITY_LEVEL" -ne 0 ];then
             theContainers+=$(     ${DOCKER_APP} ps --format 'table {{.Names}}\t{{.Image}}\t{{.ID}}\t{{.RunningFor}}\t{{.Status}}\t{{.Command}}')
@@ -1084,8 +1219,8 @@ function fxnSelectContainer()
     fi
 
 
-	# separate the head from the body to prevent it getting numbered		
-	theHeader=$( echo "$theContainers" | head -n 1 )
+    # separate the head from the body to prevent it getting numbered
+    theHeader=$( echo "$theContainers" | head -n 1 )
 
     # set -n - clip first line
     # cat -n - put a number at the start
@@ -1096,8 +1231,14 @@ function fxnSelectContainer()
     if [ "$theBody"  = "" ];then
         echo ""
         if [ "$FILTER_SHOW_ONLY_DUE" = "TRUE" ];then
-            echo "  No DUE Docker images were found. "
-            echo "  Howwever, the results were filtered by [ $userIs ]. Add --all to the command to see all Docker images."
+            echo "  No DUE Docker containers were found. "
+            if [ "$DOCKER_APP" = "podman" ];then
+                # As Podman isolates containers on a per-user basis, only the user's containers will show.
+                echo "  Note that podman does not support loging in to other user's containers."
+            else
+                # Docker will show all the containers on a system, so less filtering may help.
+                echo "  However, the results were filtered by [ $userIs ]. Add --all to the command to see all Docker images."
+            fi
             exit 1
         fi
         if [ "$filterByType" = "" ];then
@@ -1125,7 +1266,7 @@ function fxnSelectContainer()
         read -r ENTRY
 
         case $ENTRY in
-            q|Q|x|X|"" )
+            q|Q|x|X )
                 echo "Exiting"
                 exit 0
                 ;;
@@ -1155,8 +1296,8 @@ function fxnSelectContainer()
         # This should be whats left from a filter operation
         ENTRY=1
     fi
-	
-	# If dealing with image files, starting them or exporting them...
+
+    # If dealing with image files, starting them or exporting them...
     if [ "$doOperation" = "start" ] || [ "$doOperation" = "export" ];then
         # use the pre-filtered var, theBody
 
@@ -1237,7 +1378,7 @@ function fxnDoLogin()
     # Ex: since built Debian packages are one directory up from
     # where the build is invoked, the container should mount the
     # host system directory one level above where the build is.
-    local DUEMountHostDirsUp
+    local DUEMountHostDirsUP
     # Add --debug as first argument to turn on debugging in container-create-user.sh
     local executeProgram="/usr/local/bin/container-create-user.sh "
 
@@ -1260,8 +1401,8 @@ function fxnDoLogin()
 
     if [ "$1" = "start" ];then
         # If we are selecting an image to run as a container
-		#        DUEImageType=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
-		        DUEImageType=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
+        #        DUEImageType=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
+        DUEImageType=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
     else
         # Logging in to an already running container
         DUEImageType=$( ${DOCKER_APP} container inspect -f '{{.Config.Labels.DUEImageType}}' "${SELECTED_CONTAINER_ID}")
@@ -1335,39 +1476,56 @@ function fxnDoLogin()
         #
 
         if [ "$isDUEImage" = "TRUE" ];then
-            # If the container has a hint about mounting host directories relative
-            # to the current working directory, take that into account.
-            DUEMountHostDirsUP=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEMountHostDirsUp}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
+            if [ "$OVERRIDE_LOGIN" = "TRUE" ];then
+                # if a login shell was explicitly passed,
+                executeProgram="$LOGIN_SHELL"
+            else
 
-            MOUNT_CURRENT_WORKING_DIRECTORY="$CURRENT_WORKING_DIRECTORY"
-            for (( count=DUEMountHostDirsUP ; count > 0 ; count-- ))
-            do
-                # Back up a directory
-                MOUNT_CURRENT_WORKING_DIRECTORY="$( dirname "$MOUNT_CURRENT_WORKING_DIRECTORY" )"
-            done
+                # If the container has a hint about mounting host directories relative
+                # to the current working directory, take that into account.
+                DUEMountHostDirsUP=$( ${DOCKER_APP} inspect -f '{{.Config.Labels.DUEMountHostDirsUp}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}" )
+
+                MOUNT_CURRENT_WORKING_DIRECTORY="$CURRENT_WORKING_DIRECTORY"
+
+                if [ "$DUEMountHostDirsUP" != "<no value>" ];then
+                    for (( count=DUEMountHostDirsUP ; count > 0 ; count-- ))
+                    do
+                        # Back up a directory
+                        MOUNT_CURRENT_WORKING_DIRECTORY="$( dirname "$MOUNT_CURRENT_WORKING_DIRECTORY" )"
+                    done
+                fi
+
+                # DUE images have the container-create-user.sh script, so configure for that.
+                if [ "$DEBUG_LOGIN" = "TRUE" ];then
+                    # If container-create-user.sh gets --debug as the first argument, it will set -x
+                    executeProgram=" $executeProgram --debug "
+                fi
+
+                # If running docker in the container, it has to match the host
+                # system's group ID.
+                # Only add it if you find it, as Podman systems probably won't have this.
+                dockerGID=$( getent group 'docker' | awk -F ':' '{print$3}' )
+                if [ "$dockerGID" != "" ];then
+                    executeProgram+=" --docker-group-id $dockerGID "
+                fi
+
+                # specify user and ID
+                executeProgram+=" --username $USER_NAME --userid $USER_ID --groupid $USER_GROUP_ID --groupname $USER_GROUP_NAME "
 
 
-            # DUE images have the container-create-user.sh script, so configure for that.
-            if [ "$DO_DEBUG" = "TRUE" ];then
-                # If container-create-user.sh gets --debug as the first argument, it will set -x
-                executeProgram=" $executeProgram --debug "
+                # Set any CONTAINER_SPECIFIC_ARGS
+                fxnSetContainerSpecificArgs "$DUEImageType"
             fi
-
-            # If running docker in the container, it has to match the host
-            # system's group ID
-            dockerGID=$( getent group 'docker' | awk -F ':' '{print$3}' )
-            executeProgram+=" --docker-group-id $dockerGID "
-
-            # specify user and ID
-            executeProgram+=" --username $USER_NAME --userid $USER_ID --groupid $USER_GROUP_ID --groupname $USER_GROUP_NAME "
-
-            # Set any CONTAINER_SPECIFIC_ARGS
-            fxnSetContainerSpecificArgs "$DUEImageType"
-
+        else
+            # Not a DUE image
+            if [ "$DEBUG_LOGIN" = "TRUE" ];then
+                executeProgram=""
+                OVERRIDE_ENTRYPOINT=" --entrypoint $LOGIN_SHELL "
+            fi
         fi
         # Generate a unique hostname
-        # Replace any / in name with - as Docker will complain.
-        sanitizedContainerName=${SELECTED_CONTAINER_NAME/\//-}
+        # Replace any '/' or ':' in name with - as Docker will complain.
+        sanitizedContainerName=${SELECTED_CONTAINER_NAME//[\/:]/-}
 
         USE_HOSTNAME="${USER_NAME}_${sanitizedContainerName}_$(date +%s)"
 
@@ -1383,20 +1541,43 @@ function fxnDoLogin()
         # Local file systems the container can mount.
         #
         if [ "$USE_HOMEDIR" = "" ];then
-            ADDITIONAL_MOUNTS+=" --volume $(realpath ~/):/home/$USER_NAME"
+            # User is not supplying a different home directory, so
+            # use what the default of DUE_ENV_DEFAULT_HOMEDIR
+            # ( either ~/ or what was pulled from ~/.conf/due/due.conf )
+            HOMEDIR_PATH+="${DUE_ENV_DEFAULT_HOMEDIR}:/home/$USER_NAME"
         else
             echo "$USE_HOMEDIR" | grep -q "/"
             if [ $? = 0 ];then
-                ADDITIONAL_MOUNTS+=" --volume ${USE_HOMEDIR}:/home/$USER_NAME"
+                HOMEDIR_PATH+=" ${USE_HOMEDIR}:/home/$USER_NAME"
             fi
             # not having an absolute path = use container home dir.
         fi
 
+        # Add the homedir to mount
+        ADDITIONAL_MOUNTS+=" --volume $HOMEDIR_PATH"
         if [ "$CURRENT_WORKING_DIRECTORY" != "" ];then
-            # If we are making the inside of the container have the
-            # same path as the directory this was invoked in, do it here.
-            ADDITIONAL_MOUNTS+=" --volume $MOUNT_CURRENT_WORKING_DIRECTORY:$MOUNT_CURRENT_WORKING_DIRECTORY"
-            # Put the user in the same equivalent directory in the container.
+
+            if [[ "$CURRENT_WORKING_DIRECTORY" != "$USE_HOMEDIR"* ]];then
+                # Let this fall through and get caught in the duplicate check, which has verbose
+                # solutions.
+                echo "Warning: Current working directory [ $CURRENT_WORKING_DIRECTORY ]"
+                echo " is not under home directory [ $USE_HOMEDIR ]."
+                echo " Use --mount-dir or --home-dir options to resolve paths if needed."
+            fi
+
+            # If cwd is the home directory, don't specify it as a volume mount again.
+            # Especially because --home-dir may have been used to specify a different home
+            # directory, and the launch will die trying to mount:
+            #  /foo:/home/usr
+            #   and
+            #  /bar:/home/usr
+            # at the same time...
+            if [[ "$MOUNT_CURRENT_WORKING_DIRECTORY" != "/home/$USER_NAME" ]];then
+                # If we are making the inside of the container have the
+                # same path as the directory this was invoked in, do it here.
+                ADDITIONAL_MOUNTS+=" --volume $MOUNT_CURRENT_WORKING_DIRECTORY:$MOUNT_CURRENT_WORKING_DIRECTORY"
+                # Put the user in the same equivalent directory in the container.
+            fi
             COMMAND_LIST=" cd $CURRENT_WORKING_DIRECTORY ; $COMMAND_LIST"
         fi
 
@@ -1417,6 +1598,7 @@ function fxnDoLogin()
             echo ""
             echo " Note: some containers (debian package builds) mount the host system above the current working directory."
             echo " Solutions:  Add a directory to change the path?"
+            echo "             Use --home-dir to specify a different host home directory to use in the container."
             echo "             Move the current working directory elsewhere?"
             #
             # check for a redefine of the home directory and use of the original home directory.
@@ -1522,14 +1704,46 @@ function fxnDoLogin()
             imname="${USE_HOSTNAME}"
         fi
 
+        if [ "$DOCKER_APP" = "docker" ];then
+            # And specify the OS/Architecture for Docker to avoid warnings about --platform type not matching contianer.
+            platformType=$( ${DOCKER_APP} inspect -f '{{.Os}}/{{.Architecture}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}"  2>/dev/null )
+            if [ "$platformType" != "" ];then
+                # Only pass this if a value was returned.
+                # It might not be on a partially built container being debugged.
+                ARCHITECTURE_ARGS=" --platform $platformType"
+            fi
 
+        elif [ "$DOCKER_APP" = "podman" ];then
+            # Determine platform type to pass along so that warnings aren't thrown when an amd64 system runs arm64 code...
+            # And specify just the architecture for podman to avoid warnings about --platform type not matching contianer.
+            imageArchitecture=$( ${DOCKER_APP} inspect -f '{{.Architecture}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}"  2>/dev/null )
+            if [ "$imageArchitecture" != "" ];then
+                # Only pass this if a value was returned.
+                # It might not be on a partially built container being debugged.
+                ARCHITECTURE_ARGS=" --arch $imageArchitecture"
+            fi
+
+
+            # For Podman, log in to the container as root,
+            # Do not remap userids and namespace
+            # then configure the host user in the container using container-create-user.sh
+            DOCKER_SPECIFIC_ARGS+=" --user 0:0 --userns keep-id "
+
+            # Podman versions prior to 4 have an issue running containers by ID, so supply name & tag instead.
+            PODMAN_VERSION=$( podman -v | sed -e 's/podman version //g' -e 's/\..*//g' )
+            if [ "$PODMAN_VERSION" -lt 4 ];then
+                SELECTED_CONTAINER_ID="${SELECTED_CONTAINER_NAME}:${SELECTED_CONTAINER_TAG} "
+            fi
+        fi
         # Note that any variables here that are not set will evaluate to
         # blank space and not be parsed as arguments.
 
         # Skip network configuration for now
-        #                --network=\"host\" \
-            # Pass any arguments that were set to go directly to docker
+        #                --network=\"host\"
+        # Pass any arguments that were set to go directly to docker
         # Pass any arguments that may be container specific
+        # If overriding the container's entry point (for debug), set --entrypoint
+        # If different from host, specify image OS/architecture as needed by Docker/Podman.
         # be  interactive, or not
         # use --rm to delete the container on exit
         # Mount any additional host directories
@@ -1538,6 +1752,8 @@ function fxnDoLogin()
         # Specify the container
         # Pass the command to execute
         runCMD="$DOCKER_SPECIFIC_ARGS \
+                ${OVERRIDE_ENTRYPOINT} \
+                $ARCHITECTURE_ARGS \
                 $CONTAINER_SPECIFIC_ARGS \
                 $doInteractive \
                 --rm \
@@ -1547,21 +1763,21 @@ function fxnDoLogin()
                 $userNameArg \
                 ${HOSTNAME_ARGS} \
                 ${SELECTED_CONTAINER_ID} \
-                 $executeProgram"
+                $executeProgram"
 
         # Remove spaces for readability when echoing.
         # put one argument per line for readability
         # and make sure there are \ so the command can be cut and pasted
-        formatRunCMD=$( echo $runCMD  | sed -e 's/                / /g' | sed -e 's# --#\\ \n     --#g' )
+        formatRunCMD=$( echo $runCMD  | sed -e 's/                / /g' | sed -e 's# --#\\\n     --#g' )
 
         #
         # Let the user know what DUE is doing behind the scenes
         #
 
         echo " ----------------------------------------------------------------------------"
-        echo " ------ : start and log in to [ $SELECTED_CONTAINER_ID ] with this command:      -- "
-        echo "   ${DOCKER_APP} run $formatRunCMD"
-
+        echo " ------ : Start and log in to [ $SELECTED_CONTAINER_ID ] with this command:      -- "
+        echo "   ${DOCKER_APP} run \\"
+        echo "     $formatRunCMD"
         echo ""
         echo " ----------------------------------------------------------------------------"
         echo " ------ Host file systems are mounted as follows: ---------------------------"
@@ -1590,36 +1806,32 @@ function fxnDoLogin()
         fi
 
     else
-
+        local LoginCommand=""
         if [ "$USER_NAME" != "" ];then
             userNameArg=" --user $USER_NAME "
         fi
+
+        if [ "$DEBUG_LOGIN" = "TRUE" ];then
+            # If this is debug, make few assumptions about the container's ability to handle
+            # logins. Just start a specified shell.
+            LoginCommand="${DOCKER_APP} exec $doInteractive  $userNameArg ${SELECTED_CONTAINER_ID} $LOGIN_SHELL"
+        else
+            # Log into container as root, then set ID to user. This executes .bashrc configs and
+            # feels more like a real login.
+            LoginCommand="${DOCKER_APP} exec $doInteractive --user root ${SELECTED_CONTAINER_ID} $executeProgram --username $USER_NAME --userid $USER_ID  --groupid $USER_GROUP_ID --groupname $USER_GROUP_NAME"
+        fi
+        formatLoginCMD=$( echo $LoginCommand  | sed -e 's/                / /g' | sed -e 's# --#\\\n     --#g' )
         echo "Logging in to running  [ $SELECTED_CONTAINER_ID ] with: "
-        echo " ___________________________________________________________________________"
-        echo "|"
-        echo "|  ${DOCKER_APP} exec $doInteractive $userNameArg ${SELECTED_CONTAINER_ID}  $LOGIN_SHELL"
-        echo "|___________________________________________________________________________"
-        echo ""
+        echo " ---------------------------------------------------------------------------"
+        echo " ------ : Logging in to running [ $SELECTED_CONTAINER_ID ] with this command:       -- "
+        echo "   $formatLoginCMD"
         echo ""
         echo " ---------------------------------------------------------------------------"
         echo " -             Logging in to container. Type 'exit' to leave.              -"
         echo " ------------------- Docker Container Output Follows -----------------------"
         # all output from here on down is from the container session, rather than the
         # launch from DUE
-
-        if [ "$DO_DEBUG" = "TRUE" ];then
-            # If this is debug, make few assumptions about the container's ability to handle
-            # logins. Just start a specified shell.
-            ${DOCKER_APP} exec $doInteractive  $userNameArg "${SELECTED_CONTAINER_ID}" $LOGIN_SHELL
-        else
-            if [ "$OS_TYPE" = "RedHat" ];then
-                ${DOCKER_APP} exec $doInteractive --user "$USER_NAME"  "${SELECTED_CONTAINER_ID}" /bin/bash --login
-            else
-                # Log into container as root, then set ID to user. This executes .bashrc configs and
-                # feels more like a real login.
-                ${DOCKER_APP} exec $doInteractive --user root "${SELECTED_CONTAINER_ID}" /bin/login -p -f "$USER_NAME"
-            fi
-        fi
+        $LoginCommand
     fi
     # User typed 'exit' or something blew up?
     return $?
@@ -1724,89 +1936,40 @@ function fxnGenerateTemplate()
 # Configuration file code
 #
 # System wide config file
-DUE_CONFIG_FILE_PATH="/etc/due/due.conf"
+DUE_ETC_CONFIG_FILE_PATH="/etc/due/due.conf"
 
 # Personal config file
 DUE_HOME_CONFIG_DIR=~/.config/due
 DUE_HOME_CONFIG_FILENAME=due.conf
-DUE_HOME_CONFIG_ABSOLUTE_PATH=${DUE_HOME_CONFIG_DIR}/${DUE_HOME_CONFIG_FILENAME}
+DUE_USER_CONFIG_PATH=${DUE_HOME_CONFIG_DIR}/${DUE_HOME_CONFIG_FILENAME}
 
 
-# Configuration file to hold user specific overrides
-# This will copy the version installed in $DUE_CONFIG_FILE_PATH as a starting point,
-# and put a copy in the user's real home directory.
+# Configuration file to hold user specific overrides.
+# There are two use cases.
+#  If code is running locally, and DUE has not been installed (no /etc/due/due.conf)
+#  Due will copy the due.conf file from the source  checkout to the user's .config
+# If DUE has been installed, it will copy the /etc/due/due.conf to the user's .config
+#  directory, which will provide any system specific customizations.
 function fxnCreateConfigFile()
 {
 
-    if [ ! -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then
+    # If no user local config directory, create it
+    if [ ! -e  "$DUE_HOME_CONFIG_DIR" ];then
         fxnPP "Making directory $DUE_HOME_CONFIG_DIR"
         fxnEC mkdir -p "$DUE_HOME_CONFIG_DIR" || exit 1
-    fi
 
-    if [ -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then
-        fxnPP "$DUE_HOME_CONFIG_ABSOLUTE_PATH already exists. Doing nothing."
-    else
 
-        if [ ! -e "$DUE_CONFIG_FILE_PATH" ];then
+        if [ ! -e "$DUE_ETC_CONFIG_FILE_PATH" ];then
             # DUE has not been installed as a package.
             # Assume execution from a downloaded source directory
-            fxnPP "Copying ./$DUE_CONFIG_FILE_PATH $DUE_HOME_CONFIG_ABSOLUTE_PATH"
-            fxnEC cp ./"$DUE_CONFIG_FILE_PATH" "$DUE_HOME_CONFIG_ABSOLUTE_PATH" || exit 1
+            fxnPP "Copying ./$DUE_ETC_CONFIG_FILE_PATH $DUE_USER_CONFIG_PATH"
+            fxnEC cp ./"$DUE_ETC_CONFIG_FILE_PATH" "$DUE_USER_CONFIG_PATH" || exit 1
         else
-            fxnPP "Copying $DUE_CONFIG_FILE_PATH $DUE_HOME_CONFIG_ABSOLUTE_PATH"
-            fxnEC cp "$DUE_CONFIG_FILE_PATH" "$DUE_HOME_CONFIG_ABSOLUTE_PATH" || exit 1
-        fi
-        # Pix or it didn't happen.
-        echo "ls -l $DUE_HOME_CONFIG_DIR"
-        ls -l $DUE_HOME_CONFIG_DIR
-    fi
-
-}
-
-#
-# Read any user set configuration, and provide config file under ~/.config
-#
-
-# Save for later if printing --verbose.
-# Default to user's due.conf file
-CONFIG_FILE_PATH="$DUE_HOME_CONFIG_ABSOLUTE_PATH"
-
-function fxnReadConfigFile()
-{
-    # store variable name / value pairs
-    local configVars
-    local homeDir
-    local maxContainers
-
-    # If the user's local DUE config does not exist
-    if [ ! -e "$DUE_HOME_CONFIG_ABSOLUTE_PATH" ];then
-        if [ -e "$CONFIG_FILE_PATH" ];then
-            # Use the system wide file if it exists ( via Debian package install)
-            CONFIG_FILE_PATH="$DUE_HOME_CONFIG_ABSOLUTE_PATH"
-        else
-            # Create a local config to use.
-            fxnPP "Creating DUE configuration file at $CONFIG_FILE_PATH"
-            fxnEC fxnCreateConfigFile || exit 1
-        fi
-    fi
-
-    if [ -e "$CONFIG_FILE_PATH" ];then
-        # Read the file, filter out comments (#) and empty lines (\S)
-        configVars=$( grep -v "#" "$CONFIG_FILE_PATH" | grep "\S" )
-
-        # Parse the DUE_ENV_DEFAULT_HOMEDIR variable.
-        homeDir=$(echo "$configVars" | grep DUE_ENV_DEFAULT_HOMEDIR | tail -n 1 )
-        if [ "$homeDir" != "" ];then
-            # This will set DUE_ENV_DEFAULT_HOMEDIR
-            eval "$( echo $homeDir )"
-        fi
-
-        # Parse the DUE_USER_CONTAINER_LIMIT variable, and override the
-        # default set at the top of this file.
-        maxContainers=$(echo "$configVars" | grep DUE_USER_CONTAINER_LIMIT | tail -n 1 )
-        if [ "$maxContainers" != "" ];then
-            # Trim everything before the = to leave the number
-            DUE_USER_CONTAINER_LIMIT=${maxContainers##*=}
+            # Use the conf file from /etc/due
+            cp "$DUE_ETC_CONFIG_FILE_PATH" "$DUE_USER_CONFIG_PATH"
+            # Pix or it didn't happen.
+            echo "ls -l $DUE_HOME_CONFIG_DIR"
+            ls -l $DUE_HOME_CONFIG_DIR
         fi
     fi
 }
@@ -1882,13 +2045,13 @@ function fxnDoContainerStop()
         done
         echo ""
         echo "Stopping container."
-        fxnEC ${DOCKER_APP} stop "$SELECTED_CONTAINER_ID" || exit 1
+        fxnEC "${DOCKER_APP}" stop "$SELECTED_CONTAINER_ID" || exit 1
         # Leave some evidence in the system log in case this was not what was intended.
         /usr/bin/logger "due: $(whoami) stopped container [ $containerInfo ]"
         echo "Stopped."
     else
 
-        header=$( ${DOCKER_APP} ps | head -n 1 ) 
+        header=$( ${DOCKER_APP} ps | head -n 1 )
         terms=$( ${DOCKER_APP} ps | grep "$stopTerm" )
         if [ "$filterByUser" != "" ];then
             terms=$( echo "$terms" | grep "$filterByUser" )
@@ -1905,8 +2068,8 @@ function fxnDoContainerStop()
         # put a # after the container ID to turn the rest of the info in to a comment
         # prepend the ID with 'docker stop' to create an executable command.
         #echo "$terms" | sed -e 's/   / # /' | sed -e 's/^/docker stop /g' >> $STOP_SCRIPT
-		toDelete=$( echo "$terms" | sed -e 's/ / # /' | sed -e "s/^/${DOCKER_APP} stop /g" )
-#        toDelete=$( echo "$terms" | sed -e 's/   / # /' | sed -e "s/^/${DOCKER_APP} stop /g" )
+        toDelete=$( echo "$terms" | sed -e 's/ / # /' | sed -e "s/^/${DOCKER_APP} stop /g" )
+        #        toDelete=$( echo "$terms" | sed -e 's/   / # /' | sed -e "s/^/${DOCKER_APP} stop /g" )
 
         # Create the stop script to be very explicit about what will happen
         {
@@ -1939,29 +2102,57 @@ function fxnDoContainerStop()
 # Takes: String identifying the type of DUE container
 # Does:  Sets CONTIANER_SPECIFIC_ARGS, if needed.
 #
-# This sets any additional arguments to pass to Docker when starting a
-# container, such as --privileged or an additional mount point.
-#
-# This is left at the end of the file for easy merging, as local
-# branches may have deployment specific changes that do not apply
-# to upstream.
+# Set additional default arguments to Docker/Podman when running a container
+# based off of the DUEImageType label value found in the image.
+# This is set in the template's Dockerfile.config.
+#  Example: LABEL DUEImageType=no-op-image
+
+# This can be overridden on a per system or per user basis by sourcing the
+# /etc/due/due.conf
+# or the user's  ~/.config/due/due.conf file, below.
+
 function fxnSetContainerSpecificArgs()
 {
+    echo "No default container specific arguments were applied."
     local imageType="$1"
-
-    # uses the value set by the DUEImageType label from
+    # Uses the value set by the DUEImageType label from
     # template directory's Dockerfile.config
     case $imageType in
         "no-op-image" )
-        # Example: Mount current directory under /build in the container.
-        # Useful if this is invoked by an automated build system
-        # that builds outside the home directory hierarchy
-        # CONTAINER_SPECIFIC_ARGS="  --volume $(dirname $(pwd)):/build "
-        ;;
-
+            # Example: mount host /tmp directory as container's /tmp
+            CONTAINER_SPECIFIC_ARGS+=" --volume /tmp/:/tmp/"
+            ;;
     esac
-
 }
+
+#
+# Source local settings.
+#
+
+# Default to not letting users do custom configuration.
+DUE_ALLOW_USER_CONFIG="FALSE"
+
+if [ -e "$DUE_ETC_CONFIG_FILE_PATH" ];then
+    # Use the installed system-wide due.conf
+    source $DUE_ETC_CONFIG_FILE_PATH
+else
+    # The lack of a config file under /etc implies that DUE was not already
+    # installed, so this is likely running locally from a source checkout.
+    # In which case, allow the use of a user local config.
+    #
+    DUE_ALLOW_USER_CONFIG="TRUE"
+fi
+
+
+# The config under /etc will set DUE_ALLOW_USER_CONFIG to TRUE if
+# users are allowed to use their own config files.
+if [ "$DUE_ALLOW_USER_CONFIG" = "TRUE" ];then
+    if [ -e "$DUE_USER_CONFIG_PATH" ];then
+        # If ~/.config/due/due.conf, let the user know.
+        DUE_CONFIG_SOURCING_SUMMARY+="==== Sourcing due.conf  from: [ $DUE_USER_CONFIG_PATH ]\n"
+        source "$DUE_USER_CONFIG_PATH"
+    fi
+fi
 
 ######################################################################
 # Editor hints for sh syntax interpretation

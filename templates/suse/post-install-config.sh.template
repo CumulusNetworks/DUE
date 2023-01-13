@@ -1,0 +1,175 @@
+#!/bin/bash
+# SCRIPT_PURPOSE: Run configuration inside the docker container, after package install.
+
+# Copyright 2021,2022 NVIDIA Corporation.  All rights reserved.
+#
+#  SPDX-License-Identifier:     MIT
+
+# Bash should be installed at this point.
+# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
+# Note that this script applies for OpenSUSE and SUSE Linux Enterprise server DUE containers.
+. /due-configuration/install-config-common.lib
+
+# The default post install operations exist as a function
+# for easy invocation (or not) in overriding scripts.
+fxnPostInstallCommon
+
+
+#
+# Install development packages
+# Note at this stage, any changes to the container's upstream repositories
+# will have happened.
+#
+
+# Refresh list of upstream repository contents
+zypper --non-interactive update
+result="$?"
+case $result in
+    100 )
+        echo "Updates are available."
+        ;;
+    101 )
+        echo "Security updates are available."
+        ;;
+    0 )
+        echo "No updates are available."
+        ;;
+    * )
+        # Everything else is some degree of bad.
+        echo "$0 ERROR: zypper --non-interactive update failed with [ $result ] Exiting."
+        exit 1
+        ;;
+esac
+
+# Enable the repository containing source RPMs for convenient download.
+zypper mr -e repo-source
+
+# Use --force-resolution to resolve any downgrade conflicts, with the
+#  intent of creating a usable image that can be sorted later.
+INSTALL_COMMAND="zypper --non-interactive install --force-resolution "
+
+#
+# If python can't be installed, try python3
+# Success will vary by distribution...
+#
+
+$INSTALL_COMMAND  python 2>/dev/null
+if [ $? != 0 ];then
+    $INSTALL_COMMAND python3
+fi
+
+# Packages for kernel build
+KERNEL_BUILD_PACKAGES=" make ncurses-devel rsync gcc bc cpio  kmod  zlib-devel "
+
+# If cross compiling to ARM
+CROSS_BUILD_PACKAGES=""
+
+# If you expect to do development in the container, these are useful.
+EDITORS=" vim "
+
+# Any packages that you always use
+NICE_TO_HAVE=" time "
+
+# Man pages don't come by default.
+MAN_PAGES=""
+
+# Catchall for rpms specific to a release
+RELEASE_SPECIFIC=""
+
+
+# 'sles' SUSE images have limited repositories to pull from, and requires a subscription.
+# openSUSE can get all of the following packages
+# ID here was sourced from /etc/os-release by install-config-common.lib
+case "$ID" in
+    'sles' | 'sled' )
+        # SUSE requires a subscription for full access
+        RELEASE_SPECIFIC=" container-suseconnect "
+        ;;
+
+    'opensuse-leap' )
+        CROSS_BUILD_PACKAGES+=" \
+       cross-aarch64-binutils \
+       cross-aarch64-gcc10 \
+       cross-aarch64-linux-glibc-devel \
+       cross-arm-binutils \
+       cross-arm-gcc10 \
+"
+        KERNEL_BUILD_PACKAGES+=" devscripts "
+        ;;
+esac
+
+# Packages for kernel build
+KERNEL_BUILD_PACKAGES+=" bison flex quilt "
+
+# Popular editors
+EDITORS+=" emacs-nox "
+
+NICE_TO_HAVE+=" tree "
+
+MAN_PAGES=" man-pages man-pages-posix man "
+
+
+# If the system is arm64, it doesn't  need a cross compiler for itself.
+if [ "$( arch )" = 'aarch64' ];then
+    CROSS_BUILD_PACKAGES=""
+fi
+
+
+# What's available in Suse
+DEVELOPMENT_PACKAGES="
+               openssh-server \
+               git \
+               rpm-build \
+               $CROSS_BUILD_PACKAGES \
+               $KERNEL_BUILD_PACKAGES \
+               $EDITORS \
+               $NICE_TO_HAVE \
+               $MAN_PAGES \
+               $RELEASE_SPECIFIC \
+"
+if [ "$MAN_PAGES" != "" ];then
+    # Enable downloading of man pages for software installed via zypper
+    sudo sed -i 's/# rpm.install.excludedocs = yes/rpm.install.excludedocs = no/' /etc/zypp/zypp.conf
+fi
+
+# Run the actual install
+$INSTALL_COMMAND $DEVELOPMENT_PACKAGES
+
+if [ $? != 0 ];then
+    echo "$0 ERROR! Failed zypper install. Exiting."
+    exit 1
+fi
+
+#
+# Check for any local software to install.
+# This code is responsible for being smart enough to handle
+# the format of whatever is found.
+#
+
+if [ -d /due-configuration/post-install-local ];then
+    cd /due-configuration/post-install-local || exit 1
+
+    # Use find for package detection so that subdirectories can be used for organization
+    # Install packages that:
+    #   Work on any architecture
+    #   Match this container's architecture.
+    PACKAGES=$( find ./ \( -name "*noarch.rpm" -o -name "*.$(uname -p).rpm" \) )
+
+    # As packages are the only post install currently supported,
+    # list them if present and install. Otherwise, ignore.
+    if [ "$PACKAGES" != "" ];then
+        echo "Installing local packages found in post-install-local."
+
+        # zypper will look at all rpms it is passed to resolve dependency issues. RPM does not.
+        # Use --force to downgrade if needed for version conflicts since
+        #  the user wants these packages in particular installed.
+        # -y, --no-confirm - install without user interaction
+
+        $INSTALL_COMMAND $PACKAGES
+
+        # Additional dependency install required?
+        echo "Post install of local packages is done."
+    fi
+fi
+
+echo "Done $0"

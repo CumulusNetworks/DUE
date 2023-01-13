@@ -1,3 +1,4 @@
+# Copyright 2022 Nvidia Corporation.  All rights reserved.
 # Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
@@ -14,7 +15,8 @@ if [ "REPLACE_ENABLE_DUE_BASHRC" = "TRUE" ];then
    }
 
    # The --prompt option will set REPLACE_PROMPT
-   if [[ $PS1 != *D-DUE_REPLACE_PROMPT* ]];then 
-      export PS1='DUE_REPLACE_PROMPT:\u@$(parse_git_branch)$ '
+   if [[ $PS1 != *D-DUE_REPLACE_PROMPT* ]];then
+      # Set but do not export, as that can misprint when using sudo
+      PS1='DUE_REPLACE_PROMPT:\u@$(parse_git_branch)$ '
    fi
 fi
