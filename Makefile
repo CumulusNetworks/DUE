@@ -326,8 +326,8 @@ debian-package: orig.tar
 #	@echo "# Extracting tarball."
 	$(Q) tar -xvf ../$(DUE_ORIG_TAR) --strip-components=1
 ifneq ($(wildcard ../due_$(DUE_VERSION)*_all.deb),)
-	@echo " Previous due_$(DUE_VERSION)*_all.deb exists. Removing"
-	$(shell rm ../due_$(DUE_VERSION)*_all.deb )
+	@echo " Previous ../due_$(DUE_VERSION)*_all.deb exists. Removing"
+	rm ../due_$(DUE_VERSION)*_all.deb
 	@echo ""
 endif
 	@echo ""
@@ -349,24 +349,26 @@ endif
 	@echo "# Applying any local master branch stash changes with: [ git stash pop ]"
 #Use - to ignore errors if nothing pops, and ||: to avoid warnings if nothing to pop.
 	- $(Q) git stash pop ||:
-ifneq ($(wildcard ../due_$(DUE_VERSION)*_all.deb),)
-	@echo "# New .deb build products are in $(shell dirname $$(pwd)):"
-	@echo "# --------------------------------"
-	$(Q) ls -lrt ../due_*
-	@echo ""
+	@if [ -e ../due_$(DUE_VERSION)*_all.deb ]; then \
+		echo "#" ;\
+		echo "# New .deb build products are in $(shell dirname $$(pwd)):" ;\
+		echo "# --------------------------------" ;\
+		ls -lrt ../due_* ;\
+	else \
+		pwd ;\
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" ;\
+		echo "!                                                                    !" ;\
+		echo "! Build FAILED. To examine the failure on the $(DEBIAN_PACKAGE_BRANCH) branch   ! " ;\
+		echo "!  remove the '; true' from the Makefile's build line.               !" ;\
+		echo "!                                                                    !" ;\
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" ;\
+		echo "" ;\
+	fi
+	@echo "" 
 	@echo "# Done."
 	@echo ""
-else
-	pwd
-	@echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-	@echo "!                                                                    !"
-	@echo "! Build FAILED. To examine the failure on the $(DEBIAN_PACKAGE_BRANCH) branch   ! "
-	@echo "!  remove the '; true' from the Makefile's build line.               !"
-	@echo "!                                                                    !"
-	@echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-	@echo ""
 
-endif
+
 
 # Create upstream tarball and build DUE .rpm file from RPM_PACKAGE_BRANCH
 # changing branches as needed.
@@ -393,9 +395,9 @@ rpm-package: orig.tar
 	$(Q) cp ../$(DUE_ORIG_TAR) $(HOME)/rpmbuild/SOURCES
 	@echo "# Copying rpm-package/due.spec file to $(HOME)/rpmbuild/SPECS"
 	$(Q) cp rpm-package/due.spec $(HOME)/rpmbuild/SPECS/
-ifneq ($(wildcard ../due_$(DUE_VERSION)*.noarch.rpm),)
-	@echo " Previous due_$(DUE_VERSION)*.noarch.rpm exists. Removing"
-	$(shell rm ../due_$(DUE_VERSION)*.noarch.rpm )
+ifneq ($(wildcard $(HOME)/rpmbuild/RPMS/noarch/due-$(DUE_VERSION)*.noarch.rpm),)
+	@echo " Previous $(HOME)/rpmbuild/RPMS/noarch/due-$(DUE_VERSION)*.noarch.rpm exists. Removing"
+	rm $(HOME)/rpmbuild/RPMS/noarch/due-$(DUE_VERSION)*.noarch.rpm
 	@echo ""
 endif
 	@echo ""
@@ -415,27 +417,24 @@ endif
 #Use - to ignore errors if nothing pops, and ||: to avoid warnings if nothing to pop.
 	- $(Q) git stash pop ||:
 	@echo ""
-ifneq ($(wildcard $(HOME)/rpmbuild/RPMS/noarch/due-$(DUE_VERSION)*.noarch.rpm),)
-	@echo "# RPM build products are in $(HOME)/rpmbuild/RPMS/noarch/"
-	@echo "# --------------------------------"
-	$(Q) ls -lrt $(HOME)/rpmbuild/RPMS/noarch/
+	@if [ -e $(HOME)/rpmbuild/RPMS/noarch/due-$(DUE_VERSION)*.noarch.rpm ]; then \
+		echo "#" ;\
+		echo "# RPM build products are in $(HOME)/rpmbuild/RPMS/noarch/" ;\
+		echo "# --------------------------------" ;\
+		ls -lrt $(HOME)/rpmbuild/RPMS/noarch/ ;\
+	else\
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" ;\
+		echo "!                                                                    !" ;\
+		echo "! Build FAILED. To examine the failure on the $(RPM_PACKAGE_BRANCH) branch      !" ;\
+		echo "!  remove the '; true' from the Makefile's build line.               !" ;\
+		echo "!                                                                    !" ;\
+		echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" ;\
+		echo "" ;\
+	fi
 	@echo ""
 	@echo "# Done."
 	@echo ""
-else
-# If ~/rpmbuild has NOT already been used for a build, this may print.
-# Try building a second time. In debugging this isue, the wildcard for the RPM
-# _should_ work, and _does_ work on subsequent builds because the RPM _is_ there
-# on a good build and the wildcard matches it.
-# So...yeah.
-	@echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-	@echo "!                                                                    !"
-	@echo "! Build FAILED. To examine the failure on the $(RPM_PACKAGE_BRANCH) branch      !"
-	@echo "!  remove the '; true' from the Makefile's build line.               !"
-	@echo "!                                                                    !"
-	@echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-	@echo ""
-endif
+
 
 debian: orig.tar
 	@ echo "Building DUE Debian installer package."
@@ -465,6 +464,11 @@ test:
 	@echo "Package manager   $(PACKAGE_MANAGER)"
 	@echo "Host OS           $(HOST_OS)"
 	@echo "Deb pkg branch    $(DEBIAN_PACKAGE_BRANCH)"
+	@if [ -e ../due_$(DUE_VERSION)*_all.deb ]; then \
+	echo "GOT file" ; \
+	else \
+	echo "No file" ;\
+	fi
 
 # Matches OS_PACKAGING_MESSAGE
 endif
