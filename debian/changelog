@@ -10,8 +10,10 @@ due (4.0.0-1) unstable; urgency=medium
   * Customize - system and user config files can customize container launches.
   * Expired release support for Debian 8 Jessie.
   * Creation - directory inheritance is used for new containers.
+  * BugFix - Drop qemu from recommends. Closes: #1010082
+  * BugFix - Add support for systemd-binfmt. Closes: #1023396
 
- -- Alex Doyle <adoyle@nvidia.com>  Fri, 13 Jan 2023 11:06:29 -0800
+ -- Alex Doyle <adoyle@beast>  Sat, 14 Jan 2023 09:14:23 -0800
 
 due (3.0.0-1) unstable; urgency=medium
 
