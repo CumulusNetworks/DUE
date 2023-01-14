@@ -852,6 +852,12 @@ function fxnMakeNewDockerImage()
         #
         # Create the image based off the contents of ./$imageName
         # This allows the user to test incremental changes without starting from scratch.
+        # NOTE: it seems that adding --platform linux/arm64 here _should_
+        #  'request a specific platform' and avoid the subsequent:
+        #      "[Warning] The requested image's platform (linux/arm64) does not match the
+        #      detected host platform (linux/amd64) and no specific platform was requested"
+        #  messages when building for arm64 on an amd64 system, but it does not.
+        #  As the resulting containers run fine, the solution is to ignore the warning, for now.
         dockerBuildCommand="${DOCKER_APP} build \
               --no-cache=true \
               $DOCKER_SPECIFIC_BUILD_ARGS \
@@ -1123,11 +1129,16 @@ function fxnSelectContainer()
         # Podman will add leading spaces that throw off start-of-line pattern matching. Trim them.
         theContainers=$( ${DOCKER_APP} images --format 'table  {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.ID}}' | sed -e 's/^[ \t]*//g' )
         if [ $? != 0 ];then
-            # As this is frequently the first access of the system's Docker daemon,
-            # Fail gracefully if it's not installed.
             echo ""
-            echo "Error: the Docker daemon not seem to be running. Is docker.io installed?  Exiting DUE."
-            echo ""
+            echo "Error: failed to list Docker images."
+
+            if [ "$DOCKER_APP" = "docker" ];then
+                # As this is frequently the first access of the system's Docker daemon,
+                # Fail gracefully if it's not installed.
+                echo ""
+                echo "Error: the Docker daemon not seem to be running. Is docker.io installed?  Exiting DUE."
+                echo ""
+            fi
             exit 1
         fi
 
@@ -1693,15 +1704,26 @@ function fxnDoLogin()
             imname="${USE_HOSTNAME}"
         fi
 
-        # Determine platform type to pass along so that warnings aren't thrown when an amd64 system runs arm64 code...
-        platformType=$( ${DOCKER_APP} inspect -f '{{.Architecture}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}"  2>/dev/null )
-        if [ "$platformType" != "" ];then
-            # Only pass this if a value was returned.
-            # It might not be on a partially built container being debugged.
-            PLATFORM_ARGS=" --platform $platformType"
-        fi
+        if [ "$DOCKER_APP" = "docker" ];then
+            # And specify the OS/Architecture for Docker to avoid warnings about --platform type not matching contianer.
+            platformType=$( ${DOCKER_APP} inspect -f '{{.Os}}/{{.Architecture}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}"  2>/dev/null )
+            if [ "$platformType" != "" ];then
+                # Only pass this if a value was returned.
+                # It might not be on a partially built container being debugged.
+                ARCHITECTURE_ARGS=" --platform $platformType"
+            fi
 
-        if [ "$DOCKER_APP" = "podman" ];then
+        elif [ "$DOCKER_APP" = "podman" ];then
+            # Determine platform type to pass along so that warnings aren't thrown when an amd64 system runs arm64 code...
+            # And specify just the architecture for podman to avoid warnings about --platform type not matching contianer.
+            imageArchitecture=$( ${DOCKER_APP} inspect -f '{{.Architecture}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}"  2>/dev/null )
+            if [ "$imageArchitecture" != "" ];then
+                # Only pass this if a value was returned.
+                # It might not be on a partially built container being debugged.
+                ARCHITECTURE_ARGS=" --arch $imageArchitecture"
+            fi
+
+
             # For Podman, log in to the container as root,
             # Do not remap userids and namespace
             # then configure the host user in the container using container-create-user.sh
@@ -1717,10 +1739,11 @@ function fxnDoLogin()
         # blank space and not be parsed as arguments.
 
         # Skip network configuration for now
-        #                --network=\"host\" 
+        #                --network=\"host\"
         # Pass any arguments that were set to go directly to docker
         # Pass any arguments that may be container specific
         # If overriding the container's entry point (for debug), set --entrypoint
+        # If different from host, specify image OS/architecture as needed by Docker/Podman.
         # be  interactive, or not
         # use --rm to delete the container on exit
         # Mount any additional host directories
@@ -1730,7 +1753,7 @@ function fxnDoLogin()
         # Pass the command to execute
         runCMD="$DOCKER_SPECIFIC_ARGS \
                 ${OVERRIDE_ENTRYPOINT} \
-                $PLATFORM_ARGS \
+                $ARCHITECTURE_ARGS \
                 $CONTAINER_SPECIFIC_ARGS \
                 $doInteractive \
                 --rm \
@@ -2125,7 +2148,7 @@ fi
 # users are allowed to use their own config files.
 if [ "$DUE_ALLOW_USER_CONFIG" = "TRUE" ];then
     if [ -e "$DUE_USER_CONFIG_PATH" ];then
-        # If ~/.config/due/due.conf, let the user know.        
+        # If ~/.config/due/due.conf, let the user know.
         DUE_CONFIG_SOURCING_SUMMARY+="==== Sourcing due.conf  from: [ $DUE_USER_CONFIG_PATH ]\n"
         source "$DUE_USER_CONFIG_PATH"
     fi

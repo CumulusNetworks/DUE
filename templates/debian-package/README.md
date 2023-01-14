@@ -30,9 +30,19 @@ Create default Ubuntu 22.04 Debian package build environment with: ./due --creat
 In addition to the the expectedly unique `duebuild` and install scripts, there is a script for managing local package repositories: `due-manage-local-package-repo.sh`. See below.
 
 ### Adding files at build time
-As of the 2.4.x release, the common-template supports the install of packages from the local filesystem, and this is shared by all other templates.
+As of the 2.4.x release, the common-template supports the install of packages from the local file system, and this is shared by all other templates.
 See the `pre-install-local` directory, for local packages to be added when the `pre-install-config.sh` script executes,  
 and the `post-install-local` directory for local packages to be added when the `post-install-config.sh` script executes.  
+
+## Supporting expired distributions
+When using a Docker image for a release that is no longer supported, users will encounter problems around expired keys (resulting in validation errors) and possibly missing upstream package repositories.  
+Fixing the missing repository problem will require the developer to find archived copies of the repository and update the image's /etc/apt/sources.list configuration. However, DUE can help mitigate the key expiration/validation issues by disabling APT security checks, reasoning that a failed install at this point is worse than not having an image at all. To that end, DUE's `pre-install-config.sh.template` will `apt --force-install` packages for Debian releases.  The `post-install-config.sh` script will check against distributions known to have these problems, and will notify the user with a warning during image creation. To do this, the `post-install-config.sh` will source the image's `/etc/os-release` file and run APT commands with `faketime` to make the system think the keys have not yet expired, provided the container's release version matches a known release that has this problem. As of 01/02/23, Debian 8 (Jessie) is the only image that is supported this way.
+
+Additionally, the Debian `duebuild` script supports building in containers that have this problem by supplying the `--force-apt` option.
+Ex: `duebuild --force-apt --build`
+will disable the checks on pulling in build dependencies, and do it's best to just build.
+
+Users can also try force updating the keys by adding `sudo apt-key adv --recv-keys` to the `pre-install-config.sh.template` and re-creating the image, but this may result in getting a newer set of expired keys.  
 
 
 # Architecture  
@@ -152,7 +162,7 @@ Or:
 
 If just a repository name is passed, the ``--use-local-repo`` option will create a local
 Debian package repository in the directory above the build directory.
-If an absoulte path and name are passed, the repository will be created at that location as seen from the **container**.
+If an absolute path and name are passed, the repository will be created at that location as seen from the **container**.
 Either way, this repository will get an entry in the container's sources.list.d/ and will have the highest priority.
 If it does not already exist, duebuild will create it at the start of build, and add all built packages to it at the end of build.  
     
@@ -173,7 +183,7 @@ The build completes and the package-A *.debs are put in `myRepo`
 `cd package-B`  
 
 `due --run--image due-package-debian-10 --build --use-local-repo myRepo`  
-The duebuild script sees the exising local package repository `myRepo` as a high priority repository and references it on apt-update.
+The duebuild script sees the existing local package repository `myRepo` as a high priority repository and references it on apt-update.
 The build proceeds, with the package-A *.debs being accessed.  
 The build completes, and package-B debs are added to `myRepo`
 
@@ -199,7 +209,7 @@ is passed through...and you may have to escape quote terms, as illustrated above
 ## Debugging
 If you get a build error that contains:
  `dpkg-source: aborting due to unexpected upstream changes`
- ... you have an existing source tar file above your build directory and you are trying ot build source
+ ... you have an existing source tar file above your build directory and you are trying to build source
  - Override the default build configuration by adding `--cbuild --build=binary --unsigned-changes`
 Ex: `due --run-image due-pkg-sid --build --cbuild --build=binary --unsigned-changes`
  
@@ -217,6 +227,8 @@ due --run-image due-pkg-sid --build --use-local-repo trepo --cbuild --build=bina
 The `duebuild` script now defaults to just building unsigned package binaries, on the assumption that most users
 downloading source will just want to build the binaries and be about their day.  
 Previously it defaulted to building source as well, but this can fail if the original tar files are around,
-and no changes have been made, breaking the objective of the default configuration to just produce soemthing useful.
+and no changes have been made, breaking the objective of the default configuration to just produce something useful.
+
+
 
 

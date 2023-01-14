@@ -1,4 +1,5 @@
 # Getting Started
+<img src="DUELogo.jpg" alt="projectlogo" width="200"/>  
 Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 **Formatting Conventions**  
@@ -8,20 +9,37 @@ are start and end with back ticks like `this`. If you are using a Markdown viewe
 If you cut and paste from this file, do not copy the `s
 
 # Debian/Ubuntu based hosts
-You have a few install options here:
+You have a few install options here:  
+
 ## Install a released version with APT
-Newer versions of Debian and Ubuntu have upstreamed versions of DUE, so `sudo apt-get install due` may work for you.
+Newer versions of Debian and Ubuntu have upstreamed versions of DUE, so `sudo apt-get install due` may work for you.  
+
 ## Install a prebuilt release .deb file
 .deb files associated with each release are available at DUE's GitHub page here:  
 [https://github.com/CumulusNetworks/DUE/releases](https://github.com/CumulusNetworks/DUE/releases)  
-To install,  
-1. Download the desired .deb using your browser
-2. Install the deb and expect dependency errors with: `sudo dpkg -i due_*all.deb`
-3. Use APT to resolve the dependency errors with: `sudo apt-get install --fix-broken`
-  
-# Red Hat/SUSE based hosts
-Until an .rpm build is available, follow the instructions in **Installing from a Git checkout** below.
+Or you can build your own from source by creating a DUE container for your desired operating system and using it with `make debian-package`
 
+Once you have the .deb file,  
+1. Install the deb and expect dependency errors with: `sudo dpkg -i due_*all.deb`  
+2. Use APT to resolve the dependency errors with: `sudo apt-get install --fix-broken`  
+  
+## Install from a Git checkout of the source code  
+See **Installing from a Git checkout** below.
+
+# Red Hat/SUSE based hosts
+You have a few install options here
+  
+## Install a prebuilt release .rpm file
+.rpm files associated with each release are available at DUE's GitHub page here:  
+[https://github.com/CumulusNetworks/DUE/releases](https://github.com/CumulusNetworks/DUE/releases)    
+Or you can build your own by creating a DUE container for your desired operating system and using it with `make rpm-package`  
+
+Once you have the .rpm file, use your package manager to install it, and the dependencies that come with it. Depending on the operating system used, this may look like:  
+  * `yum install due_*noarch.rpm` (older Fedora/Red Hat Enterprise Linux)   
+  * `dnf install due_*noarch.rpm` (newer Fedora/Red Hat Enterprise Linux)  
+  * `zypper install due_*noarch.rpm` (OpenSUSE/SLES)  
+    
+And, of course, there is always:  
 
 
 # Installing from a Git checkout

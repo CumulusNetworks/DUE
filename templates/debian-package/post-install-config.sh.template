@@ -19,6 +19,46 @@ fxnPostInstallCommon
 # Set bash ulimit to max at 10000 to speed this up.
 ulimit -n 10000
 
+# Detect expired releases
+if [[ "$NAME" = *Debian* ]];then
+    # Useful for old distributions that throw expired key errors.
+    # Though key update can be forced with: sudo apt-key adv --recv-keys
+    # Debian 8 Jessie is the first of these tested.
+    # NOTE:  --force-yes can apply the following:
+    #  --allow-unauthenticated
+    #  --allow-downgrades
+    #  --allow-remove-essential
+    # --allow-change-held-packages
+
+    # VERSION_ID and VERSION variables are sourced from /etc/os-release
+    # TIP: Debian Sid does not set VERSION_ID
+    if [ "$VERSION_ID" != "" ] && [ $((VERSION_ID < 9 )) = 1 ];then
+        APT_FAKE_TIME=" faketime "
+        APT_FORCE_YES=" --force-yes "
+
+        # Pretend to be an earlier date so keys are not yet expired.
+        APT_FAKE_DATE="2017-01-01"
+        # Ex: sudo faketime '2018-01-01 00:00:01' apt-get update
+
+        # I suspect additional fake times will have to be
+        # added.
+        case $VERSION_ID in
+            '8' )
+                APT_FAKE_DATE="2017-01-01"
+                ;;
+            * )
+                echo "ERROR! $0 Failed to set fake time for $VERSION. Exiting."
+                exit 1
+                ;;
+
+        esac
+
+        echo ""
+        echo "WARNING: detected expired release $NAME $VERSION_ID "
+        echo " APT install will use faketime and --force-yes in $0"
+        echo ""
+    fi
+fi
 
 #
 # apt-get install development packages
@@ -26,8 +66,7 @@ ulimit -n 10000
 # will have happened.
 #
 
-
-apt-get update
+$APT_FAKE_TIME $APT_FAKE_DATE apt-get update
 
 #
 # As Python availability varies by release, try to install
@@ -38,18 +77,20 @@ apt-get update
 #
 PYTHON_SIX_PACKAGE="python-six"
 DEBIAN_FRONTEND=noninteractive \
+               $APT_FAKE_TIME $APT_FAKE_DATE \
                apt-get install \
                --assume-yes \
-               --force-yes \
+               $APT_FORCE_YES \
                --no-install-recommends \
                python > /dev/null 2>&1
 if [ $? = 0 ];then
     echo "Installed classic Python package."
 else
     DEBIAN_FRONTEND=noninteractive \
+                   $APT_FAKE_TIME $APT_FAKE_DATE \
                    apt-get install \
                    --assume-yes \
-                   --force-yes \
+                   $APT_FORCE_YES \
                    --no-install-recommends \
                    python3
     # Newer Python = newer python six
@@ -77,9 +118,10 @@ NICE_TO_HAVE=" tree "
 # space is a concern.
 #
 DEBIAN_FRONTEND=noninteractive \
+               $APT_FAKE_TIME $APT_FAKE_DATE \
                apt-get install \
                --assume-yes \
-               --force-yes \
+               $APT_FORCE_YES \
                --no-install-recommends \
                openssh-server \
                iputils-ping \
@@ -110,7 +152,12 @@ if [ -d /due-configuration/post-install-local ];then
         # Install packages (expect dependency errors)
         sudo dpkg -i *.deb
         # Resolve dependency errors with --fix-broken
-        DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes --force-yes --fix-broken || exit 1
+        DEBIAN_FRONTEND=noninteractive \
+                       $APT_FAKE_TIME $APT_FAKE_DATE \
+                       apt-get install \
+                       --assume-yes \
+                       $APT_FORCE_YES \
+                       --fix-broken || exit 1
         echo "Post installing local software: DONE"
     fi
 fi
