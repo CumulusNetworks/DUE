@@ -1,3 +1,13 @@
+due (4.0.1-1) unstable; urgency=medium
+
+  * Version bump to 4.0.1
+  * Image export now keeps name and tag
+  * ONIE images do not suggest additional mounts (broke Podman)
+  * Bugfix Debian duebuild --download-src
+  * Debian package installs docs.
+
+ -- Alex Doyle <adoyle@nvidia.com>  Sat, 21 Jan 2023 15:09:00 -0800
+
 due (4.0.0-1) unstable; urgency=medium
 
   * New upstream release
@@ -13,7 +23,7 @@ due (4.0.0-1) unstable; urgency=medium
   * BugFix - Drop qemu from recommends. Closes: #1010082
   * BugFix - Add support for systemd-binfmt. Closes: #1023396
 
- -- Alex Doyle <adoyle@beast>  Sat, 14 Jan 2023 09:14:23 -0800
+ -- Alex Doyle <adoyle@nvidia.com>  Sat, 14 Jan 2023 09:14:23 -0800
 
 due (3.0.0-1) unstable; urgency=medium
 
