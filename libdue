@@ -1,7 +1,7 @@
 #!/bin/bash  syntax
 # SCRIPT_PURPOSE: A function library for Dedicated User Environment (DUE)
 
-# Copyright 2021,2022 Nvidia Corporation.  All rights reserved.
+# Copyright 2021-2023 Nvidia Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
@@ -14,7 +14,7 @@
 shopt -s extglob
 
 # Documentation and changelog builds get the official version from here.
-DUE_VERSION="4.0.0"
+DUE_VERSION="4.0.1"
 
 # Debian packages required for DUE to run
 REQUIRED_PACKAGES=" docker.io rsync bsdutils git"
@@ -920,12 +920,12 @@ function fxnSaveContainer()
 # Export a copy of an already available Docker image as a file.
 # This can be used with fxnDoImport to move an image between two machines.
 # Uses: EXPORT_IMAGE_NAME  Name of resulting image.
-#xo         This should have been set on the command line
+#         This should have been set on the command line
 function fxnDoExport()
 {
     local exportFilter="$1"
     local exportImageName
-    # choose from running containers
+    local nameTag
 
     fxnSelectContainer "export" $exportFilter
 
@@ -935,19 +935,52 @@ function fxnDoExport()
     #  as a subdirectory.
     exportImageName="${SELECTED_CONTAINER_NAME//\//-}"
 
+    if [ "$DOCKER_APP" = "podman" ];then
+        # Trim leading localhost and the - swapped for / above if podman
+        exportImageName=$( echo "$exportImageName" | sed -e 's#^localhost-##g' )
+    fi
+
     # check for file overwrite
     if [ -e "${exportImageName}.tar" ];then
         fxnERR "File: [ ${exportImageName}.tar ] already exists. Not overwriting.Exiting."
         exit 1
     fi
 
+    # As names can have spaces, parsing gets tricky, so get it pre-parsed from the docker app.
+    # List images:
+    # - in name:tag format
+    # - delimit the ID to search for with #
+    # - delete any leading whitespace (Podman adds it, Docker does not)
+    # - delete any leading localhost/ (Podman adds it, Docker does not)
+    # - delete everything after #
+    #    ..to get rid of the ID to search for now that the name:tag has been found.
+    nameTag=$( "${DOCKER_APP}" images  --format 'table  {{.Repository}}:{{.Tag}}#{{.ID}}' \
+                   | grep "${SELECTED_CONTAINER_ID}" \
+                   | sed -e 's/^[ \t]*//' \
+                         -e 's#^localhost/##g' \
+                   | sed -e 's/#.*//g' )
+    if [ "$nameTag" = "" ];then
+        fxnERR "Failed to find name and tag for image ID [ ${SELECTED_CONTAINER_ID} ]. Exiting."
+        exit 1
+    fi
+
     # Now export the saved image
-    fxnPP "Saving selected image as [ ${exportImageName}.tar ]"
+    fxnPP "Saving selected image with [ $nameTag ] as [ ${exportImageName}.tar ]"
+
     # Use the ID associated with the image
     # Use 'save' rather than 'export' to save all layers.
-    #    fxnEC ${DOCKER_APP} save  $SELECTED_CONTAINER_ID > ${exportImageName}.tar
-    fxnEC "${DOCKER_APP}" save  "$SELECTED_CONTAINER_ID" -o "${exportImageName}.tar"
+    #  Saving with $SELECTED_CONTAINER_ID does not keep name and tag
+    #  Ex:  fxnEC ${DOCKER_APP} save  $SELECTED_CONTAINER_ID > ${exportImageName}.tar
+    #  So save with name and tag to preserve them.
+    fxnEC "${DOCKER_APP}" save  "$nameTag" -o "${exportImageName}.tar"
 
+    # Note: it is absurdly difficult to get rid of 'localhost/' in short names
+    # (i.e. not the full URL the container came from) on containers exported by
+    #  Podman to Docker. If no Docker registry is specified:
+    #   Docker defaults do Docker.io (and hides it)
+    #   Podman defaults to localhost/
+    # Point being that DUE containers exported from Podman will always show with
+    #  localhost/ on Docker systems.
     fxnPP "Exported container is in $(pwd) "
     ls -l | grep  ${exportImageName}.tar
     echo ""
