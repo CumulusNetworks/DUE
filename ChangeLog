@@ -1,3 +1,13 @@
+due (4.0.1-1) unstable; urgency=medium
+
+  * Version bump to 4.0.1
+  * Image export now keeps name and tag
+  * ONIE images do not suggest additional mounts (broke Podman)
+  * Bugfix Debian duebuild --download-src
+  * Debian package installs docs.
+
+ -- Alex Doyle <adoyle@nvidia.com>  Sat, 21 Jan 2023 14:50:00 -0800
+
 due (4.0.0-1) unstable; urgency=medium
 
   * Version bump to 4.0.0

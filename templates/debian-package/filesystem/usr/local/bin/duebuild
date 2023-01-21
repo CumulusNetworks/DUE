@@ -745,29 +745,33 @@ function fxnDownloadSourceDeb()
     local theSrcDeb="$1"
     local srcListFileName='duebuild-deb-sources.list'
     local activeDebRepos=$( grep -nr 'deb-src' /etc/apt | grep -v '#' )
+    # If no deb-src entries are defined anywhere under /etc/apt
     if [ "$activeDebRepos" = "" ];then
-        #
-        # Most containers do not have deb-src entries, so copy the existing deb
-        # entries and paste them as deb-src in a file under sources.list.d to
-        # leave the original sources.list unchanged.
-        # Ignore any commented out deb-src entries.
-        echo ""
-        echo " Adding deb-src entries from existing /etc/apt/sources.list entries."
-        echo ""
-        cat /etc/apt/sources.list \
-            | grep -v '#' \
-            | sed -e 's/deb http/deb-src http/g' \
-                  > /tmp/1
-        echo ""
-        echo " Creating a file of deb-src URLS under /etc/apt/sources.list.d/$srcListFileName"
-        echo ""
-        fxnEC sudo mv /tmp/1 /etc/apt/sources.list.d/$srcListFileName || exit 1
-    else
-        echo ""
-        echo " deb-src urls exist under /etc/apt/sources.list*. Continuing."
-        echo ""
+       # Some containers may only have entries under /etc/apt/sources.list.d
+       # In which case, do not try to get clever and put it back on the user.
+       # otherwise...
+       if [ -e /etc/apt/sources.list ];then
+          #
+          # Most containers do not have deb-src entries, so copy the existing deb
+          # entries and paste them as deb-src in a file under sources.list.d to
+          # leave the original sources.list unchanged.
+          # Ignore any commented out deb-src entries.
+          echo ""
+          echo " Adding deb-src entries from existing /etc/apt/sources.list entries."
+          echo ""
+          cat /etc/apt/sources.list \
+              | grep -v '#' \
+              | sed -e 's/deb http/deb-src http/g' \
+                    > /tmp/1
+          echo ""
+          echo " Creating a file of deb-src URLS under /etc/apt/sources.list.d/$srcListFileName"
+          echo ""
+          fxnEC sudo mv /tmp/1 /etc/apt/sources.list.d/$srcListFileName || exit 1
+       else
+           fxnERR "Failed to find any deb-src entries under /etc/apt. Exiting."
+           exit 1
+       fi
     fi
-
     # Update in case anything under /etc/apt/sources.list* was modified.
     fxnEC sudo apt-get update || exit 1
     fxnEC apt-get source $theSrcDeb || exit 1
