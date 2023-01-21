@@ -1,5 +1,5 @@
 Name:           due
-Version:        4.0.0
+Version:        4.0.1
 Release:        1%{?dist}
 Summary:        Dedicated User Environment: manage build environments in Docker containers.
 License:        MIT
