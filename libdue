@@ -1,7 +1,7 @@
 #!/bin/bash  syntax
 # SCRIPT_PURPOSE: A function library for Dedicated User Environment (DUE)
 
-# Copyright 2021-2023 Nvidia Corporation.  All rights reserved.
+# Copyright 2021-2023 NVIDIA Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
@@ -14,7 +14,7 @@
 shopt -s extglob
 
 # Documentation and changelog builds get the official version from here.
-DUE_VERSION="4.0.1"
+DUE_VERSION="4.1.0"
 
 # Debian packages required for DUE to run
 REQUIRED_PACKAGES=" docker.io rsync bsdutils git"
@@ -293,7 +293,7 @@ function fxnDeleteImage()
         | grep "$DELETE_TERM" \
         | awk '{printf "# Delete: %s Tag: %s Image ID %s, Created %s %s %s, Size %s \n REPLACE_DOCKER_APP rmi --force %s \n", $1, $2, $3, $4, $5, $6, $7, $3}' \
               >> "$DELETE_SCRIPT"
-    # Set the applicatio
+    # Set the application
     sed -i "s/REPLACE_DOCKER_APP/$DOCKER_APP/g" "$DELETE_SCRIPT"
 
     echo " ________________________________________________________________________"
@@ -420,7 +420,7 @@ function fxnPreProcessDockerLoginMessage()
         fxnPP "Creating $destDir/etc/DockerLoginMessage from [ $USE_TEMPLATE_PATH ]"
         fxnEC cp "${USE_TEMPLATE_PATH}"/filesystem/etc/DockerLoginMessage.template "$destDir"/DockerLoginMessage || exit 1
 
-        # now edit the copy (/s may be in the string. Deliniate sed with #s)
+        # now edit the copy (/s may be in the string. Delineate sed with #s)
         if [ "$IMAGE_DESCRIPTION" != "" ];then
             sed -i "s#REPLACE_IMAGE_DESCRIPTION#$IMAGE_DESCRIPTION#g" "$destDir"/DockerLoginMessage
         fi
@@ -503,11 +503,13 @@ function fxnPreProcessInstallConfigLib()
 # Takes: FROM_IMAGE_TYPE    - source image to build on
 #        NEW_IMAGE_NAME     - Local name for image (my-stretch-build, for example)
 #        PLATFORM           - specify architecture that may be different from the host. (optional)
+#        image patch dir    - path to directory holding files to apply to the image before template
 function fxnMakeNewDockerImage()
 {
     local imageFrom="$1"
     local imageName="$2"
     local platformArg
+    local imagePatchDir
     # if the architecture is different from the host
     local platformArch
     # If image should be pulled from remote registry
@@ -539,6 +541,11 @@ function fxnMakeNewDockerImage()
         platformArch=${3##*/}
     fi
 
+    if [ "$4" != "" ];then
+       # Applying patches from this directory to the base image
+       imagePatchDir="$4"
+    fi
+       
     # DOCKER_IMAGE_TAG will have been initialized to 'latest' by default,
     # or will have been overridden by the user.
     # Leaving this around in case there's a need to reference the base
@@ -595,6 +602,14 @@ function fxnMakeNewDockerImage()
               --exclude=*.template \
               "${USE_TEMPLATE_PATH}"/ "${BUILD_MERGE_DIR}"/"${imageName}" || exit 1
 
+        # Files added to the container from the container-patches directory
+        # 
+        if [ "$imagePatchDir" != "" ];then
+            fxnPP "Copying files from [ $imagePatchDir ] to ${BUILD_MERGE_DIR}/${imageName}" 
+            fxnEC rsync --archive --verbose "$imagePatchDir" "${BUILD_MERGE_DIR}/${imageName}"
+        fi
+
+        
         fxnListDirContents "${BUILD_MERGE_DIR}/${imageName}"
 
         #
@@ -619,7 +634,7 @@ function fxnMakeNewDockerImage()
                 ;;
 
             * )
-                fxnERR "Cannot map [ $HOST_ARCH ] to a Docker contianer type. Exiting."
+                fxnERR "Cannot map [ $HOST_ARCH ] to a Docker container type. Exiting."
                 exit 1
                 ;;
         esac
@@ -652,7 +667,7 @@ function fxnMakeNewDockerImage()
             # if both are present, one will hide the other. Tag the image with the architecture to keep track.
             # the host's.
 
-            # inspect handles finding the latest image in case there are mutliple, and will take an imageFrom
+            # inspect handles finding the latest image in case there are multiple, and will take an imageFrom
             #  string that may have more than one '/' in it, in case there are multiple.
             # However, it returns the ID with 'sha256:' stuck to the front.
             imageID=$( "${DOCKER_APP}"  inspect --format "{{.ID}}" "${imageFrom}" | sed -e 's/sha256://' )
@@ -733,7 +748,7 @@ function fxnMakeNewDockerImage()
             fi
 
             if [ ! -e /proc/sys/fs/binfmt_misc/qemu-${imageArchitecture} ];then
-                fxnERR "Faied to find qemu-${imageArchitecture} under /proc/sys/fs/binfmt_misc. Packages may have to be installed or a restart is required."
+                fxnERR "Failed to find qemu-${imageArchitecture} under /proc/sys/fs/binfmt_misc. Packages may have to be installed or a restart is required."
                 #               exit 1
             fi
 
@@ -864,7 +879,7 @@ function fxnMakeNewDockerImage()
               --tag ${CONFIGURED_NAME_AND_TAG} \
               --file=./Dockerfile.create \
               ."
-        # Print the build command, turning all whitespace in to one space.
+        # Print the build command, turning all white space in to one space.
         fxnHeader "Building with: $( echo $dockerBuildCommand | sed -e 's/[[:space:]]\+/ /g')"
 
         # Run it.
@@ -1738,7 +1753,7 @@ function fxnDoLogin()
         fi
 
         if [ "$DOCKER_APP" = "docker" ];then
-            # And specify the OS/Architecture for Docker to avoid warnings about --platform type not matching contianer.
+            # And specify the OS/Architecture for Docker to avoid warnings about --platform type not matching container.
             platformType=$( ${DOCKER_APP} inspect -f '{{.Os}}/{{.Architecture}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}"  2>/dev/null )
             if [ "$platformType" != "" ];then
                 # Only pass this if a value was returned.
@@ -1748,7 +1763,7 @@ function fxnDoLogin()
 
         elif [ "$DOCKER_APP" = "podman" ];then
             # Determine platform type to pass along so that warnings aren't thrown when an amd64 system runs arm64 code...
-            # And specify just the architecture for podman to avoid warnings about --platform type not matching contianer.
+            # And specify just the architecture for podman to avoid warnings about --platform type not matching container.
             imageArchitecture=$( ${DOCKER_APP} inspect -f '{{.Architecture}}' "${SELECTED_CONTAINER_NAME}":"${SELECTED_CONTAINER_TAG}"  2>/dev/null )
             if [ "$imageArchitecture" != "" ];then
                 # Only pass this if a value was returned.

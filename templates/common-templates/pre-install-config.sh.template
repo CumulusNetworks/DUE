@@ -80,6 +80,19 @@ fxnConfigureRPM()
 # Debian uses APT and .deb
 fxnConfigureDebian()
 {
+
+    # For older distributions, the package repositories on the Internet may have moved.
+    # In that case, a new sources.list file may have been supplied as part of the
+    # due-configuration. If so, use it to retry the install.
+    if [ -e /due-configuration/filesystem/etc/apt/patch-sources.list ];then
+        echo "$0 Found /due-configuration/filesystem/etc/apt/patch-sources.list. Overwriting image version."
+        cp /due-configuration/filesystem/etc/apt/patch-sources.list /etc/apt/sources.list
+        if [ $? != 0 ];then
+            echo "$0 ERROR! Failed to copy patch-sources.list to /etc/apt/sources.list. Exiting."
+            exit 1
+        fi
+    fi
+    
     # For older distributions, key expired errors like:
     # W: GPG error: http://deb.debian.org jessie-updates InRelease: The following signatures were invalid: KEYEXPIRED 1668891673
     # may be seen. However, apt does not error out on this, so continue.
@@ -104,7 +117,7 @@ fxnConfigureDebian()
                    $BASE_PACKAGES
 
     if [ $? != 0 ];then
-        echo "$0 ERROR! Failed apt-get install. Exiting."
+        echo "$0 ERROR! Failed initial apt-get install."
         exit 1
     fi
 

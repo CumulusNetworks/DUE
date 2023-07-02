@@ -222,6 +222,14 @@ This allows me to preserve the prompt hints that describe the container.
  `--create`, so that things like the source container, prompt, or name can be set dynamically.
  
 
+ **`image-patches`**  
+ Holds files that are added to image creation before the template files.  
+ For example, there is a patch to the Debian 9 `/etc/apt/sources.list` file which updates
+ the package repositories the container uses to reference repositories that have been moved for archiving.
+ Since the Debian 9 image can be used by the `ONIE` and `debian-package` templates, this file needs to be in a location where it can be accessed by both.    
+This these files are applied using --image-patch with the --create option. Run `due --create --help` to see an example.
+ 
+
  **`due-build-merge`**  
  This is the work/build area that holds image merges for build. For any image build, there will be two directories:
  

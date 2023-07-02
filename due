@@ -1,7 +1,7 @@
 #!/bin/bash
 # SCRIPT_PURPOSE: Dedicated User Environment CLI
 
-# Copyright 2021,2022 Nvidia Corporation.  All rights reserved.
+# Copyright 2021,2022 NVIDIA Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
@@ -13,6 +13,8 @@ INSTALLED_DUE_PATH="/usr/bin/due"
 INSTALLED_DUE_DIR="/usr/share/due"
 LIBRARY_FILE="/usr/lib/libdue"
 
+IMAGE_PATCH_DIR="/usr/share/due/image-patches"
+
 # Set user's default home directory
 DUE_ENV_DEFAULT_HOMEDIR="$HOME"
 
@@ -22,10 +24,11 @@ if [ "$0" != "$INSTALLED_DUE_PATH" ];then
     if [  -e ./libdue ] && [ -e ./due ];then
         # If both files are in the same directory,
         # it is probably running from a source checkout
-        # should use the library from the corrent
+        # should use the library from the current
         # directory, rather than the installed one.
         TOP_LEVEL_DIR=$(pwd)
         LIBRARY_FILE="${TOP_LEVEL_DIR}/libdue"
+        IMAGE_PATCH_DIR="${TOP_LEVEL_DIR}/image-patches"
         # Let the user know they're using the local copy.
         DUE_CONFIG_SOURCING_SUMMARY="\n==== Sourcing DUE files from: [ $TOP_LEVEL_DIR ]"
         DUE_CONFIG_SOURCING_SUMMARY+="\n====                     due: [ $0 ]"
@@ -266,6 +269,8 @@ function fxnHelpCreate()
     echo "     --platform <os/arch>       Specify that the image has architecture different from host."
     echo "                                  Ex: linux/aarch64"
     echo "     --prompt <prompt>          Set in container prompt to <prompt> to provide user context"
+    echo "     --image-patch      <path>  Apply files under $IMAGE_PATCH_DIR/<path> to the image build before "
+    echo "                                 template code runs. Useful for fixing older containers."
     echo "     --no-image                 Allow build directory to be created. Do not build the image."
     echo ""
     echo "  2 - Build a Docker image from the image build directory."
@@ -314,6 +319,12 @@ function fxnHelpCreateExamples()
     echo "     --prompt Ex --tag example-debian-10 --use-template example \\ "
     echo "     --dockerarg '--build-arg HTTP_PROXY=http://10.20.30.2:1234' \\ "
     echo "     --dockerarg ' --build-arg FTP_PROXY=http://40.50.60.5:4567' \\ "
+    echo ""
+    echo " Ex: Create a Debian 9 image and apply container patches"
+    echo " $0  --create --platform linux/amd64  --name test-debian-9 \\ "
+    echo "     --prompt test-9  --tag test --use-template debian-package \\ "
+    echo "     --from debian:stretch --description 'test Debian 9' \\ "
+    echo "     --image-patch  debian/9/filesystem/"
     echo ""
 }
 
@@ -597,6 +608,19 @@ function fxnParseCreateArgs()
                 shift
                 ;;
 
+            --image-patch )
+                # Add files to the image before the template code does.
+                # This allows for patching broken source images
+                # An example of this is the apt/sources.list file for Debian 9 images where the package
+                # repositories have been archived, and the sources.list has become invalid.
+                if [ ! -e "${IMAGE_PATCH_DIR}/$2" ];then
+                    fxnERR "--image-patch directory [ $2 ] does not exist under [ ${IMAGE_PATCH_DIR} ]. Exiting."
+                    exit 1
+                fi
+                IMAGE_PATCH_PATH="$(realpath ${IMAGE_PATCH_DIR}/$2)"
+                shift
+                ;;
+                    
             --no-image )
                 # Do not run the Dockerfile create, but generate all directories up to
                 # that point.
@@ -661,7 +685,7 @@ function fxnParseCreateArgs()
                 shift
                 ;;
             --dockerarg )
-                # Append addtional argument to pass through to docker build
+                # Append additional argument to pass through to docker build
                 # $2 should be passed as a quoted string
                 DOCKER_SPECIFIC_BUILD_ARGS+=" $2 "
                 shift
@@ -1045,7 +1069,7 @@ function fxnParseManageArgs()
             --browse )
                 # URL to browse
                 if [ "$2" = "" ];then
-                    fxnERR " --browse requres a registry URL"
+                    fxnERR " --browse requires a registry URL"
                     echo "Maybe one of these on [ localhost | $(hostname --fqdn ) ] ?"
                     # search for docker instances using port 5000."
                     ${DOCKER_APP} ps | grep "registry"
@@ -1436,7 +1460,7 @@ if [ "$DO_CREATE_NEW_IMAGE" = "TRUE" ];then
     fi
 
     # Make an image using one of the directory configurations
-    fxnMakeNewDockerImage "$FROM_IMAGE_TYPE" "$NEW_IMAGE_NAME" $PLATFORM
+    fxnMakeNewDockerImage "$FROM_IMAGE_TYPE" "$NEW_IMAGE_NAME" "$PLATFORM" "$IMAGE_PATCH_PATH"
     exit
 fi
 
@@ -1471,7 +1495,7 @@ if [ "$DO_CREATE_DIRECTORY" = "TRUE" ];then
     fi
 
     # Make an image using one of the directory configurations
-    fxnMakeNewDockerImage "$FROM_IMAGE_TYPE" "$NEW_IMAGE_NAME" $PLATFORM
+    fxnMakeNewDockerImage "$FROM_IMAGE_TYPE" "$NEW_IMAGE_NAME" "$PLATFORM" "$IMAGE_PATCH_PATH"
     exit
 fi
 

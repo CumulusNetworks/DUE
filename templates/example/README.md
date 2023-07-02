@@ -1,5 +1,5 @@
 # Example template
-Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
+Copyright 2022,2023 NVIDIA Corporation.  All rights reserved.
 
 Use this as a starting point for any container development. Replace the EXAMPLE strings and update text as necessary
 
@@ -18,6 +18,13 @@ Create default Debian EXAMPLE with: ./due --create --platform linux/amd64    --n
   * Tag it as example-debian-10
   * Set the user's PS1 prompt in the image to be Ex so the context is (more) obvious
   * Merge in the files from ./templates/example when creating the configuration directory
+
+
+Create patched Debian 9 EXAMPLE with: ./due --create --platform linux/amd64    --name example-debian-9        --prompt ExD9         --tag example-patch-debian-9  --use-template example           --from debian:9                              --description "Debian 9 with patch"                    --image-patch debian/9/filesystem
+
+### Explanation of the Debian 9 example  above:
+  * Arguments are the same as Debian 10
+  * ...but --image-patch applies updates to the container from DUE's image-patch/debian/9/ directory before template code runs.
 
 ## Additional configuration
 This lists changes that are unique to this container.

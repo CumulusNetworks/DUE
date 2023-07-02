@@ -1,4 +1,4 @@
-% DUE(1) Version 4.0.1 | Dedicated User Environment
+% DUE(1) Version 4.1.0 | Dedicated User Environment
 
 # NAME
 
@@ -278,6 +278,10 @@ Optional:
 
 --prompt [prompt]
 :	Set in container prompt to [prompt] to provide user context
+
+--image-patch [ path relative to image-patches/<path> ]
+:   Add files under image-patches/<docker image>/<tag>/filesystem to update the container
+    before template files take effect. Useful for fixing older containers.
 
 --dockerarg [argument]
 :	Pass arguments to docker build. Argument is passed as a single

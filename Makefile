@@ -251,6 +251,7 @@ install: depends
 
 	sudo mkdir -p  /usr/share/due
 	sudo cp -r      ./templates        /usr/share/due
+	sudo cp -r      ./image-patches    /usr/share/due
 	sudo cp -r      ./README.md        /usr/share/due
 
 #Podman doesn't require a group membership, but Docker does.
