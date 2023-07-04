@@ -542,10 +542,10 @@ function fxnMakeNewDockerImage()
     fi
 
     if [ "$4" != "" ];then
-       # Applying patches from this directory to the base image
-       imagePatchDir="$4"
+        # Applying patches from this directory to the base image
+        imagePatchDir="$4"
     fi
-       
+    
     # DOCKER_IMAGE_TAG will have been initialized to 'latest' by default,
     # or will have been overridden by the user.
     # Leaving this around in case there's a need to reference the base
@@ -1253,9 +1253,9 @@ function fxnSelectContainer()
         fi
 
         if [ "$FILTER_SHOW_ONLY_DUE" = "FALSE" ];then
-            echo "- Select one of the following active containers. Omit '--all' to see containers filtered by [ $userIs ]"
+            echo "- Select one of the following active containers. Omit '--all' and '--debug' to see containers filtered by user [ $userIs ]"
         else
-            echo "- Select one of the following active containers filtered by [ $filterByType ]. Use '--all' to see every available container."
+            echo "- Select one of the following active containers filtered by [ $filterByType ]. Use '--all' or '--debug' to see every available container."
         fi
     fi
 
@@ -1282,7 +1282,7 @@ function fxnSelectContainer()
             echo "  No DUE Docker containers were found. "
             if [ "$DOCKER_APP" = "podman" ];then
                 # As Podman isolates containers on a per-user basis, only the user's containers will show.
-                echo "  Note that podman does not support loging in to other user's containers."
+                echo "  Note that Podman restricts access other user's containers. Try running as root with --all?"
             else
                 # Docker will show all the containers on a system, so less filtering may help.
                 echo "  However, the results were filtered by [ $userIs ]. Add --all to the command to see all Docker images."
@@ -1291,6 +1291,9 @@ function fxnSelectContainer()
         fi
         if [ "$filterByType" = "" ];then
             echo "  No Docker images were found. Try running [ ./due --create --help ]? "
+            if [ "$DOCKER_APP" = "podman" ];then
+                echo "   Or run due as root since Podman restricts access to other user's containers."
+            fi
         else
             echo "  No Docker images starting with [ $filterByType ] found. "
         fi
