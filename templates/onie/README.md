@@ -9,7 +9,7 @@ Create default Debian 11 build environment with: ./due --create --platform linux
 **OR**  
 Create default Debian 10 build environment with: ./due --create --platform linux/amd64    --name onie-build-debian-10    --prompt ONIE-10      --tag onie                    --use-template onie              --from debian:10                             --description "ONIE Build Debian 10"  
 **OR**  
-Create default Debian 9 build environment with: ./due --create --platform linux/amd64    --name onie-build-debian-9     --prompt ONIE-9       --tag onie                    --use-template onie              --from debian:9                              --description "ONIE Build Debian 9"  
+Create default Debian 9 build environment with: ./due --create --platform linux/amd64    --name onie-build-debian-9     --prompt ONIE-9       --tag onie                    --use-template onie              --from debian:9                              --description "ONIE Build Debian 9"                    --image-patch debian/9/filesystem  
 **OR**   
 Create default Debian 8 build environment with: ./due --create --platform linux/amd64    --name onie-build-debian-8     --prompt ONIE-8       --tag onie-8                  --use-template onie              --from debian:8                              --description "ONIE Build Debian 8"  
 
