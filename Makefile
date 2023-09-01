@@ -159,6 +159,7 @@ help:
 	$(Q) echo "----------------------------------------"
 	$(Q) echo " debian-package  - Build DUE as .deb package."
 	$(Q) echo "                     Requires a package-debian image (Ubuntu, Debian,etc) built from ./due --create."
+	$(Q) echo " debian-test     - Build off debian-test branch with 'make debian-package DEBIAN_PACKAGE_BRANCH=debian-test'"
 	$(Q) echo " rpm-package     - Build DUE as an .rpm package."
 	$(Q) echo "                     Requires a package-rpm image (Fedora, SUSE, etc) build from  ./due --create."
 	$(Q) echo " depends         - Install DUE's run time dependencies."
