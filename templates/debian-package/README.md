@@ -3,15 +3,15 @@ Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 
 Configure the image to build Debian packages.
 
-## Debian 11 build environment creation example
-Create default Debian 11 build environment with: ./due --create --platform linux/amd64    --name package-debian-11       --prompt PKGD11       --tag pkg-debian-11-amd64     --use-template debian-package    --from debian:11                             --description "Package Build for Debian 11"  
+## Debian 12 build environment creation example
+Create default Debian 12 build environment with: ./due --create --platform linux/amd64    --name package-debian-12       --prompt PKGD12       --tag pkg-debian-12-amd64     --use-template debian-package    --from debian:12                             --description "Package Build for Debian 12"  
 
 ### Explanation of the above:
-  * Use a Debian 11 image (though ubuntu:22.04 works nicely as well (see below)) as the starting point.
+  * Use a Debian 12 image (though ubuntu:22.04 works nicely as well (see below)) as the starting point.
   * Note: if the image is not x86 based, other architectures ( arm32v5, arm64v8 )are available.
-  * Name it package-debian-10
-  * Tag it as package-debian-10
-  * Set the prompt in container to be PGKD10 so the context is (more) obvious
+  * Name it package-debian-12
+  * Tag it as package-debian-12
+  * Set the prompt in container to be PGKD12 so the context is (more) obvious
   * Merge in the files from ./templates/debian-package when creating the configuration directory
 
 ## Debian 10 armel build environment creation example:

@@ -1,23 +1,30 @@
 # Example template
-Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
+Copyright 2022,2023 NVIDIA Corporation.  All rights reserved.
 
 Use this as a starting point for any container development. Replace the EXAMPLE strings and update text as necessary
 
 This image is configured to EXAMPLE
 
 ## EXAMPLE creation
-The use of debian:10 here is arbitrary. Any Debian based operating system Docker image will do.  
+The use of debian:12 here is arbitrary. Any Debian based operating system Docker image will do.  
 **NOTE** DUE parses these README.md files looking for lines that start with Create to use in the command line help.  
 You'll want to make sure your template follows this convention.
 
-Create default Debian EXAMPLE with: ./due --create --platform linux/amd64    --name example-debian-10       --prompt ExD10        --tag example-debian-10       --use-template example           --from debian:10                             --description "Debian 10 example"  
+Create default Debian EXAMPLE with: ./due --create --platform linux/amd64    --name example-debian-12       --prompt ExD12        --tag example-debian-12       --use-template example           --from debian:12                             --description "Debian 12 example"  
 
 ### Explanation of the Debian example  above:
-  * Use a Debian 10 image
-  * Name it example-debian-10
-  * Tag it as example-debian-10
+  * Use a Debian 12 image
+  * Name it example-debian-12
+  * Tag it as example-debian-12
   * Set the user's PS1 prompt in the image to be Ex so the context is (more) obvious
   * Merge in the files from ./templates/example when creating the configuration directory
+
+
+Create patched Debian 9 EXAMPLE with: ./due --create --platform linux/amd64    --name example-debian-9        --prompt ExD9         --tag example-patch-debian-9  --use-template example           --from debian:9                              --description "Debian 9 with patch"                    --image-patch debian/9/filesystem
+
+### Explanation of the Debian 9 example  above:
+  * Arguments are the same as Debian 12
+  * ...but --image-patch applies updates to the container from DUE's image-patch/debian/9/ directory before template code runs.
 
 ## Additional configuration
 This lists changes that are unique to this container.
