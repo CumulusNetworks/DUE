@@ -1,3 +1,9 @@
+due (4.1.0-1) unstable; urgency=medium
+  * Version bump to 4.1.0
+  * Is still a development version to test packaging of master code.
+
+ -- Alex Doyle <adoyle@nvidia.com>  Fri, 01 Sep 2023 06:30:00 -0800
+
 due (4.0.0-1) unstable; urgency=medium
 
   * Development version to test packaging of master code.
