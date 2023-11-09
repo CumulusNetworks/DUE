@@ -1,10 +1,17 @@
 #!/bin/bash
 # SCRIPT_PURPOSE: Dedicated User Environment CLI
 
-# Copyright 2021,2022 NVIDIA Corporation.  All rights reserved.
+# Copyright 2021-2023 NVIDIA Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
+
+###################################################################
+#
+# SHELLCHECK
+#  Checked  with shellcheck -s bash -x $0
+#
+###################################################################
 
 # If a piped operation fails, die on the first error.
 set -o pipefail
@@ -32,7 +39,7 @@ if [ "$0" != "$INSTALLED_DUE_PATH" ];then
         # Let the user know they're using the local copy.
         DUE_CONFIG_SOURCING_SUMMARY="\n==== Sourcing DUE files from: [ $TOP_LEVEL_DIR ]"
         DUE_CONFIG_SOURCING_SUMMARY+="\n====                     due: [ $0 ]"
-        DUE_CONFIG_SOURCING_SUMMARY+="\n====                  libdue: [ $LIBRARY_FILE ]"        
+        DUE_CONFIG_SOURCING_SUMMARY+="\n====                  libdue: [ $LIBRARY_FILE ]"
         DUE_CONFIG_SOURCING_SUMMARY+="\n"
 
         #echo "==== Sourcing DUE files from:     [ $TOP_LEVEL_DIR ]"
@@ -47,6 +54,8 @@ if [ ! -e "$LIBRARY_FILE"  ];then
 fi
 
 # Source the installed or checked out version of libdue
+# If running shellcheck, point it to the checked out version.
+# shellcheck source=./libdue
 . "$LIBRARY_FILE"
 
 
@@ -287,7 +296,7 @@ function fxnHelpCreate()
     echo ""
     echo ""
     # show local image creation configurations
-    fxnListContainersForCreation $exampleFilter
+    fxnListContainersForCreation "$exampleFilter"
     echo ""
 
 }
@@ -306,7 +315,7 @@ function fxnHelpCreateExamples()
     echo "############################################################################"
 
     # show local image creation configurations
-    fxnListContainersForCreation $exampleFilter
+    fxnListContainersForCreation "$exampleFilter"
     echo ""
     echo " Ex: clean container creation work area."
     echo " $0 --create --clean"
@@ -617,10 +626,10 @@ function fxnParseCreateArgs()
                     fxnERR "--image-patch directory [ $2 ] does not exist under [ ${IMAGE_PATCH_DIR} ]. Exiting."
                     exit 1
                 fi
-                IMAGE_PATCH_PATH="$(realpath ${IMAGE_PATCH_DIR}/$2)"
+                IMAGE_PATCH_PATH="$(realpath "${IMAGE_PATCH_DIR}/$2")"
                 shift
                 ;;
-                    
+
             --no-image )
                 # Do not run the Dockerfile create, but generate all directories up to
                 # that point.
@@ -693,9 +702,14 @@ function fxnParseCreateArgs()
 
             --use-template )
                 if [ "$2" = "" ];then
-                    echo " --use-template will take one of the following from $SPECIFIC_TEMPLATE_PATH"
+                    echo ""
+                    echo " --use-template "
+                    echo "   ...will take one of the following from $SPECIFIC_TEMPLATE_PATH"
+                    echo ""
                     fxnEC cd "$SPECIFIC_TEMPLATE_PATH" || exit 1
-                    ls -1d */
+                    # list directories and strip ./ to just print as strings that would be passed.
+                    find ./* -maxdepth 0 -type d | sed -e 's#./##g'
+                    echo ""
                     exit 1
                 fi
                 # use this template directory to create the container config
@@ -712,7 +726,7 @@ function fxnParseCreateArgs()
                         # The target may be nested under /sub-type/ directories, in
                         # which case the merged template will be the contents of a
                         # series of sub-type directories merged together.
-                        MERGE_IN_TEMPLATE_PATH=$( find "$SPECIFIC_TEMPLATE_PATH" -name $MERGE_IN_TEMPLATE_PATH )
+                        MERGE_IN_TEMPLATE_PATH="$( find "$SPECIFIC_TEMPLATE_PATH" -name "$MERGE_IN_TEMPLATE_PATH" )"
                         if [ ! -e "$MERGE_IN_TEMPLATE_PATH" ];then
                             fxnERR "Failed to find template directory [ $2 ] or [ $SPECIFIC_TEMPLATE_PATH ]. Exiting."
                             echo "Possible choices:"
@@ -749,7 +763,7 @@ function fxnParseCreateArgs()
     done
 
     if [ "$DO_CREATE_HELP" = "TRUE" ];then
-        fxnHelpCreate $HELP_EXAMPLE_FILTER
+        fxnHelpCreate "$HELP_EXAMPLE_FILTER"
         exit
     fi
     if [ "$DO_CREATE_EXAMPLES" = "TRUE" ];then
@@ -769,7 +783,7 @@ function fxnDueBuildHelp()
 {
     theHelp="$1"
     fxnPP "Select a container to run 'duebuild --help' in:"
-    due --run --command duebuild $theHelp
+    due --run --command duebuild "$theHelp"
 }
 
 
@@ -1276,6 +1290,8 @@ do
     # if set, use HELP_ARGS to pass help requests for specific arguments
     case $term in
         -c | --create )
+            # HELP_ARGS needs to split when passed to be parsed
+            # shellcheck disable=SC2086
             fxnParseCreateArgs $HELP_ARGS "$@"
             break
             ;;
@@ -1285,6 +1301,8 @@ do
         #
 
         -m | --manage | --delete )
+            # HELP_ARGS needs to split when passed to be parsed
+            # shellcheck disable=SC2086
             fxnParseManageArgs $HELP_ARGS "$@"
             break
             ;;
@@ -1292,6 +1310,8 @@ do
         # all of these commands can drop
         # straight into getting a container
         -r | -l | --run | --run-image | --login | --build | --duebuild )
+            # HELP_ARGS needs to split when passed to be parsed
+            # shellcheck disable=SC2086
             fxnParseRunArgs $HELP_ARGS "$@"
             break
             ;;
@@ -1393,9 +1413,7 @@ fi
 # to work...unless they're running Podman.
 #
 if [ "$DOCKER_APP" = "docker" ];then
-
-    groups | grep -q "docker"
-    if [ $? != 0 ];then
+    if ! groups | grep -q "docker";then
         fxnWarn "You are not an active member of the Docker group."
         echo " You can fix this by doing the following:"
         echo "  1 - run: sudo /usr/sbin/usermod -a -G docker $(whoami)"

@@ -2,10 +2,17 @@
 # SCRIPT_PURPOSE: Low-rent version of sbuild. Resolve dependencies. Build a debian package, and maybe more
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 
-# Copyright 2021 NVIDIA Corporation.  All rights reserved.
+# Copyright 2021-2023 NVIDIA Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
+
+###################################################################
+#
+# SHELLCHECK
+#  Checked  with shellcheck -s bash -x $0
+#
+###################################################################
 
 # Have last command in a pipe to fail return error code.
 # This prevents use of tee from hiding fails.
@@ -93,15 +100,15 @@ function fxnHelp()
     echo "  build target commands. "
     echo ""
     echo "  Build target commands."
-    echo "      --default                Build with default settings: dpkg-buildpackage -b -uc -j<max>"
-    echo "   -c|--cbuild <args>          Supply <args> to dpkg-buildpackage. If no args, build with defaults."
-    echo "                               This must be the last argument on the line as everything after is passed."
-    echo "      --build-command <args>   Do environment prep and run <args>. Must be last argument on the line."
-    echo "      --help-build-targets     More detailed description of the above options."
-    echo "      --build-dsc <.dsc file>  Build from debian source control file .dsc and associated tar.gz."
+    echo "   --default                   Build with default settings: dpkg-buildpackage -b -uc -j<max>"
+    echo "   --cbuild|-c <args>          Supply <args> to dpkg-buildpackage. If no args, build with defaults."
+    echo "                                This must be the last argument on the line as everything after is passed."
+    echo "   --build-command <args>      Do environment prep and run <args>. Must be last argument on the line."
+    echo "   --help-build-targets        More detailed description of the above options."
+    echo "   --build-dsc <.dsc file>     Build from debian source control file .dsc and associated tar.gz."
     echo ""
     echo "  Build options:"
-    echo "   -j|--jobs <#>               Number of parallel builds to use. Defaults to the number of CPU cores."
+    echo "   --jobs|-j <#>               Number of parallel builds to use. Defaults to the number of CPU cores."
     echo "   --use-directory <dir>       cd to <dir> before trying to build."
     echo "   --prebuild-script <scr>     Run script at container path <scr> before starting build. Pass 'NONE' to ignore."
     echo "   --script-debug              Enable -x if passed as first argument."
@@ -124,16 +131,16 @@ function fxnHelp()
     echo "                                path for the location of the repository. Otherwise it defaults to the"
     echo "                                directory above the build area."
     echo " Setup commands:"
-    echo "   --download-src    <deb>      Get a source .deb"
+    echo "   --download-src    <debname> Get a source .deb"
     echo ""
-    echo "   --lookup         <file>     On a registered system, find the .deb for a file."
+    echo "   --lookup         <file>      On a registered system, find the .deb for a file."
     echo ""
     echo "  More information:"
-    echo "   --quiet                    Suppress output."
-    echo "   --verbose                  More info."
-    echo "   --help                     This message"
-    echo "   --help-examples            Print possible configurations."
-    echo "   --version                  Version of this script."
+    echo "   --quiet                      Suppress output."
+    echo "   --verbose                    More info."
+    echo "   --help                       This message"
+    echo "   --help-examples              Print possible configurations."
+    echo "   --version                    Version of this script."
     echo ""
 }
 
@@ -422,7 +429,8 @@ function fxnIsolatePackageDependencies()
         echo "   Looks like all dependencies are present. Probably a local leftover depends package triggering this."
         return 0
     fi
-    # Ignore shellcheck warning to "" missingDepends
+    # Ignore shellcheck warning to "" missingDepends. Package names having spaces is probably an error.
+    # shellcheck disable=SC2068
     for pkg in ${missingDepends[@]}
     do
         echo " #"
@@ -430,13 +438,13 @@ function fxnIsolatePackageDependencies()
         echo " #"
         # 2 quiets to kill output
         # Use --force-yes so older versions of apt will auto-install
-        sudo apt-get install --quiet --quiet --assume-yes $APT_FORCE_YES --no-install-recommends "$pkg"
-        if [ "$?" = "0" ];then
+        if sudo apt-get install --quiet --quiet --assume-yes "$APT_FORCE_YES" --no-install-recommends "$pkg" ;
+        then
             echo "Installed [ $pkg ]"
         else
             # Run a loud install to highlight the failure
             fxnPP "Failed  [ $pkg ]. Retrying the install to get the errors."
-            sudo apt-get install --assume-yes $APT_FORCE_YES --no-install-recommends "$pkg"
+            sudo apt-get install --assume-yes "$APT_FORCE_YES" --no-install-recommends "$pkg"
         fi
     done
 
@@ -518,14 +526,16 @@ function fxnDoDebianBuild()
     sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade \
          -o Dpkg::Options::="--force-confdef" \
          -o Dpkg::Options::="--force-confold" \
-         --assume-yes $APT_FORCE_YES || fxnWARN "apt-get upgrade failed. Continuing with local index."
+         --assume-yes "$APT_FORCE_YES" || fxnWARN "apt-get upgrade failed. Continuing with local index."
 
     # Make sure the environment has the tools to configure the environment.
     if [ ! -e /usr/bin/mk-build-deps ];then
         fxnPP "Failed to find mk-build-deps. Installing devscripts and equivs."
-        fxnEC sudo DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes $APT_FORCE_YES equivs devscripts || exit 1
+        fxnEC sudo DEBIAN_FRONTEND=noninteractive apt-get install --assume-yes "$APT_FORCE_YES" equivs devscripts || exit 1
     fi
 
+    # If testing missing package resolution logic, uncomment this
+    #fxnIsolatePackageDependencies
 
     # Create package with all needed build dependencies
     # install it
@@ -626,6 +636,7 @@ function fxnDoDebianBuild()
 
     fxnMSG "Built [ $PACKAGE_DIR_NAME ] - list follows:"
     # use grep to avoid errors when no .debs found
+    # shellcheck disable=SC2010
     ls -lrt ../ | grep ".deb"  | sed -e "s/^/${MSG_SPACER}/g"
 
     # if packages are being stored in a local repository
@@ -737,6 +748,34 @@ function fxnResetGit()
     return $returnCode
 }
 
+# Format of sources.list has changed around Debian 12,
+# Handle the new format.
+function fxnAddAptSourceRepositories()
+{
+    local sourceFile
+    local fileName
+    local outputFile
+
+    # take just the first file found for now
+    sourceFile="$( find /etc/apt -iname \*.sources | head -n 1)"
+    if [ "$sourceFile" != '' ];then
+        fileName="$(basename "$sourceFile" )"
+        outputFile="/etc/apt/sources.list.d/source-repos-$fileName"
+        echo "Deb822 source formatting detected with [ $sourceFile ]"
+        echo "Creating $outputFile"
+        echo "# Source file generated by $0 on $(date)" > "/tmp/$fileName"
+        # Turn the original's Types: deb in to Types: deb-src
+        # While not optimally as efficient as < this is more readable.
+        # shellcheck disable=SC2002
+        cat "$sourceFile" | sed -e 's/Types:[[:space:]]*deb[[:space:]]*$/Types: deb-src/g' >> "/tmp/$fileName"
+        sudo cp "/tmp/$fileName" "$outputFile"
+        # changes made
+        return 0
+    fi
+    # nothing changed
+    return 1
+    
+}
 #
 # Download the source .deb
 #
@@ -744,37 +783,46 @@ function fxnDownloadSourceDeb()
 {
     local theSrcDeb="$1"
     local srcListFileName='duebuild-deb-sources.list'
-    local activeDebRepos=$( grep -nr 'deb-src' /etc/apt | grep -v '#' )
+    local activeDebRepos
+
+
+    activeDebRepos=$( grep -nr 'deb-src' /etc/apt | grep -v '#' )
     # If no deb-src entries are defined anywhere under /etc/apt
     if [ "$activeDebRepos" = "" ];then
-       # Some containers may only have entries under /etc/apt/sources.list.d
-       # In which case, do not try to get clever and put it back on the user.
-       # otherwise...
-       if [ -e /etc/apt/sources.list ];then
-          #
-          # Most containers do not have deb-src entries, so copy the existing deb
-          # entries and paste them as deb-src in a file under sources.list.d to
-          # leave the original sources.list unchanged.
-          # Ignore any commented out deb-src entries.
-          echo ""
-          echo " Adding deb-src entries from existing /etc/apt/sources.list entries."
-          echo ""
-          cat /etc/apt/sources.list \
-              | grep -v '#' \
-              | sed -e 's/deb http/deb-src http/g' \
-                    > /tmp/1
-          echo ""
-          echo " Creating a file of deb-src URLS under /etc/apt/sources.list.d/$srcListFileName"
-          echo ""
-          fxnEC sudo mv /tmp/1 /etc/apt/sources.list.d/$srcListFileName || exit 1
-       else
-           fxnERR "Failed to find any deb-src entries under /etc/apt. Exiting."
-           exit 1
-       fi
+        # Try generating  source repos from existing source files.
+        # Start with Deb822 apt style files
+        if ! fxnAddAptSourceRepositories ;
+        then
+            #That didn't work. Try traditional apt format
+            # Some containers may only have entries under /etc/apt/sources.list.d
+            # In which case, do not try to get clever and put it back on the user.
+            # otherwise...
+            if [ -e /etc/apt/sources.list ];then
+                #
+                # Most containers do not have deb-src entries, so copy the existing deb
+                # entries and paste them as deb-src in a file under sources.list.d to
+                # leave the original sources.list unchanged.
+                # Ignore any commented out deb-src entries.
+                echo ""
+                echo " Adding deb-src entries from existing /etc/apt/sources.list entries."
+                echo ""
+
+                grep -v '#' /etc/apt/sources.list \
+                    | sed -e 's/deb http/deb-src http/g' \
+                          > /tmp/1
+                echo ""
+                echo " Creating a file of deb-src URLS under /etc/apt/sources.list.d/$srcListFileName"
+                echo ""
+                fxnEC sudo mv /tmp/1 "/etc/apt/sources.list.d/$srcListFileName" || exit 1
+            else
+                fxnERR "Failed to find any deb-src entries under /etc/apt. Exiting."
+                exit 1
+            fi
+        fi
     fi
     # Update in case anything under /etc/apt/sources.list* was modified.
     fxnEC sudo apt-get update || exit 1
-    fxnEC apt-get source $theSrcDeb || exit 1
+    fxnEC apt-get source "$theSrcDeb" || exit 1
 }
 
 
@@ -1096,11 +1144,13 @@ do
 
         --verbose )
             # Unused for now
+            # shellcheck disable=SC2034
             DO_VERBOSE="TRUE"
             ;;
 
         --quiet )
             # Unused for now
+            # shellcheck disable=SC2034
             DO_QUIET="TRUE"
             ;;
 
@@ -1208,8 +1258,8 @@ fi
 # need to be committed to the changelog and then reverted out
 # otherwise the build will complain about unexpectedly modified
 # files in the build directory
-grep -iq "git" ./debian/source/format 2>/dev/null
-if [ $? = 0 ];then
+if grep -iq "git" ./debian/source/format 2>/dev/null;
+then
     DO_GIT_BUILD="TRUE"
     # save the current state of git for restore
     CURRENT_GIT_COMMIT=$( git rev-parse --short HEAD )
@@ -1331,9 +1381,10 @@ if [ "$DO_BUILD" = "TRUE" ];then
         packageName=$(basename "$BUILD_SOURCE_DSC_FILE")
         # Now get just the name.
         packageName=${packageName%%_*}
-        
+
         # list most recent directory
-        buildDir=$( ls -1rd -- */ | grep "$packageName" | tail -n 1)
+        # shellcheck disable=SC2010
+        buildDir=$( ls -1rd -- */ | grep "^$packageName" | tail -n 1)
 
         if [ ! -e "$buildDir" ];then
             fxnERR "Failed to find expected source directory [ $buildDir ] in [ $(pwd) ]. Exiting."
