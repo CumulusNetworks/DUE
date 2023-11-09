@@ -156,9 +156,6 @@ function fxnListContainersForCreation()
     local outputFormat="$1"
 
     if [ "$outputFormat" != "JustDirs" ];then
-        echo "Example build environments:"
-        echo "Image type             Create it with:"
-        echo "----------------------+---------------------------------------------------------"
 
         # To simplify parsing, this counts on the example line in the README.md files being formatted
         # in exactly the same way for all, with everything up to the 'with:' getting deleted,
@@ -173,16 +170,39 @@ function fxnListContainersForCreation()
                              | awk '{printf "%-20s %s\n", $12, $0}' | sort )
         echo ""
 
+        if [ "$DUE_CONFIG_SOURCING_SUMMARY" = '' ];then
+            # If DUE is being run from a system install rather than from local source,
+            # fix the path so the output is cut and paste.
+            foundExamples=$( echo "$foundExamples" | sed -e 's# ./due # due #g')
+        fi
+
         if [ "$outputFormat" != "" ];then
             echo "Filtering output to contain [ $outputFormat ]"
             echo ""
-            echo "$foundExamples" | grep "$outputFormat"
+            foundExamples=$( echo "$foundExamples" | grep "$outputFormat" )
+        fi
+        echo "Example build environments:"
+        echo "Image type        Creation command"
+        echo "---------------------------------------------------------------------------"
+        echo ""
+
+        # If column is available, use it to get rid of excessive spaces between columns.
+        if [ "$(which column)" != "" ];then
+            # Awk replaces spaces in quotes (setting FS and OFS to " with semicolons (;).
+            # Column formats the output (surprise!) in to columns, where each column starts with a space
+            #  - Table formatting
+            #  - Separate output columns with a single space
+            #  - Double quoted text is its own column, because it has no spaces, just ;s
+            # Use tr to replace the ; with spaces again
+            echo "$foundExamples" \
+                | awk '{for (i=2; i < NF; i+=2) gsub (/ /, ";", $i)} 1' FS=\" OFS=\" \
+                | column --table --output-separator ' ' \
+                | tr ';' ' '
         else
             echo "$foundExamples"
         fi
-        echo ""
-
     fi
+
     # filter any template directories
     # Directories should always have this lib file, so
     # it shouldn't confuse with anything else.
@@ -545,7 +565,7 @@ function fxnMakeNewDockerImage()
         # Applying patches from this directory to the base image
         imagePatchDir="$4"
     fi
-    
+
     # DOCKER_IMAGE_TAG will have been initialized to 'latest' by default,
     # or will have been overridden by the user.
     # Leaving this around in case there's a need to reference the base
@@ -603,13 +623,13 @@ function fxnMakeNewDockerImage()
               "${USE_TEMPLATE_PATH}"/ "${BUILD_MERGE_DIR}"/"${imageName}" || exit 1
 
         # Files added to the container from the container-patches directory
-        # 
+        #
         if [ "$imagePatchDir" != "" ];then
-            fxnPP "Copying files from [ $imagePatchDir ] to ${BUILD_MERGE_DIR}/${imageName}" 
+            fxnPP "Copying files from [ $imagePatchDir ] to ${BUILD_MERGE_DIR}/${imageName}"
             fxnEC rsync --archive --verbose "$imagePatchDir" "${BUILD_MERGE_DIR}/${imageName}"
         fi
 
-        
+
         fxnListDirContents "${BUILD_MERGE_DIR}/${imageName}"
 
         #
