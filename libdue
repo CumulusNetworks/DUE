@@ -190,13 +190,12 @@ function fxnListContainersForCreation()
         if [ "$(which column)" != "" ];then
             # Awk replaces spaces in quotes (setting FS and OFS to " with semicolons (;).
             # Column formats the output (surprise!) in to columns, where each column starts with a space
-            #  - Table formatting
-            #  - Separate output columns with a single space
+            #  - t - Table formatting.
             #  - Double quoted text is its own column, because it has no spaces, just ;s
             # Use tr to replace the ; with spaces again
             echo "$foundExamples" \
                 | awk '{for (i=2; i < NF; i+=2) gsub (/ /, ";", $i)} 1' FS=\" OFS=\" \
-                | column --table --output-separator ' ' \
+                | column -t \
                 | tr ';' ' '
         else
             echo "$foundExamples"
