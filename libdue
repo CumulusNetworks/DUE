@@ -679,7 +679,7 @@ function fxnMakeNewDockerImage()
 
         if [ "$pullImage" = "TRUE" ];then
             # Well, get a copy.
-            fxnPP "[ $imageFrom ] not found. Pulling an image to check it's architecture before proceeding."
+            fxnPP "[ $imageFrom ] not found. Pulling an image to check its architecture before proceeding."
             fxnEC "${DOCKER_APP}" pull $platformArg "$imageFrom"  || exit 1
 
             # Use image id rather than name here. Red Hat images use the same name for arm64 and x86 images, so
@@ -726,7 +726,7 @@ function fxnMakeNewDockerImage()
                 # Tag it with the architecture
                 imageTag="$imageArchitecture"
 
-                # Tag the non-host architecture image, as it's name may not be different on a per-architecture basis.
+                # Tag the non-host architecture image, as its name may not be different on a per-architecture basis.
                 fxnEC "${DOCKER_APP}" tag $imageID ${imageFrom}:${imageTag} || exit 1
                 fxnPP "Tagged new image with ${imageFrom}:${platformArg##*/}"
             fi
