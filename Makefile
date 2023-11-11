@@ -235,10 +235,10 @@ clean:
 	@echo "#                                                                    #"
 	@echo "######################################################################"
 	@echo ""
-	rm -f  ../*.build                    
-	rm -f  ../due_$(DUE_VERISON)* 
-	rm -f  ../$(DUE_ORIG_TAR)   
-	rm -f   ./due-build-merge
+	rm -f   ../*.build                    
+	rm -f   ../due_$(DUE_VERISON)* 
+	rm -f   ../$(DUE_ORIG_TAR)   
+	rm -rf   ./$(MERGE_DIR)
 	@echo ""
 	@echo "Done making clean."
 	@echo ""
