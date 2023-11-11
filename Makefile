@@ -141,7 +141,7 @@ else
 # Store phony build targets in a variable so they can be
 # printed as part of help.
 #
-PHONY = help docs depends install uninstall orig.tar debian-package rpm-package test no-make-default copyright-check clean
+PHONY = help docs depends install uninstall orig.tar debian-package rpm-package test no-make-default copyright-check clean run-lintian
 
 # ...and use them as real .PHONY targets
 .PHONY: $(PHONY)
@@ -174,6 +174,7 @@ help:
 	$(Q) echo ""
 	$(Q) echo " debian-test     - Build off debian-test branch with 'make debian-package DEBIAN_PACKAGE_BRANCH=debian-test'"
 	$(Q) echo " copyright-check - Print files without a copyright header."
+	$(Q) echo " run-lintian     - Run lintian on ../due_$(DUE_VERSION)*all.deb"
 	$(Q) echo ""
 
 	$(Q) echo ""
@@ -241,6 +242,19 @@ clean:
 	rm -rf   ./$(MERGE_DIR)
 	@echo ""
 	@echo "Done making clean."
+	@echo ""
+
+run-lintian:
+	@echo ""
+	@echo "######################################################################"
+	@echo "#                                                                    #"
+	@echo "# Checking recently built ../due_$(DUE_VERSION)_all*deb                       #"
+	@echo "#                                                                    #"
+	@echo "######################################################################"
+	@echo ""
+	$(Q)  - lintian ../due_$(DUE_VERSION)*all.deb
+	@echo ""
+	@echo " A return code of 2 is accptable IF the due.lintian-overrides produced no errors."
 	@echo ""
 
 depends:
