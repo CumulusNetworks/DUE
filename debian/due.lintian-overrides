@@ -3,21 +3,22 @@
 # DUE Lintian override:  false positive, a `bash` script gets syntax check with `sh -n` ( but the
 #   templates/common-templates/filesystem/usr/local/bin/duebuild: 31: Syntax error: "(" unexpected
 # can be avoided )
-due: shell-script-fails-syntax-check usr/share/due/templates/common-templates/filesystem/usr/local/bin/duebuild
+due: shell-script-fails-syntax-check [usr/share/due/templates/common-templates/filesystem/usr/local/bin/duebuild]
+#due: shell-script-fails-syntax-check usr/share/due/templates/common-templates/filesystem/usr/local/bin/duebuild
 
 # DUE Lintian override: these files are sourced by other files and are intentionally not executable,
 #  but do have the '#!/bin/bash' for editor syntax formatting.
-due: script-not-executable usr/lib/libdue
-due: script-not-executable usr/share/due/templates/common-templates/install-config-common-lib.template
-due: script-not-executable etc/due/due.conf
+due: script-not-executable [usr/lib/libdue]
+due: script-not-executable [usr/share/due/templates/common-templates/install-config-common-lib.template]
+due: script-not-executable [etc/due/due.conf]
 
 # DUE Lintian override: repeated paths are intentional for proper placement in the container.
 # These directories represent where installation will take place in the Docker image, and be
 # present in the container at run time. However, since directories for the image's /usr/share
 # are stored under the host system's /usr/share, a false positive of repeating directory paths is detected.
-due: repeated-path-segment usr usr/share/due/templates/common-templates/filesystem/usr/
-due: repeated-path-segment usr usr/share/due/templates/frr/filesystem/usr/
-due: repeated-path-segment usr usr/share/due/templates/onie/filesystem/usr/
-due: repeated-path-segment usr usr/share/due/templates/redhat/filesystem/usr/
-due: repeated-path-segment usr usr/share/due/templates/suse/filesystem/usr/
-due: repeated-path-segment usr usr/share/due/templates/debian-package/filesystem/usr/
+due: repeated-path-segment usr [usr/share/due/templates/common-templates/filesystem/usr/]
+due: repeated-path-segment usr [usr/share/due/templates/frr/filesystem/usr/]
+due: repeated-path-segment usr [usr/share/due/templates/onie/filesystem/usr/]
+due: repeated-path-segment usr [usr/share/due/templates/redhat/filesystem/usr/]
+due: repeated-path-segment usr [usr/share/due/templates/suse/filesystem/usr/]
+due: repeated-path-segment usr [usr/share/due/templates/debian-package/filesystem/usr/]
