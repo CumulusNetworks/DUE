@@ -329,6 +329,16 @@ endif
 #	$(Q) touch $@
 
 
+debian-test:
+	@echo "######################################################################"
+	@echo "#                                                                    #"
+	@echo "# Building the debian-test branch.                                   #"
+	@echo "# Make sure 'git-rebase master' has been run from it.                #"
+	@echo "#                                                                    #"
+	@echo "######################################################################"
+
+	make debian-package DEBIAN_PACKAGE_BRANCH=debian-test
+
 # Create upstream tarball and build DUE .deb file from DEBIAN_PACKAGE_BRANCH
 #  To build the debian-test branch:
 #    make debian-package DEBIAN_PACKAGE_BRANCH=debian-test
