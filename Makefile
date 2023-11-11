@@ -141,7 +141,7 @@ else
 # Store phony build targets in a variable so they can be
 # printed as part of help.
 #
-PHONY = help docs depends install uninstall orig.tar debian-package rpm-package test no-make-default copyright-check
+PHONY = help docs depends install uninstall orig.tar debian-package rpm-package test no-make-default copyright-check clean
 
 # ...and use them as real .PHONY targets
 .PHONY: $(PHONY)
@@ -155,19 +155,27 @@ no-make-default:
 # Print our targets
 help:
 	$(Q) echo ""
-	$(Q) echo "Dedicated User Environment make help."
-	$(Q) echo "----------------------------------------"
+	$(Q) echo "######################################################################"
+	$(Q) echo "#                                                                    #"
+	$(Q) echo "#  Dedicated User Environment make help.                             #"
+	$(Q) echo "#                                                                    #"
+	$(Q) echo "######################################################################"
+	$(Q) echo ""	
+	$(Q) echo " install         - Install DUE and dependencies."
+	$(Q) echo " depends         - Install DUE's run time dependencies."
+	$(Q) echo " clean           - Delete all generated files."
+	$(Q) echo "  V=1            - Enable Makefile debug. Use with other targets. Ex: make V=1 install"
+	$(Q) echo ""
+	$(Q) echo " orig.tar        - Create tarball for packaging."
 	$(Q) echo " debian-package  - Build DUE as .deb package."
 	$(Q) echo "                     Requires a package-debian image (Ubuntu, Debian,etc) built from ./due --create."
-	$(Q) echo " debian-test     - Build off debian-test branch with 'make debian-package DEBIAN_PACKAGE_BRANCH=debian-test'"
 	$(Q) echo " rpm-package     - Build DUE as an .rpm package."
 	$(Q) echo "                     Requires a package-rpm image (Fedora, SUSE, etc) build from  ./due --create."
-	$(Q) echo " depends         - Install DUE's run time dependencies."
-	$(Q) echo " install         - Install DUE and dependencies."
-	$(Q) echo " orig.tar        - Create tarball for packaging."
+	$(Q) echo ""
+	$(Q) echo " debian-test     - Build off debian-test branch with 'make debian-package DEBIAN_PACKAGE_BRANCH=debian-test'"
 	$(Q) echo " copyright-check - Print files without a copyright header."
 	$(Q) echo ""
-	$(Q) echo " Make with 'make V=1' for makefile debug."
+
 	$(Q) echo ""
 	$(Q) echo " Makefile targets:"
 	$(Q) for I in $(sort $(PHONY)); do echo "    $$I"; done
@@ -218,6 +226,22 @@ else
 	@echo "#######################################################################"
 	@echo ""
 endif
+
+clean:
+	@echo ""
+	@echo "######################################################################"
+	@echo "#                                                                    #"
+	@echo "# Removing the following, if they exist.                             #"
+	@echo "#                                                                    #"
+	@echo "######################################################################"
+	@echo ""
+	rm -f  ../*.build                    
+	rm -f  ../due_$(DUE_VERISON)* 
+	rm -f  ../$(DUE_ORIG_TAR)   
+	rm -f   ./due-build-merge
+	@echo ""
+	@echo "Done making clean."
+	@echo ""
 
 depends:
 	@echo "######################################################################"
