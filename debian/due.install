@@ -1,7 +1,14 @@
-README.md        usr/share/doc/due
-templates        usr/share/due
-due              usr/bin
-libdue           usr/lib
-docs/due.1       usr/share/man/man1
-etc/due/due.conf etc/due
+README.md         usr/share/doc/due
+templates         usr/share/due
+due               usr/bin
+libdue            usr/lib
+etc/due/due.conf  etc/due
+docs/due.1        usr/share/man/man1
+docs/DUELogo.jpg        usr/share/doc/due/docs
+docs/Branching.md       usr/share/doc/due/docs
+docs/Building.md        usr/share/doc/due/docs
+docs/FAQ.md             usr/share/doc/due/docs
+docs/GettingStarted.md  usr/share/doc/due/docs
+docs/Troubleshooting.md usr/share/doc/due/docs
+docs/DUE-and-Windows-Subsystem-for-Linux.md usr/share/doc/due/docs
 
