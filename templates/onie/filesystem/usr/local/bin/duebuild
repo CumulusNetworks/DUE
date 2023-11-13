@@ -90,6 +90,7 @@ function fxnMSG ()
 
 function fxnHelp()
 {
+    echo ""
     echo "Usage  : $(basename "$0"): [--cbuild|--source --type-arch-debs --type-all-debs ] <name>"
     echo "  This script mimics sbuild with a few additional arguments."
     echo ""

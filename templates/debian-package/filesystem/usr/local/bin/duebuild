@@ -93,7 +93,7 @@ function fxnMSG ()
 
 function fxnHelp()
 {
-    echo""
+    echo ""
     echo "Usage  : $(basename "$0"): [Deb build options] [--default|--cbuild|--build-dsc|--build-command] <name>"
     echo "  This script is a default run target for due --build."
     echo "  It performs build environment configuration before running one of the "
