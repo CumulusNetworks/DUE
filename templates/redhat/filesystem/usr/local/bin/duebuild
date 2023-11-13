@@ -2,7 +2,7 @@
 # SCRIPT_PURPOSE: Build abstratction tool for RPM packages.
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 
-# Copyright 2021,2022 NVIDIA Corporation.  All rights reserved.
+# Copyright 2021-2023 NVIDIA Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
