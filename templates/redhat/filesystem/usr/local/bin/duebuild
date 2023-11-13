@@ -85,6 +85,7 @@ function fxnMSG ()
 
 function fxnHelp()
 {
+    echo ""
     echo "Usage  : $(basename "$0"): [options] [--cbuild | --default | --build-command <args> ]"
     echo "  Script to support building for the container's target."
     echo ""
@@ -150,7 +151,8 @@ function fxnHelpBuildTargets()
 function fxnHelpExamples()
 {
     echo ""
-    echo " Examples:"
+    echo " Examples using htop as an example package."
+    echo "--------------------------------------------"
     echo ""
     echo "  Build."
     echo "   $0 --cbuild "
@@ -158,26 +160,24 @@ function fxnHelpExamples()
     echo "  Build default - a simple/standard build case."
     echo "   $0 --cbuild --default"
     echo ""
-    echo "  Build binary from source RPM"
-    echo "   $0 --cbuild foo.src.rpm"
+    echo "  Download and build from source RPM"
+    echo "   $0 --download-src htop "
+    echo "   $0 --cbuild ./htop-3.2.2-3.fc39.src.rpm "
     echo ""
-    echo "  Build binary and source rpm source RPM"
-    echo "   $0 --cbuild --rpm-build-option -ba --cbuild foo.src.rpm"
-    echo ""
-    echo "  Pass additional arguments to build."
-    echo "   $0 --cbuild  REPLACE_THIS build example"
+    echo "  Build binary AND source rpm source RPM passing rpmbuild arguments '-ba' "
+    echo "   $0 --rpmbuild-option -ba --cbuild ./htop-3.2.2-3.fc39.src.rpm "
     echo ""
     echo "  Extract source code in to ~/rpmbuild from source rpm."
-    echo "   $0 --extract-source foo.src.rpm"
+    echo "   $0 --extract-source htop-3.2.2-3.fc39.src.rpm "
     echo ""
     echo "  Apply patches from mypatches to an extracted source rpm."
-    echo "   $0 --extract-source foo.src.rpm --patch-dir ./mypatches/ "
+    echo "   $0 --extract-source htop-3.2.2-3.fc39.src.rpm  --patch-dir ./mypatches/ "
     echo ""
     echo "  Get kernel source rpm and build:"
     echo "   $0 --download-src kernel "
-    echo "   $0 --cbuild kernel-5.19.16-200.fc36.src.rpm "
+    echo "   $0 --cbuild kernel-6.5.11-300.fc39.src.rpm "
     echo ""
-
+    
 }
 
 # Set an exit trap to log completion.
@@ -353,7 +353,7 @@ function fxnDoBuild()
     # If user invoked --build-command, don't try to fill in the blanks.
     if [ "$RAW_BUILD_COMMAND" != "" ];then
         fxnMSG " --build-command was used, so NOT parsing arguments or checking dependencies."
-        buildCommand="$RAW_BUILD_COMMAND"
+        BUILD_COMMAND="$RAW_BUILD_COMMAND"
     else
 
         ######################################
@@ -393,13 +393,21 @@ function fxnDoBuild()
         fxnMSG "Executing the 'prep' stage using [ $runCommand ]"
         fxnEC $runCommand || exit 1
 
-        fxnMSG "Files were extracted under ${BUILD_DIRECTORY}/BUILD."
-        fxnMSG  "Perform spec file actions from [ ${BUILD_DIRECTORY}/SPECS ]"
+        echo ""
+        echo " ==== Files were extracted under ${BUILD_DIRECTORY}/BUILD."
+        echo " ==== ------------------------------------------------------------"
+        ls -lrt ${BUILD_DIRECTORY}/BUILD
+        echo ""
+        echo " ==== Perform spec file actions from ${BUILD_DIRECTORY}/SPECS "
+        echo " ==== ------------------------------------------------------------"
+        ls -lrt ${BUILD_DIRECTORY}/SPECS
+        echo ""
 
         # Extracting the source is part of a build/patch by default.
         # If it was explicitly called out, that's all they want.
         if [ "$DO_SOURCE_EXTRACT" = "TRUE" ];then
             echo "Exiting as --extract-source was passed."
+	    echo ""
             exit
         fi
 
@@ -414,7 +422,8 @@ function fxnDoBuild()
             RPM_BUILD_OPTIONS+=" --noclean --noprep "
         fi
 
-        buildCommand="rpmbuild $RPM_BUILD_OPTIONS $BUILD_KERNEL_MINIMAL --target=$(uname -p)  $BUILD_TARGET_DIR_NAME/SPECS/${PACKAGE_NAME}.spec"
+	# Use --machine for uname to get architecture. --processor can return 'unknown'
+        BUILD_COMMAND="rpmbuild $RPM_BUILD_OPTIONS $BUILD_KERNEL_MINIMAL --target=$(uname --machine)  $BUILD_TARGET_DIR_NAME/SPECS/${PACKAGE_NAME}.spec"
     fi
 
     fxnMSG "Installing build dependencies for [ $PACKAGE_NAME ] from [ $BUILD_TARGET_DIR_NAME/SPECS/${PACKAGE_NAME}.spec ]"
@@ -423,6 +432,11 @@ function fxnDoBuild()
     ######################################
     # Build
     ######################################
+
+    #
+    # Dump what's being run
+    #
+    fxnPrintConfig
 
     sourceRPMDir="$(pwd)"
     while [ $(( BUILD_ATTEMPTS > 0 )) = 1 ]; do
@@ -434,14 +448,14 @@ function fxnDoBuild()
         # And BUILD_ARGS was set
 
         if [ "$RAW_BUILD_COMMAND" != "" ];then
-            buildCommand="$RAW_BUILD_COMMAND"
+            BUILD_COMMAND="$RAW_BUILD_COMMAND"
         fi
 
-        failMsg="$buildCommand failed with error."
+        failMsg="$BUILD_COMMAND failed with error."
         fxnMSG "Building in [ $BUILD_TARGET_DIR_NAME ] with [ $BUILD_ARGS ].  Attempt [ $BUILD_ATTEMPTS ]. "
 
-        fxnMSG "bash -c $buildCommand "
-        bash -c "$buildCommand"
+        fxnMSG "bash -c $BUILD_COMMAND "
+        bash -c "$BUILD_COMMAND"
 
         #        bash -c " echo 'Build command goes here in duebuild script.'"
         result="$?"
@@ -449,7 +463,7 @@ function fxnDoBuild()
 
         case "$result" in
             0 )
-                echo "Success: [ $buildCommand ]"
+                echo "Success: [ $BUILD_COMMAND ]"
                 BUILD_ATTEMPTS='0'
                 ;;
             * )
@@ -464,9 +478,12 @@ function fxnDoBuild()
     done
     echo ""
 
-    fxnMSG "Built [ $BUILD_TARGET_DIR_NAME ] - list follows:"
+    fxnMSG "Built [ $BUILD_TARGET_DIR_NAME ]"
 
-    find "$BUILD_TARGET_DIR_NAME" -iname \*.rpm
+    echo "==  Built RPMs are under ${HOME}/rpmbuild/"
+    echo "== ------------------------------------------------------------"
+    find "$BUILD_TARGET_DIR_NAME" -iname \*.rpm -exec ls -lrt {} \;
+    echo ""
 
     echo "Started at [ $BUILD_START_TIME ]"
     echo "Ended   at [ $(date) ]"
@@ -939,10 +956,6 @@ if [ "$BUILD_DIR" != "" ];then
     fxnEC cd "$BUILD_DIR" || exit 1
 fi
 
-#
-# Dump what's being run
-#
-fxnPrintConfig
 
 if [ "$PREBUILD_SCRIPT" != "" ];then
     fxnHeader "Running pre build script [ $PREBUILD_SCRIPT ]"
@@ -972,6 +985,7 @@ if [ "$RETURN_CODE" = "0" ];then
     # Add post build actions
     fxnPP "Build started at  [ $BUILD_START_TIME ]"
     fxnPP "Build finished at [ $(date) ]"
+    echo ""
 else
     fxnERR "Build FAILED with return code [ $RETURN_CODE ] at [ $(date) ]"
 fi
