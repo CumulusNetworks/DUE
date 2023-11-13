@@ -177,7 +177,7 @@ function fxnHelpExamples()
     echo "   $0 --download-src kernel "
     echo "   $0 --cbuild kernel-6.5.11-300.fc39.src.rpm "
     echo ""
-    
+
 }
 
 # Set an exit trap to log completion.
@@ -407,7 +407,7 @@ function fxnDoBuild()
         # If it was explicitly called out, that's all they want.
         if [ "$DO_SOURCE_EXTRACT" = "TRUE" ];then
             echo "Exiting as --extract-source was passed."
-	    echo ""
+            echo ""
             exit
         fi
 
@@ -422,13 +422,13 @@ function fxnDoBuild()
             RPM_BUILD_OPTIONS+=" --noclean --noprep "
         fi
 
-	# Use --machine for uname to get architecture. --processor can return 'unknown'
+        # Use --machine for uname to get architecture. --processor can return 'unknown'
         BUILD_COMMAND="rpmbuild $RPM_BUILD_OPTIONS $BUILD_KERNEL_MINIMAL --target=$(uname --machine)  $BUILD_TARGET_DIR_NAME/SPECS/${PACKAGE_NAME}.spec"
     fi
 
     fxnMSG "Installing build dependencies for [ $PACKAGE_NAME ] from [ $BUILD_TARGET_DIR_NAME/SPECS/${PACKAGE_NAME}.spec ]"
     fxnEC sudo $PACKAGE_MANAGER --assumeyes builddep "$BUILD_TARGET_DIR_NAME/SPECS/${PACKAGE_NAME}.spec" || exit 1
-           
+
     ######################################
     # Build
     ######################################
