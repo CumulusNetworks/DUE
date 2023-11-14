@@ -7,6 +7,13 @@
 #
 #  SPDX-License-Identifier:     MIT
 
+###################################################################
+#
+# SHELLCHECK
+#  Checked  with shellcheck -s bash -x $0
+#
+###################################################################
+
 # Have last command in a pipe to fail return error code.
 # This prevents use of tee from hiding fails.
 set -o pipefail
@@ -27,6 +34,9 @@ if [ "$1" = "--script-debug" ];then
     set -x
     echo "$0 Enabling --script-debug "
 fi
+
+# This is for Red Hat container builds
+OS_TYPE='RedHat'
 
 # Somewhat formatted status messages
 function fxnPP()
@@ -266,8 +276,7 @@ function fxnDoBuildPrep()
     #
     # Does a mockbuild user exist?
     #
-    grep 'mockbuild' /etc/passwd > /dev/null
-    if [ $? != 0 ];then
+    if ! grep 'mockbuild' /etc/passwd > /dev/null ;then
         echo "Adding mockbuild user and mock group to keep complaints down."
         # this will remove 'harmless' mock user errors
         sudo useradd -s /sbin/nologin mockbuild
@@ -275,7 +284,6 @@ function fxnDoBuildPrep()
     else
         echo "Mockbuild user and mock group found. Continuing."
     fi
-
 
     ######################################
     # Update dependencies
@@ -285,17 +293,7 @@ function fxnDoBuildPrep()
     echo "Installing build dependencies for $packageName"
     #fxnEC sudo $RESOLVE_DEPENDENCIES ~/rpmbuild/SPECS/${PACKAGE_NAME}.spec || exit 1
 
-    fxnEC sudo $PACKAGE_MANAGER --assumeyes builddep "$sourceRPM" || exit 1
-
-    if [ "$OS_TYPE" = "RedHat" ];then
-        $PACKAGE_MANAGER  list installed yum-utils > /dev/null
-        if [ $? != 0 ];then
-            echo "Installing build packages: $BUILD_PACKAGES."
-            sudo $PACKAGE_MANAGER install $BUILD_PACKAGES
-        else
-            echo "Build packages are installed. Continuing."
-        fi
-    fi
+    fxnEC sudo "$PACKAGE_MANAGER" --assumeyes builddep "$sourceRPM" || exit 1
 
     ######################################
     # Create the build area
@@ -306,6 +304,8 @@ function fxnDoBuildPrep()
         # This should create a ~/rpmbuild directory
         runCommand="rpm $BUILD_ROOT_COMMAND --install --verbose --hash  $SOURCE_RPM"
         fxnMSG "Unpacking source in ${BUILD_DIRECTORY}/SOURCES and ${BUILD_DIRECTORY}/SPECS using [ $runCommand ]"
+        # We want runCommand to expand, so no ""
+        # shellcheck disable=SC2086
         fxnEC $runCommand || exit 1
         #fxnEC rpm $BUILD_ROOT_COMMAND --install --verbose --hash $SOURCE_RPM || exit 1
 
@@ -323,6 +323,8 @@ function fxnDoBuildPrep()
     runCommand="rpmbuild -bp $BUILD_DIRECTORY/SPECS/${packageName}.spec"
     fxnMSG "Setting up code and  patches from SOURCE rpm. Executing the 'prep' stage using [ $runCommand ]"
     #        fxnEC rpmbuild -bp $BUILD_DIRECTORY/SPECS/${packageName}.spec  || exit 1
+    # We want runCommand to expand, so no ""
+    # shellcheck disable=SC2086
     fxnEC $runCommand || exit 1
 
 }
@@ -366,7 +368,7 @@ function fxnDoBuild()
         fi
 
         # Cut any path info, and everything after the first '-'
-        PACKAGE_NAME="$( basename $SOURCE_RPM | sed -e 's/-[0-9].*//g' )"
+        PACKAGE_NAME="$( basename "$SOURCE_RPM" | sed -e 's/-[0-9].*//g' )"
 
         fxnDoBuildPrep "$PACKAGE_NAME" "$SOURCE_RPM"
 
@@ -391,16 +393,18 @@ function fxnDoBuild()
         # Run the %prep stage to apply the patches that have been laid out.
         runCommand="rpmbuild -bp ${BUILD_DIRECTORY}/SPECS/${PACKAGE_NAME}.spec"
         fxnMSG "Executing the 'prep' stage using [ $runCommand ]"
+        # We want runCommand to expand, so no ""
+        # shellcheck disable=SC2086
         fxnEC $runCommand || exit 1
 
         echo ""
         echo " ==== Files were extracted under ${BUILD_DIRECTORY}/BUILD."
         echo " ==== ------------------------------------------------------------"
-        ls -lrt ${BUILD_DIRECTORY}/BUILD
+        ls -lrt "${BUILD_DIRECTORY}/BUILD"
         echo ""
         echo " ==== Perform spec file actions from ${BUILD_DIRECTORY}/SPECS "
         echo " ==== ------------------------------------------------------------"
-        ls -lrt ${BUILD_DIRECTORY}/SPECS
+        ls -lrt "${BUILD_DIRECTORY}/SPECS"
         echo ""
 
         # Extracting the source is part of a build/patch by default.
@@ -427,7 +431,7 @@ function fxnDoBuild()
     fi
 
     fxnMSG "Installing build dependencies for [ $PACKAGE_NAME ] from [ $BUILD_TARGET_DIR_NAME/SPECS/${PACKAGE_NAME}.spec ]"
-    fxnEC sudo $PACKAGE_MANAGER --assumeyes builddep "$BUILD_TARGET_DIR_NAME/SPECS/${PACKAGE_NAME}.spec" || exit 1
+    fxnEC sudo "$PACKAGE_MANAGER" --assumeyes builddep "$BUILD_TARGET_DIR_NAME/SPECS/${PACKAGE_NAME}.spec" || exit 1
 
     ######################################
     # Build
@@ -451,7 +455,6 @@ function fxnDoBuild()
             BUILD_COMMAND="$RAW_BUILD_COMMAND"
         fi
 
-        failMsg="$BUILD_COMMAND failed with error."
         fxnMSG "Building in [ $BUILD_TARGET_DIR_NAME ] with [ $BUILD_ARGS ].  Attempt [ $BUILD_ATTEMPTS ]. "
 
         fxnMSG "bash -c $BUILD_COMMAND "
@@ -470,7 +473,7 @@ function fxnDoBuild()
                 # Retry until the tries run out.
                 echo "Build failed with error code [ $result ]."
                 if [ "$BUILD_ATTEMPTS" = "0" ];then
-                    fxnERR "Build $BUILD_ARGS failed with [ $result ]"
+                    fxnERR "Build [ $BUILD_COMMAND ] with [ $BUILD_ARGS ] failed with [ $result ]"
                     exit $result
                 fi
         esac
@@ -478,7 +481,7 @@ function fxnDoBuild()
     done
     echo ""
 
-    fxnMSG "Built [ $BUILD_TARGET_DIR_NAME ]"
+    fxnMSG "Built [ $BUILD_TARGET_DIR_NAME ] with [ $BUILD_COMMAND ]"
 
     echo "==  Built RPMs are under ${HOME}/rpmbuild/"
     echo "== ------------------------------------------------------------"
@@ -537,7 +540,7 @@ function fxnApplyPatches()
                 # Search for ApplyOptionalPatch linux-kernel-test.patch and insert patches above it.
                 # First patches should get bumped up as new ones are inserted above the match point,
                 # keeping them in sequence.
-                echo "    Inserting $path reference to $KERNEL_SPEC after ApplyOptionalPatch."
+                echo "    Inserting $patch reference to $KERNEL_SPEC after ApplyOptionalPatch."
                 fxnEC sed -i "/^ApplyOptionalPatch linux-kernel-test.patch/i ApplyOptionalPatch $patch" "$KERNEL_SPEC" || exit 1
                 echo "    Searching for [ # empty final patch ] reference"
                 # key off of Patch999999: linux-kernel-test.patch, and insert patches above it.
@@ -597,14 +600,18 @@ function fxnDownloadSourceRPMs()
     #sudo subscription-manager repos --enable=codeready-builder-for-rhel-9-x86_64-rpms
     dependencyDir="${RPMS_TO_GET}-build-deps"
     echo "Downloading source package."
-    fxnEC $PACKAGE_MANAGER download --source $RPMS_TO_GET  || exit 1
+    # We want RPMS_TO_GET to expand, so no ""
+    # shellcheck disable=SC2086
+    fxnEC "$PACKAGE_MANAGER" download --source $RPMS_TO_GET  || exit 1
 
     if [ ! -e "$dependencyDir" ];then
         fxnEC mkdir "$dependencyDir" || exit 1
     fi
-    cd "$dependencyDir"
+    fxnEC cd "$dependencyDir" || exit 1
     echo "Resolving build dependencies."
-    fxnEC $PACKAGE_MANAGER download $RPMS_TO_GET --resolve || exit 1
+    # We want RPMS_TO_GET to expand, so no ""
+    # shellcheck disable=SC2086
+    fxnEC "$PACKAGE_MANAGER" download $RPMS_TO_GET --resolve || exit 1
     #   echo "Moving any downloaded i686 packages to [ $i686dir ]"
     #    mv *i686*rpm $i686dir 2>/dev/null
 }
@@ -616,7 +623,7 @@ function fxnSetUpBuildEnvironment()
     # zypper doesn't default to caching packages. Yum does
     if [ "$OS_TYPE" = 'Suse' ];then
         # Cache all downloaded packages
-        echo "Setting "$PACKAGE_MANAGER" package downloads to be cached"
+        echo "Setting $PACKAGE_MANAGER package downloads to be cached"
         echo "Packages should be under  /var/cache/zypp/packages"
         sudo zypper mr --keep-packages --all
     fi
@@ -664,10 +671,15 @@ RPM_BUILD_TARGETS=' -bb '
 # Mark the start of build to have an idea how long it took.
 
 BUILD_START_TIME="unset"
+#dnf is for newer (post 2022) Red Hat releases.
+if [ -e '/usr/bin/dnf' ];then
+    PACKAGE_MANAGER='dnf'
+else
+    # older Red Hat releases
+    PACKAGE_MANAGER='yum'
+fi
 
-# Could be yum
-PACKAGE_MANAGER=" dnf "
-PACKAGE_APP=" rpm "
+PACKAGE_APP='rpm'
 
 BUILD_DIRECTORY="${HOME}/rpmbuild"
 DIR_SOURCES="${BUILD_DIRECTORY}/SOURCES"
@@ -848,11 +860,13 @@ do
 
         --verbose )
             # Unused for now
+            # shellcheck disable=SC2034
             DO_VERBOSE="TRUE"
             ;;
 
         --quiet )
             # Unused for now
+            # shellcheck disable=SC2034            
             DO_QUIET="TRUE"
             ;;
 
@@ -866,7 +880,8 @@ do
             ;;
 
         --unpatch )
-            # Revert a patch operation
+            # Revert a patch operation. Unused for now
+            # shellcheck disable=SC2034
             DO_UNPATCH="TRUE"
             ;;
 
@@ -898,7 +913,7 @@ do
 
         --lookup )
             echo "This only works on a registered system, so check."
-            $PACKAGE_MANAGER whatprovides $2
+            "$PACKAGE_MANAGER" whatprovides "$2"
             shift
             break;
             ;;
