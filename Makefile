@@ -236,10 +236,20 @@ clean:
 	@echo "#                                                                    #"
 	@echo "######################################################################"
 	@echo ""
+ifneq ($(wildcard /usr/bin/dpkg),)
+	@echo "# Cleaning for Debian builds."
 	rm -f   ../*.build                    
 	rm -f   ../due_$(DUE_VERISON)* 
 	rm -f   ../$(DUE_ORIG_TAR)   
 	rm -rf   ./$(MERGE_DIR)
+endif
+ifneq ($(wildcard /usr/bin/rpm),)
+	@echo "# Cleaning for RPM builds."
+	rm -f   $(HOME)/rpmbuild/RPMS/noarch/due-*noarch.rpm
+	rm -f   $(HOME)/rpmbuild/SOURCES/due_*orig.tar.gz
+	rm -f   $(HOME)/rpmbuild/SPECS/due.spec
+	rm -rf  $(HOME)/rpmbuild/BUILD/due-*
+endif
 	@echo ""
 	@echo "Done making clean."
 	@echo ""
@@ -453,6 +463,8 @@ endif
 	@echo ""
 	@echo "# Select an RPM package build container (Fedora/RHEL/SUSE, etc) to build in:"
 	$(Q) ./due --run --command rpmbuild --target noarch --bb $(HOME)/rpmbuild/SPECS/due.spec ; true
+	@echo ""
+	@echo "# Build invoked with: ./due --run --command rpmbuild --target noarch --bb $(HOME)/rpmbuild/SPECS/due.spec ; true"
 	@echo ""
 	@echo "# Deleting generated and copied in files with: [ git clean -xdf ]"
 	$(Q) git clean -xdf
