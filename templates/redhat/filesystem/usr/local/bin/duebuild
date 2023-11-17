@@ -100,8 +100,8 @@ function fxnHelp()
     echo "  Script to support building for the container's target."
     echo ""
     echo "  Build targets:"
-    echo "   -c|--cbuild      <args>     Default container build command."
-    echo "                                <args> is a list of additional build commands. Must be last argument."
+    echo "   -c|--cbuild <srcrpm> <args> Default container build command."
+    echo "                                Expects a src.rpm, and  <args> is a list of additional build commands. Must be last argument."
     echo "   --default                   Try to build with default settings."
     echo "   --build-command  <args>     Do environment prep and run <args>. Must be last argument on the line."
     echo "   --help-build-targets        More detailed description of the above options."
@@ -736,7 +736,9 @@ do
             # skip over --cbuild
             DO_BUILD="TRUE"
             if [ "$2" != "" ];then
-                SOURCE_RPM="$2"
+                if [[ "$2" =~ '.src.rpm' ]];then
+                    SOURCE_RPM="$2"
+                fi
                 shift
                 if [ "$2" != "" ];then
                     # The rest of the arguments passed should be given verbatim to
