@@ -105,7 +105,7 @@ source /etc/os-release
 
 case "$ID" in
     # Red Hat variants
-    'fedora' | 'rhel' | 'opensuse-leap' | 'sles' )
+    'fedora' | 'rhel' )
         #
         # Red Hat uses a different package manager, so abstract that out.
         # Ex: sudo $PACKAGE_UPDATE  ; sudo $PACKAGE_INSTALL rsync
@@ -122,6 +122,13 @@ case "$ID" in
         DOCKER_SPECIFIC_ARGS=" --privileged "
         ;;
 
+    'opensuse-leap' | 'sles' )
+        # SUSE uses RPM, but its package manager is zypper
+        OS_TYPE='Suse'
+        PACKAGE_UPDATE=" zypper update"
+        PACKAGE_INSTALL=" zypper install "
+        DOCKER_SPECIFIC_ARGS=" --privileged "
+        ;;
 
     * )
         # Default to Debian variants
