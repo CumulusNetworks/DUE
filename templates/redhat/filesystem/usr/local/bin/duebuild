@@ -198,7 +198,7 @@ function fxnHelpExamples()
     echo "  Build binary AND source rpm source RPM passing rpmbuild arguments '-ba' :"
     echo " ---------------------------------------------------------------------------"
     echo "   $0 --rpmbuild-option -ba --cbuild ./htop-3.2.2-3.fc39.src.rpm "
-    echo ""    
+    echo ""
     echo "  Build using a .spec file:"
     echo " ---------------------------"
     echo "   Get the source code."
@@ -216,7 +216,7 @@ function fxnHelpExamples()
     echo "   Build."
     echo "      $0 --build ~/rpmbuild/SPECS/htop.spec"
     echo ""
-    
+
 }
 
 # Set an exit trap to log completion.
@@ -319,7 +319,7 @@ function fxnDoBuildPrep()
     ######################################
 
     if [  -e /usr/bin/zypper ] ;then
-               
+
         # Only do this on Red Hat
         # Install build dependencies:
         echo "Installing build dependencies for $packageName"
@@ -409,7 +409,7 @@ function fxnDoBuild()
                 echo "Creating build directory: ${BUILD_DIRECTORY}/SPECS/"
                 fxnEC mkdir -p "${BUILD_DIRECTORY}/SPECS/" || exit 1
                 # Assume sources doesn't exist either
-                fxnEC mkdir -p "${BUILD_DIRECTORY}/SOURCES/" || exit 1                
+                fxnEC mkdir -p "${BUILD_DIRECTORY}/SOURCES/" || exit 1
                 echo "Copying spec file there with:  cp $SPEC_FILE ${BUILD_DIRECTORY}/SPECS/"
                 fxnEC cp "$SPEC_FILE" "${BUILD_DIRECTORY}/SPECS/" || exit 1
             fi
@@ -447,7 +447,7 @@ function fxnDoBuild()
             echo ""
             echo "DONE"
             exit
-            
+
         fi
 
 
@@ -459,7 +459,7 @@ function fxnDoBuild()
 
         # Cut any path info, and everything after the first '-'
         PACKAGE_NAME="$( basename "$SOURCE_RPM" | sed -e 's/-[0-9].*//g' )"
-        
+
         fxnDoBuildPrep "$PACKAGE_NAME" "$SOURCE_RPM"
 
         ######################################
@@ -686,10 +686,10 @@ function fxnDownloadSourceRPMs()
         RPMS_TO_GET="$1"
     fi
 
-    echo "Downloading source package for [ $RPMS_TO_GET ]"    
+    echo "Downloading source package for [ $RPMS_TO_GET ]"
     if [ -e /usr/bin/zypper ];then
         fxnEC sudo "$PACKAGE_MANAGER" --non-interactive source-install $RPMS_TO_GET || exit 1
-        
+
         fxnMSG "Zypper puts source under /usr/src/packages/SOURCES"
         ls -lrt /usr/src/packages/SOURCES
         fxnMSG "Zypper puts spec files under /usr/src/packages/SPECS"
@@ -789,7 +789,7 @@ fi
 
 if [ -e '/usr/bin/zypper' ];then
     # SUSE
-    PACKAGE_MANAGER='zypper'    
+    PACKAGE_MANAGER='zypper'
     PACKAGE_UPDATE=" $PACKAGE_MANAGER update"
     PACKAGE_LOOKUP=" $PACKAGE_MANAGER se --provides "
 fi
@@ -864,7 +864,7 @@ do
                         exit 1
                     fi
                     SPEC_FILE="$(realpath "$2")"
-                fi                
+                fi
                 shift
                 if [ "$2" != "" ];then
                     # The rest of the arguments passed should be given verbatim to
@@ -994,7 +994,7 @@ do
 
         --quiet )
             # Unused for now
-            # shellcheck disable=SC2034            
+            # shellcheck disable=SC2034
             DO_QUIET="TRUE"
             ;;
 
