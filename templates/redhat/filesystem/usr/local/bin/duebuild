@@ -100,8 +100,8 @@ function fxnHelp()
     echo "  Script to support building for the container's target."
     echo ""
     echo "  Build targets:"
-    echo "   -c|--cbuild <srcrpm> <args> Default container build command."
-    echo "                                Expects a src.rpm, and  <args> is a list of additional build commands. Must be last argument."
+    echo "   -c|--cbuild <src > <args>   Default container build command."
+    echo "                                Expects a src.rpm or the path to a .spec file and  <args> is a list of additional build commands. Must be last argument."
     echo "   --default                   Try to build with default settings."
     echo "   --build-command  <args>     Do environment prep and run <args>. Must be last argument on the line."
     echo "   --help-build-targets        More detailed description of the above options."
@@ -161,33 +161,62 @@ function fxnHelpBuildTargets()
 function fxnHelpExamples()
 {
     echo ""
-    echo " Examples using htop as an example package."
-    echo "--------------------------------------------"
+    echo " Examples using htop as the example package."
     echo ""
     echo "  Build."
+    echo " -------"
     echo "   $0 --cbuild "
     echo ""
     echo "  Build default - a simple/standard build case."
+    echo " -----------------------------------------------"
     echo "   $0 --cbuild --default"
     echo ""
-    echo "  Download and build from source RPM"
-    echo "   $0 --download-src htop "
-    echo "   $0 --cbuild ./htop-3.2.2-3.fc39.src.rpm "
-    echo ""
-    echo "  Build binary AND source rpm source RPM passing rpmbuild arguments '-ba' "
-    echo "   $0 --rpmbuild-option -ba --cbuild ./htop-3.2.2-3.fc39.src.rpm "
-    echo ""
-    echo "  Extract source code in to ~/rpmbuild from source rpm."
+    # SUSE doesn't explicitly supply a src.rpm, unpacking it in to
+    # /usr/src, so workflows are different.
+    if [ ! -e /usr/bin/zypper ];then
+        # Not SUSE
+        echo ""
+        echo "  Download and build from source RPM:"
+        echo " -------------------------------------"
+        echo "   $0 --download-src htop "
+        echo "   $0 --cbuild ./htop-3.2.2-3.fc39.src.rpm "
+        echo ""
+        echo ""
+        echo "  Get kernel source rpm and build:"
+        echo " ----------------------------------"
+        echo "   $0 --download-src kernel "
+        echo "   $0 --cbuild kernel-6.5.11-300.fc39.src.rpm "
+    fi
+    echo "  Extract source code in to ~/rpmbuild from source rpm:"
+    echo " -------------------------------------------------------"
     echo "   $0 --extract-source htop-3.2.2-3.fc39.src.rpm "
     echo ""
-    echo "  Apply patches from mypatches to an extracted source rpm."
+    echo "  Apply patches from mypatches to an extracted source rpm:"
+    echo " ----------------------------------------------------------"
     echo "   $0 --extract-source htop-3.2.2-3.fc39.src.rpm  --patch-dir ./mypatches/ "
     echo ""
-    echo "  Get kernel source rpm and build:"
-    echo "   $0 --download-src kernel "
-    echo "   $0 --cbuild kernel-6.5.11-300.fc39.src.rpm "
+    echo "  Build binary AND source rpm source RPM passing rpmbuild arguments '-ba' :"
+    echo " ---------------------------------------------------------------------------"
+    echo "   $0 --rpmbuild-option -ba --cbuild ./htop-3.2.2-3.fc39.src.rpm "
+    echo ""    
+    echo "  Build using a .spec file:"
+    echo " ---------------------------"
+    echo "   Get the source code."
+    echo "      $0 --download-src htop"
+    if [ -e /usr/bin/zypper ];then
+        # SUSE puts the source under /usr/src
+        echo "         ...source is now installed under /usr/src."
+        echo "      $0 --build /usr/src/packages/SPECS/htop.spec"
+        echo "         ...code is copied and built under ~/rpmbuild."
+    else
+        # Red Hat puts it under ~/rpmbuild
+        echo "   Extract the source and .spec file from the RPM."
+        echo "    $0 --extract-source htop-3.2.2-3.fc39.src.rpm"
+    fi
+    echo "   Build."
+    echo "      $0 --build ~/rpmbuild/SPECS/htop.spec"
     echo ""
-
+    
 }
 
 # Set an exit trap to log completion.
@@ -201,7 +230,7 @@ function fxnExit()
     else
         echo "ERROR - $0 [ $INVOKED_WITH ] failed with return code [ $returnCode ]"
     fi
-
+    echo ""
     return $returnCode
 }
 trap 'fxnExit $RETURN_CODE' EXIT
@@ -289,11 +318,15 @@ function fxnDoBuildPrep()
     # Update dependencies
     ######################################
 
-    # Install build dependencies:
-    echo "Installing build dependencies for $packageName"
-    #fxnEC sudo $RESOLVE_DEPENDENCIES ~/rpmbuild/SPECS/${PACKAGE_NAME}.spec || exit 1
+    if [  -e /usr/bin/zypper ] ;then
+               
+        # Only do this on Red Hat
+        # Install build dependencies:
+        echo "Installing build dependencies for $packageName"
+        #fxnEC sudo $RESOLVE_DEPENDENCIES ~/rpmbuild/SPECS/${PACKAGE_NAME}.spec || exit 1
 
-    fxnEC sudo "$PACKAGE_MANAGER" --assumeyes builddep "$sourceRPM" || exit 1
+        fxnEC sudo "$PACKAGE_MANAGER" --assumeyes builddep "$sourceRPM" || exit 1
+    fi
 
     ######################################
     # Create the build area
@@ -361,6 +394,63 @@ function fxnDoBuild()
         ######################################
         # Sanity check arguments
         ######################################
+        # Try a basic build from a .spec file
+        # SUSE won't have a ~/rpmbuild, preferring to install under /usr/src
+        if [  "$SPEC_FILE" != '' ];then
+            # Cut any path info, and everything after the first '-'
+            PACKAGE_NAME="$( basename "$SPEC_FILE" | sed -e 's/.spec//g' )"
+
+            echo "Building from spec file [ $SPEC_FILE ]"
+
+            #
+            # Is the spec file in ~/rpmbuild/SPECS? On SUSE this may need to be copied over
+            #
+            if [ ! -e "${BUILD_DIRECTORY}/SPECS/${PACKAGE_NAME}.spec" ];then
+                echo "Creating build directory: ${BUILD_DIRECTORY}/SPECS/"
+                fxnEC mkdir -p "${BUILD_DIRECTORY}/SPECS/" || exit 1
+                # Assume sources doesn't exist either
+                fxnEC mkdir -p "${BUILD_DIRECTORY}/SOURCES/" || exit 1                
+                echo "Copying spec file there with:  cp $SPEC_FILE ${BUILD_DIRECTORY}/SPECS/"
+                fxnEC cp "$SPEC_FILE" "${BUILD_DIRECTORY}/SPECS/" || exit 1
+            fi
+
+            #
+            # Is there a tar file under ~/rpmbuild/SOURCES? Again, with the copy.
+            # Get it and associated files like .keyring
+            fileFound=$( find ${BUILD_DIRECTORY}/SOURCES -name ${PACKAGE_NAME}*.tar* )
+            if [ "$fileFound" = '' ];then
+                # Look for source installed under /usr/src/packages
+                fileFound="$( find /usr/src/packages/SOURCES -name ${PACKAGE_NAME}*.tar* )"
+                if [ "$fileFound" = '' ];then
+                    fxnERR "Failed to find source for [ $PACKAGE_NAME ] try: duebuild --download-src $PACKAGE_NAME"
+                    exit 1
+                fi
+                fxnEC mkdir -p "${BUILD_DIRECTORY}/SOURCES" || exit 1
+                # Grab everythign that starts with the package name
+                fxnEC cp /usr/src/packages/SOURCES/${PACKAGE_NAME}* "${BUILD_DIRECTORY}/SOURCES" || exit 1
+            fi
+
+            #
+            # Go with a basic build from the spec file to prove it works.
+            # Developers can expand on this.
+            #
+            echo "Executing: rpmbuild --ba ${BUILD_DIRECTORY}/SPECS/${PACKAGE_NAME}.spec"
+            # Build everything, which can die without a .keyring file copied in.
+            fxnEC rpmbuild --ba "${BUILD_DIRECTORY}/SPECS/${PACKAGE_NAME}.spec" || exit 1
+            echo ""
+            echo "== Built: rpmbuild --ba ${BUILD_DIRECTORY}/SPECS/${PACKAGE_NAME}.spec"
+            echo " -------------------------------------------------------"
+            # Packages built
+            find ${BUILD_DIRECTORY}/RPMS -iname \*.rpm
+            # Source packages built
+            find ${BUILD_DIRECTORY}/SRPMS -iname \*.rpm
+            echo ""
+            echo "DONE"
+            exit
+            
+        fi
+
+
         # Sanity check
         if [ "$SOURCE_RPM" = "" ];then
             echo "Error - no source rpm to --build  was supplied. Exiting."
@@ -369,7 +459,7 @@ function fxnDoBuild()
 
         # Cut any path info, and everything after the first '-'
         PACKAGE_NAME="$( basename "$SOURCE_RPM" | sed -e 's/-[0-9].*//g' )"
-
+        
         fxnDoBuildPrep "$PACKAGE_NAME" "$SOURCE_RPM"
 
         ######################################
@@ -596,24 +686,35 @@ function fxnDownloadSourceRPMs()
         RPMS_TO_GET="$1"
     fi
 
-    # may need to enable this repository for Red Hat
-    #sudo subscription-manager repos --enable=codeready-builder-for-rhel-9-x86_64-rpms
-    dependencyDir="${RPMS_TO_GET}-build-deps"
-    echo "Downloading source package."
-    # We want RPMS_TO_GET to expand, so no ""
-    # shellcheck disable=SC2086
-    fxnEC "$PACKAGE_MANAGER" download --source $RPMS_TO_GET  || exit 1
+    echo "Downloading source package for [ $RPMS_TO_GET ]"    
+    if [ -e /usr/bin/zypper ];then
+        fxnEC sudo "$PACKAGE_MANAGER" --non-interactive source-install $RPMS_TO_GET || exit 1
+        
+        fxnMSG "Zypper puts source under /usr/src/packages/SOURCES"
+        ls -lrt /usr/src/packages/SOURCES
+        fxnMSG "Zypper puts spec files under /usr/src/packages/SPECS"
+        ls -lrt /usr/src/packages/SPECS
+    else
+        # may need to enable this repository for Red Hat
+        #sudo subscription-manager repos --enable=codeready-builder-for-rhel-9-x86_64-rpms
 
-    if [ ! -e "$dependencyDir" ];then
-        fxnEC mkdir "$dependencyDir" || exit 1
+
+        # We want RPMS_TO_GET to expand, so no ""
+        # shellcheck disable=SC2086
+        fxnEC "$PACKAGE_MANAGER" download --source $RPMS_TO_GET  || exit 1
+
+        dependencyDir="${RPMS_TO_GET}-build-deps"
+        if [ ! -e "$dependencyDir" ];then
+            fxnEC mkdir "$dependencyDir" || exit 1
+        fi
+        fxnEC cd "$dependencyDir" || exit 1
+        echo "Resolving build dependencies."
+        # We want RPMS_TO_GET to expand, so no ""
+        # shellcheck disable=SC2086
+        fxnEC "$PACKAGE_MANAGER" download $RPMS_TO_GET --resolve || exit 1
+        #   echo "Moving any downloaded i686 packages to [ $i686dir ]"
+        #    mv *i686*rpm $i686dir 2>/dev/null
     fi
-    fxnEC cd "$dependencyDir" || exit 1
-    echo "Resolving build dependencies."
-    # We want RPMS_TO_GET to expand, so no ""
-    # shellcheck disable=SC2086
-    fxnEC "$PACKAGE_MANAGER" download $RPMS_TO_GET --resolve || exit 1
-    #   echo "Moving any downloaded i686 packages to [ $i686dir ]"
-    #    mv *i686*rpm $i686dir 2>/dev/null
 }
 
 function fxnSetUpBuildEnvironment()
@@ -671,13 +772,29 @@ RPM_BUILD_TARGETS=' -bb '
 # Mark the start of build to have an idea how long it took.
 
 BUILD_START_TIME="unset"
-#dnf is for newer (post 2022) Red Hat releases.
-if [ -e '/usr/bin/dnf' ];then
-    PACKAGE_MANAGER='dnf'
-else
+# Red Hat
+if [ -e '/usr/bin/yum' ];then
     # older Red Hat releases
     PACKAGE_MANAGER='yum'
 fi
+#dnf is for newer (post 2022) Red Hat releases.
+# Choose it for systems that have both it and yum
+if [ -e '/usr/bin/dnf' ];then
+    PACKAGE_MANAGER='dnf'
+    PACKAGE_UPDATE=" $PACKAGE_MANAGER check-update"
+
+    PACKAGE_LOOKUP=" $PACKAGE_MANAGER whatprovides "
+
+fi
+
+if [ -e '/usr/bin/zypper' ];then
+    # SUSE
+    PACKAGE_MANAGER='zypper'    
+    PACKAGE_UPDATE=" $PACKAGE_MANAGER update"
+    PACKAGE_LOOKUP=" $PACKAGE_MANAGER se --provides "
+fi
+# Common
+PACKAGE_INSTALL=" $PACKAGE_MANAGER install "
 
 PACKAGE_APP='rpm'
 
@@ -739,6 +856,15 @@ do
                 if [[ "$2" =~ '.src.rpm' ]];then
                     SOURCE_RPM="$2"
                 fi
+
+                if [[ "$2" =~ '.spec' ]];then
+                    if [ ! -e  "$2"  ];then
+                        echo ""
+                        fxnERR "Failed to find spec file [ $2 ]. Try duebuild --download-src. Exiting."
+                        exit 1
+                    fi
+                    SPEC_FILE="$(realpath "$2")"
+                fi                
                 shift
                 if [ "$2" != "" ];then
                     # The rest of the arguments passed should be given verbatim to
@@ -914,8 +1040,8 @@ do
             ;;
 
         --lookup )
-            echo "This only works on a registered system, so check."
-            "$PACKAGE_MANAGER" whatprovides "$2"
+            echo "This may only work on a registered system, so check."
+            "$PACKAGE_LOOKUP" "$2"
             shift
             break;
             ;;
