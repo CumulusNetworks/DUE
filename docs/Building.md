@@ -68,7 +68,7 @@ due --run --command sudo mk-build-deps --install --remove ./debian/control --too
 
 ##### A failure using --build --default
 due --run --build --default -b -j8
-Unrecognized option [ -b ]. Exiting                                               
+Unrecognized option [ -b ]. Exiting  
 ERROR - /usr/local/bin/duebuild [ --default -b -j8 ] failed with return code [ 1 ]  
 ( Fails because default does not take other arguments, and would also still be supplying the '-us' anyway)
 

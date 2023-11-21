@@ -20,7 +20,7 @@ building your software, regardless of the target's architecture or operating sys
 ### `due --build`  
 
 
-See **./docs/GettingStarted.md** to get started creating and running an example image.  
+See [./docs/GettingStarted.md](./docs/GettingStarted.md) to get started creating and running an example image.  
 Or run `./due --help`
 to jump right in with the comprehensive command line help and examples.
 
@@ -50,18 +50,20 @@ to explain how the design requirements were determined, so bear with me while I 
 a bit of:
 
 # History
-**Dedicated User Environment** came out of build environment design work I'd done at Cumulus Networks,
-and they were gracious enough to allow me to open source it. Cumulus Linux is a Debian based operating
-system for white box network switches, and the Debian build infrastructure was great...until we had to
-start building things that weren't already part of Debian, and for licensing reasons, could never be.  
+**Dedicated User Environment** came out of build environment work I'd done at Cumulus Networks (now part of Nvidia)  
+to create a consistent build environment for developers building for different architectures and releases of Debian Linux,   
+using software that, for licensing reasons, could never be upstreamed.  
+
 The scope of things to build expanded for me when I also took on the position of  Open Network Install Environment
 project lead, working with the Open Compute Foundation, and needed to support pull requests, debug 
 and image build testing for what is essentially a tiny operating system.  
-I was already using Docker for Debian package builds, and a Dockerfile build environment had already been created for ONIE,
-which left me wondering why there wasn't a set "template" that could be used to set up dedicated build environments?
+Since I was already using Docker for Debian package builds, and a Dockerfile build environment had already been created for ONIE,
+This left me wondering why there wasn't a set "template" that could be used to set up dedicated build environments?
 Especially for distributed  open source projects where developers can't be sharing the same hardware,
-but could use a common development environment for debug. This approach turned out to be wildly successful in reducing support requests and seamlessly providing backwards compatibility for the ONIE code base.
-After Nvidia acquired Cumulus, DUE was upgraded to provide kernel build environments for different releases of Red Hat and SUSE Linux distributions, so the latest release of DUE supports both and is now installable as an .rpm file in addition to a .deb.  
+but could use a common development environment for debug. This approach turned out to be wildly successful in reducing support 
+requests and seamlessly providing backwards compatibility for older components of the ONIE code base.
+After Nvidia acquired Cumulus, DUE was upgraded to provide kernel build environments for different releases of Red Hat and SUSE
+Linux distributions. Currently the latest release of DUE supports both and is now installable as an .rpm file in addition to a .deb.  
 
 
 # Design
@@ -83,7 +85,7 @@ but providing an age-appropriate build container will allow for rebuilding them 
 
 4.  Create a **build environment that feels 'natural'**. I don't want to have to be 'build user' or 'root' in a
 container that has none of my configuration, where I have to copy files around to get them out of the container.
-I want to feel like I'm still on my host system - with a contextual indicator being the only thing to remind me
+I want to feel like I'm still on my host system - with a contextual indicator being the only thing to remind medo
 that I'm not.
 
 5.  I want **builds to "just work"** without a 'but'. If I'm currently building for Debian 10 and need to build for
@@ -106,15 +108,16 @@ This is a variant of #2, but I think it's significant enough to warrant its own 
 can easily obtain the framework to turn those templates into build environments.
 
 # Getting started
-See  **docs/GettingStarted.md** for instructions to build and run containers with DUE.
+See  [./docs/GettingStarted.md](./docs/GettingStarted.md) for instructions to build and run containers with DUE.
 
 # Further reading
-See **docs/Troubleshooting.md** and **docs/FAQ.md**
+See [./docs/Troubleshooting.md](./docs/Troubleshooting.md) and [./docs/FAQ.md](./docs/FAQ.md)
 
 # Build environment support through templates
 
 Currently DUE supports the following templates which demonstrate different image build configurations.
-See their README.md files under the `templates/` directory, or run `./due --create --help-examples` for a quick summary.
+All of them come with an easily modified [duebuild](./templates/common-templates/filesystem/usr/local/bin/duebuild) script which provides a default build behavior for the target operating system.  
+See their README.md files under the [./templates](./templates) directory, or run `./due --create --help-examples` for a quick summary.
 
 ## example
 

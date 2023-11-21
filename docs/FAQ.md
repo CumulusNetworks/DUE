@@ -9,10 +9,10 @@ Well, maybe not _frequently_ but things worth knowing.
 The DUE install scripts will automatically add any keys for an APT repository. The FRR template has an example of pulling a key and adding a custom repository to the sources.list in its container.
 
 ## Soft links to include other files.
-See `templates/frr/filesystem/usr/local/bin` for a relative path link to the debian-package's `duebuild` script for building debian packages. This can be useful if you are creating templates that have common code.
+See [templates/frr/filesystem/usr/local/bin](../templates/frr/filesystem/usr/local/bin) for a relative path link to the debian-package's `duebuild` script for building Debian packages. This can be useful if you are creating templates that have common code.
 
 ## File duplication
-If you find image templates have a lot in common, consider using DUE's directory inheritance model to place shared files. `./templates/redhat` uses this to share files between Red Hat Enterprise Linux and Fedora images.
+If you find image templates have a lot in common, consider using DUE's directory inheritance model to place shared files. [templates/redhat](../templates/redhat) uses this to share files between Red Hat Enterprise Linux and Fedora images.
 
 ## The template README files supply default build instructions
 DUE scans all `template/<name>/README.md` files and looks for a line starting with:  
@@ -40,7 +40,7 @@ Browse [https://hub.docker.com](https://hub.docker.com/) for images to use with 
 
 ## Cross architecture support
 If an image is created that does not match the host processor's architecture, DUE will attempt to install a statically linked version of QEMU in the container to perform emulation, and will default to labeling the image with the architecture to make it easier to choose at run time.  If DUE cannot find a copy of QEMU in the image template's `post-install-local` directory it will try to use the version of QEMU installed on the host system.  
-The templates/debian-package/README.md has an example of using an armv5 container to use as a build environment on an x86 system.
+The [templates/debian-package/README.md](../templates/debian-package/README.md) has an example of using an armv5 container to use as a build environment on an x86 system.
 
 
 # Run time
@@ -130,7 +130,7 @@ Note that this does mount two directories from the host system that can be modif
 
 
 # Debugging
-See `docs/Troubleshooting.md`
+See [docs/Troubleshooting.md](./Troubleshooting.md)
 
 # Design
 
