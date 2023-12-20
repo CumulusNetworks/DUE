@@ -342,6 +342,10 @@ function fxnHelpCreateExamples()
     echo "     --from debian:stretch --description 'test Debian 9' \\ "
     echo "     --image-patch  debian/9/filesystem/"
     echo ""
+    echo " Ex: Create an image using the --menu option and filter for fedora only"
+    echo " $0  --create --menu --filter fedora \\ "
+    echo ""
+    
 }
 
 
