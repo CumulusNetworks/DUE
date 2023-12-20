@@ -10,7 +10,7 @@ The use of debian:12 here is arbitrary. Any Debian based operating system Docker
 **NOTE** DUE parses these README.md files looking for lines that start with Create to use in the command line help.  
 You'll want to make sure your template follows this convention.
 
-Create default Debian EXAMPLE with: ./due --create --platform linux/amd64    --name example-debian-12       --prompt ExD12        --tag example-debian-12       --use-template example           --from debian:12                             --description "Debian 12 example"  
+Create default Debian EXAMPLE with: ./due --create --platform linux/amd64    --name example-debian-12       --prompt ExD12        --tag example-debian-12       --use-template example           --from debian:12                             --description 'Debian 12 example'  
 
 ### Explanation of the Debian example  above:
   * Use a Debian 12 image
@@ -20,7 +20,7 @@ Create default Debian EXAMPLE with: ./due --create --platform linux/amd64    --n
   * Merge in the files from ./templates/example when creating the configuration directory
 
 
-Create patched Debian 9 EXAMPLE with: ./due --create --platform linux/amd64    --name example-debian-9        --prompt ExD9         --tag example-patch-debian-9  --use-template example           --from debian:9                              --description "Debian 9 with patch"                    --image-patch debian/9/filesystem
+Create patched Debian 9 EXAMPLE with: ./due --create --platform linux/amd64    --name example-debian-9        --prompt ExD9         --tag example-patch-debian-9  --use-template example           --from debian:9                              --description 'Debian 9 with patch'                    --image-patch debian/9/filesystem
 
 ### Explanation of the Debian 9 example  above:
   * Arguments are the same as Debian 12

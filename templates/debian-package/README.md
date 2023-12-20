@@ -4,7 +4,7 @@ Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 Configure the image to build Debian packages.
 
 ## Debian 12 build environment creation example
-Create default Debian 12 build environment with: ./due --create --platform linux/amd64    --name package-debian-12       --prompt PKGD12       --tag pkg-debian-12-amd64     --use-template debian-package    --from debian:12                             --description "Package Build for Debian 12"  
+Create default Debian 12 build environment with: ./due --create --platform linux/amd64    --name package-debian-12       --prompt PKGD12       --tag pkg-debian-12-amd64     --use-template debian-package    --from debian:12                             --description 'Package Build for Debian 12'  
 
 ### Explanation of the above:
   * Use a Debian 12 image (though ubuntu:22.04 works nicely as well (see below)) as the starting point.
@@ -15,16 +15,16 @@ Create default Debian 12 build environment with: ./due --create --platform linux
   * Merge in the files from ./templates/debian-package when creating the configuration directory
 
 ## Debian 10 armel build environment creation example:
-Create default Debian 10 Debian package build environment with: ./due --create --platform linux/arm/v5   --name pkg-debian-10-armel     --prompt PKGD10-arm32 --tag pkg-debian-10-armel     --use-template debian-package    --from arm32v5/debian:10                     --description "Package Build for arm32v5/Debian 10"  
+Create default Debian 10 Debian package build environment with: ./due --create --platform linux/arm/v5   --name pkg-debian-10-armel     --prompt PKGD10-arm32 --tag pkg-debian-10-armel     --use-template debian-package    --from arm32v5/debian:10                     --description 'Package Build for arm32v5/Debian 10'  
 
 ## Debian 11 arm64 build environment creation example:
-Create default Debian 11 Debian package build environment with: ./due --create --platform linux/arm64    --name pkg-debian-11-arm64     --prompt PKGD11-arm64 --tag pkg-debian-11-arm64     --use-template debian-package    --from arm64v8/debian:11                     --description "Package Build for arm64v8/Debian 11"  
+Create default Debian 11 Debian package build environment with: ./due --create --platform linux/arm64    --name pkg-debian-11-arm64     --prompt PKGD11-arm64 --tag pkg-debian-11-arm64     --use-template debian-package    --from arm64v8/debian:11                     --description 'Package Build for arm64v8/Debian 11'  
 
 ## Debian Sid (unstable)  build environment image creation example:
-Create default Debian Sid  Debian package build environment with: ./due --create --platform linux/amd64    --name pkg-sid                 --prompt PKGSid       --tag pkg-sid                 --use-template debian-package    --from debian:sid                            --description "Package Build for Debian Unstable"  
+Create default Debian Sid  Debian package build environment with: ./due --create --platform linux/amd64    --name pkg-sid                 --prompt PKGSid       --tag pkg-sid                 --use-template debian-package    --from debian:sid                            --description 'Package Build for Debian Unstable'  
 
 ## Ubuntu 22.04 build environment image creation example:
-Create default Ubuntu 22.04 Debian package build environment with: ./due --create --platform linux/amd64    --name pkg-u-22.04             --prompt PKGU2204     --tag pkg-ubuntu-22.04-amd64  --use-template debian-package    --from ubuntu:22.04                          --description "Package Build for Ubuntu 22.04"  
+Create default Ubuntu 22.04 Debian package build environment with: ./due --create --platform linux/amd64    --name pkg-u-22.04             --prompt PKGU2204     --tag pkg-ubuntu-22.04-amd64  --use-template debian-package    --from ubuntu:22.04                          --description 'Package Build for Ubuntu 22.04'  
 
 ## Additional configuration
 In addition to the the expectedly unique `duebuild` and install scripts, there is a script for managing local package repositories: `due-manage-local-package-repo.sh`. See below.

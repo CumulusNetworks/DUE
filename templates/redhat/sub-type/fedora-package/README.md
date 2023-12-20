@@ -4,7 +4,7 @@ Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 Configure the image to build Red Hat Fedora packages.
 
 ## Fedora 39  build environment creation example:
-Create default Fedora 39 build environment with: ./due --create --platform linux/amd64    --name pkg-fedora-39-amd64     --prompt PKGF39       --tag pkg-fedora-39-amd64     --use-template fedora-package    --from fedora:39                             --description "Fedora 39 "  
+Create default Fedora 39 build environment with: ./due --create --platform linux/amd64    --name pkg-fedora-39-amd64     --prompt PKGF39       --tag pkg-fedora-39-amd64     --use-template fedora-package    --from fedora:39                             --description 'Fedora 39'  
 
 
 ### Explanation of the above:
@@ -18,4 +18,4 @@ Create default Fedora 39 build environment with: ./due --create --platform linux
 
 
 ## Fedora 39 arm64 build environment creation example:
-Create default Fedora 39 build environment with: ./due --create --platform linux/arm64    --name pkg-fedora-39-arm64     --prompt PKGF39-arm64 --tag pkg-fedora-39-arm64     --use-template fedora-package    --from fedora:39                             --description "Fedora 39 "  
+Create default Fedora 39 build environment with: ./due --create --platform linux/arm64    --name pkg-fedora-39-arm64     --prompt PKGF39-arm64 --tag pkg-fedora-39-arm64     --use-template fedora-package    --from fedora:39                             --description 'Fedora 39'  
