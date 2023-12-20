@@ -141,7 +141,7 @@ else
 # Store phony build targets in a variable so they can be
 # printed as part of help.
 #
-PHONY = help docs depends install uninstall orig.tar debian-package rpm-package test no-make-default copyright-check clean run-lintian
+PHONY = help docs depends install uninstall orig.tar debian-package rpm-package test no-make-default copyright-check clean rebase-upstream run-lintian 
 
 # ...and use them as real .PHONY targets
 .PHONY: $(PHONY)
@@ -175,6 +175,8 @@ help:
 	$(Q) echo " debian-test     - Build off debian-test branch with 'make debian-package DEBIAN_PACKAGE_BRANCH=debian-test'"
 	$(Q) echo " copyright-check - Print files without a copyright header."
 	$(Q) echo " run-lintian     - Run lintian on ../due_$(DUE_VERSION)*all.deb"
+	$(Q) echo " rebase-upstream - rebase a remote branch to the latest DUE"
+
 	$(Q) echo ""
 
 	$(Q) echo ""
@@ -253,6 +255,30 @@ endif
 	@echo ""
 	@echo "Done making clean."
 	@echo ""
+
+rebase-upstream:
+    @echo ""
+    @echo "######################################################################"
+    @echo "#                                                                    #"
+    @echo "# Rebasing master branch to latest upstream DUE                      #"
+    @echo "#                                                                    #"
+    @echo "######################################################################"
+    @echo ""
+    @echo " Stashing changes "
+    git stash
+    @echo " Checking out master branch"
+    git checkout master
+    @echo " Running:    git remote add upstream https://github.com/CumulusNetworks/DUE.git"
+    git remote add upstream https://github.com/CumulusNetworks/DUE.git
+    @echo " Fetching upstream"
+    git fetch upstream
+    @echo " Rebasing off upstream/master"
+    git rebase upstream/master
+    @echo " Any changes were stashed before rebase."
+    @echo " If automatic rebase failed, resolving conflicts is left as an exercise for the developer."
+    @echo ""
+    @echo "Done"
+
 
 run-lintian:
 	@echo ""
