@@ -151,16 +151,89 @@ function fxnListDirContents()
     ls -l "$1" | sed -e 's/^/      /g'
 }
 
+# Create a container by choosing an example from the README.md examples.
+# Takes: term to use with grep to filter entries.
+function fxnCreateFromMenu()
+{
+    local filterTerm="$1"
+    local ENTRY
+    local entryLine
+    local createCommands
+    createCommands=$(fxnListContainersForCreation 'menu' $filterTerm)
+
+    if [ "$createCommands" = '' ];then
+        # If no entries were returned (probably due to a filter) there's no point in continuing.
+        echo " --create --menu failed."
+        echo "No matching examples were found in any README.md file under the templates directory."
+        if [ "$filterTerm" != '' ];then
+            echo "Try a --filter other than [ $filterTerm ]"
+        else
+            echo "The templates directory may be damaged. Try a clean install"
+        fi
+
+        echo ""
+        exit 1
+    fi
+
+    # Print the list of options
+    echo "$createCommands"
+
+    # Blatant cut and paste from the run code.
+    echo -n "- Enter number or q to quit > "
+
+    read -r ENTRY
+
+    case $ENTRY in
+        q|Q|x|X )
+            echo "Exiting"
+            exit 0
+            ;;
+
+        h|help|-h|--help )
+            echo ""
+            echo "Got [ $ENTRY ], so...executing '$0 create --help'  and exiting."
+            echo ""
+            fxnHelpCreate
+            exit 0
+            ;;
+
+        # At this point, only numbers are valid values.
+        # If it is not, then exit gracefully before trying
+        # to parse whatever this was later on.
+        ''|*[!0-9]* )
+            echo ""
+            echo "Invalid entry! Must be one of: 'q', 'help', or a number. Exiting."
+            echo ""
+            exit 1
+            ;;
+    esac
+
+    entryLine=$( echo "$createCommands"  | sed -n "${ENTRY}p"  )
+    if [ "$entryLine" = "" ];then
+        fxnERR "Invalid entry [ $ENTRY ]. Exiting."
+        exit 1
+    fi
+
+    # Replace the number, label and invocation of DUE with the
+    # current invocation of DUE
+    runCMD="$0 $(echo "$entryLine" | sed -e 's/^.*due //')"
+
+    # Let bash parse the command line, as the --description quotes don't persist.
+    bash -c "$runCMD"
+
+}
 
 # List what can be built.
-# If $1 = empty - then print everything
-# If $1 = "JustDirs" then don't print example commands
-# Else, use $1 as output filter to limit responses
+# if $1 outputFormat = 'standard' - just print everything
+# if $1 outputFormat = 'menu' - just examples with no context
+# if $2 filterTerm is set, then grep for examples with it
 function fxnListContainersForCreation()
 {
     local foundImages
     local foundExamples
+    local formattedExamples
     local outputFormat="$1"
+    local filterTerm="$2"
 
     if [ "$outputFormat" != "JustDirs" ];then
 
@@ -175,7 +248,7 @@ function fxnListContainersForCreation()
                              | grep -- --platform \
                              | sed -e 's/^.*with://g' \
                              | awk '{printf "%-20s %s\n", $12, $0}' | sort )
-        echo ""
+
 
         if [ "$DUE_CONFIG_SOURCING_SUMMARY" = '' ];then
             # If DUE is being run from a system install rather than from local source,
@@ -183,15 +256,20 @@ function fxnListContainersForCreation()
             foundExamples=$( echo "$foundExamples" | sed -e 's# ./due # due #g')
         fi
 
-        if [ "$outputFormat" != "" ];then
-            echo "Filtering output to contain [ $outputFormat ]"
-            echo ""
-            foundExamples=$( echo "$foundExamples" | grep "$outputFormat" )
+        if [ "$filterTerm" != "" ];then
+            if [ "$outputFormat" = 'standard' ];then
+                echo ""
+                echo "Filtering output to contain [ $filterTerm ]"
+                echo ""
+            fi
+            foundExamples=$( echo "$foundExamples" | grep "$filterTerm" )
         fi
-        echo "Example build environments:"
-        echo "Image type        Creation command"
-        echo "---------------------------------------------------------------------------"
-        echo ""
+        if [ "$outputFormat" = 'standard' ];then
+            echo " Example build environments"
+            echo " Image type      | Creation command"
+            echo "-----------------+-----------------------------------------------------------"
+            echo "                 |"
+        fi
 
         # If column is available, use it to get rid of excessive spaces between columns.
         if [ "$(which column)" != "" ];then
@@ -200,12 +278,31 @@ function fxnListContainersForCreation()
             #  - t - Table formatting.
             #  - Double quoted text is its own column, because it has no spaces, just ;s
             # Use tr to replace the ; with spaces again
-            echo "$foundExamples" \
-                | awk '{for (i=2; i < NF; i+=2) gsub (/ /, ";", $i)} 1' FS=\' OFS=\' \
-                | column -t \
-                | tr ';' ' '
+            formattedExamples=$( echo "$foundExamples" \
+                                     | awk '{for (i=2; i < NF; i+=2) gsub (/ /, ";", $i)} 1' FS=\' OFS=\' \
+                                     | column -t \
+                                     | tr ';' ' ' )
         else
-            echo "$foundExamples"
+            formattedExamples="$foundExamples"
+        fi
+
+        # Return a list of numbered entries?
+        if [ "$outputFormat" = 'menu' ];then
+            theSelection=1
+            # Use a menu built from help examples
+            # Set IFS so the command lines don't split on spaces
+            IFS=$'\n'
+            for item in ${formattedExamples[@]} ;do
+                #echo "$item" | sed -e "s/^/$theSelection /"
+                printf "%-3d %s\n" "$theSelection" "$item"
+                theSelection=$(( theSelection+1 ))
+            done
+            unset IFS
+
+            # Existing images below are not on the menu.
+            return
+        else
+            echo "$formattedExamples"
         fi
     fi
 
@@ -913,7 +1010,6 @@ function fxnMakeNewDockerImage()
     fi
 
     # Done.
-    exit
 
 } #fxnMakeNewDockerImage
 

@@ -24,7 +24,7 @@ Create default Debian 11 Debian package build environment with: ./due --create -
 Create default Debian Sid  Debian package build environment with: ./due --create --platform linux/amd64    --name pkg-sid                 --prompt PKGSid       --tag pkg-sid                 --use-template debian-package    --from debian:sid                            --description 'Package Build for Debian Unstable'  
 
 ## Ubuntu 22.04 build environment image creation example:
-Create default Ubuntu 22.04 Debian package build environment with: ./due --create --platform linux/amd64    --name pkg-u-22.04             --prompt PKGU2204     --tag pkg-ubuntu-22.04-amd64  --use-template debian-package    --from ubuntu:22.04                          --description 'Package Build for Ubuntu 22.04'  
+Create default Ubuntu 22.04 Debian package build environment with: ./due --create --platform linux/amd64    --name pkg-u-22.04             --prompt PKGU2204     --tag pkg-ubuntu-22.04-amd64  --use-template debian-package    --from ubuntu:22.04                          --description 'Package Build for Ubuntu 22.04'
 
 ## Additional configuration
 In addition to the the expectedly unique `duebuild` and install scripts, there is a script for managing local package repositories: `due-manage-local-package-repo.sh`. See below.

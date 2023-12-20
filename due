@@ -247,7 +247,9 @@ function fxnHelpManageExamples()
 #        or argument to filter examples with
 function fxnHelpCreate()
 {
-    if [ "$1" = "invocation" ];then
+    local exampleFilter
+    exampleFilter="$1"
+    if [ "$exampleFilter" = "invocation" ];then
         echo "$DUE_NAME --create --help                Make new containers and configuration directories."
         return
     fi
@@ -266,6 +268,11 @@ function fxnHelpCreate()
     echo " Usage: $DUE_NAME --create [ option ]"
     echo ""
     echo " Image management options:"
+    echo ""
+    echo "  Use the example menu to create a particular image."
+    echo "      --menu                    Choose from the creation examples in the README.md files under the templates directory."
+    echo ""
+    echo " OR"
     echo ""
     echo "  1 - Configure an image build directory under due-build-merge named from --name"
     echo "      Mandatory:"
@@ -296,7 +303,7 @@ function fxnHelpCreate()
     echo ""
     echo ""
     # show local image creation configurations
-    fxnListContainersForCreation "$exampleFilter"
+    fxnListContainersForCreation 'standard' "$exampleFilter"
     echo ""
 
 }
@@ -315,7 +322,7 @@ function fxnHelpCreateExamples()
     echo "############################################################################"
 
     # show local image creation configurations
-    fxnListContainersForCreation "$exampleFilter"
+    fxnListContainersForCreation 'standard' "$exampleFilter"
     echo ""
     echo " Ex: clean container creation work area."
     echo " $0 --create --clean"
@@ -591,6 +598,13 @@ function fxnParseCreateArgs()
                 fi
                 ;;
 
+            -m | --menu )
+                # Create an image from examples pulled from README.md files
+                DO_MENU_CREATION='TRUE'
+                # Fall through to create
+                DO_CREATE_NEW_IMAGE='TRUE'
+                ;;
+
             --clean | clean )
                 # remove the build directory
                 DO_CREATE_CLEAN="TRUE"
@@ -606,7 +620,7 @@ function fxnParseCreateArgs()
                     fxnHelpCreate
                     fxnERR "Configuration [ $2 ] does not exist. See ./due --create --help-examples. Exiting."
                     echo "Current configuration directories:"
-                    fxnListContainersForCreation "JustDirs"
+                    fxnListContainersForCreation 'JustDirs'
                     exit 1
                 fi
                 BASE_NAME=$( basename "$2" )
@@ -1466,6 +1480,10 @@ fi
 #
 if [ "$DO_CREATE_NEW_IMAGE" = "TRUE" ];then
 
+    if [ "$DO_MENU_CREATION" = 'TRUE' ];then
+        fxnCreateFromMenu "$HELP_EXAMPLE_FILTER"
+        exit
+    fi
     if [ "$FROM_IMAGE_TYPE" = "" ];then
         # IMAGE_DESCRIPTION comes out of this, so if this value was
         # set, both would be fine.

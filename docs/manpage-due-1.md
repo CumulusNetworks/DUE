@@ -253,6 +253,12 @@ See templates/README.md for more information.
 
 Creation example
 -------
+Use the example menu to create a particular image.
+
+--menu
+:	Choose from the creation examples in the README.md files under the templates directory.
+
+OR
 
 1 - Configure an image build directory under due-build-merge named from --name  
 
