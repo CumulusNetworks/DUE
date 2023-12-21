@@ -257,27 +257,27 @@ endif
 	@echo ""
 
 rebase-upstream:
-    @echo ""
-    @echo "######################################################################"
-    @echo "#                                                                    #"
-    @echo "# Rebasing master branch to latest upstream DUE                      #"
-    @echo "#                                                                    #"
-    @echo "######################################################################"
-    @echo ""
-    @echo " Stashing changes "
-    git stash
-    @echo " Checking out master branch"
-    git checkout master
-    @echo " Running:    git remote add upstream https://github.com/CumulusNetworks/DUE.git"
-    git remote add upstream https://github.com/CumulusNetworks/DUE.git
-    @echo " Fetching upstream"
-    git fetch upstream
-    @echo " Rebasing off upstream/master"
-    git rebase upstream/master
-    @echo " Any changes were stashed before rebase."
-    @echo " If automatic rebase failed, resolving conflicts is left as an exercise for the developer."
-    @echo ""
-    @echo "Done"
+	@echo ""
+	@echo "######################################################################"
+	@echo "#                                                                    #"
+	@echo "# Rebasing master branch to latest upstream DUE                      #"
+	@echo "#                                                                    #"
+	@echo "######################################################################"
+	@echo ""
+	@echo " Stashing changes "
+	git stash
+	@echo " Checking out master branch"
+	git checkout master
+	@echo " Running:    git remote add upstream https://github.com/CumulusNetworks/DUE.git"
+	git remote add upstream https://github.com/CumulusNetworks/DUE.git
+	@echo " Fetching upstream"
+	git fetch upstream
+	@echo " Rebasing off upstream/master"
+	git rebase upstream/master
+	@echo " Any changes were stashed before rebase."
+	@echo " If automatic rebase failed, resolving conflicts is left as an exercise for the developer."
+	@echo ""
+	@echo "Done"
 
 
 run-lintian:
