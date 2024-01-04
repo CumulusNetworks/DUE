@@ -221,6 +221,17 @@ function fxnCreateFromMenu()
     # Let bash parse the command line, as the --description quotes don't persist.
     bash -c "$runCMD"
 
+    # As this was a menu create, assume the intermediate build stages are not needed
+    # for debug, since this is the invocation of a known, working configuration.
+    echo ""
+    echo "Cleaning up [ $BUILD_MERGE_DIR ]"
+    echo ""
+
+    # Skip error checking as the remove works or it does not, and since this
+    # is the end of execution, let the error from rm inform the user as to
+    # where any problems might be.
+    rm -rf "$BUILD_MERGE_DIR"
+
 }
 
 # List what can be built.
