@@ -195,7 +195,7 @@ function fxnHelpManage()
     echo "   --docker-clean             Run 'docker system prune ; docker image prune' to reclaim disk space."
     echo ""
     echo "   --stop  <match>            Stop a running container. Optional pattern <match>"
-    echo "   --delete-matched [term]    Delete containers that contain this term. USE WITH CAUTION!"
+    echo "   --delete-matched [term]    Delete images that contain this term. USE WITH CAUTION!"
     echo ""
     echo "   --help                     This help."
     echo "   --help-examples            Examples of using management options."

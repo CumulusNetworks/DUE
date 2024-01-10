@@ -353,7 +353,7 @@ make working with containers/images easier.
 :    List available templates.
 
 --delete-matched [term]
-:    Delete containers that contain this term. USE WITH CAUTION!
+:    Delete images that contain this term. USE WITH CAUTION!
 
 --docker-clean
 :    Run 'docker system prune ; docker image prune' to reclaim disk space.
