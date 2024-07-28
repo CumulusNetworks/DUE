@@ -22,9 +22,12 @@ Create default Debian EXAMPLE with: ./due --create --platform linux/amd64    --n
 
 Create patched Debian 9 EXAMPLE with: ./due --create --platform linux/amd64    --name example-debian-9        --prompt ExD9         --tag example-patch-debian-9  --use-template example           --from debian:9                              --description 'Debian 9 with patch'                    --image-patch debian/9/filesystem
 
-### Explanation of the Debian 9 example  above:
+Create patched Debian 8 EXAMPLE with: ./due --create --platform linux/amd64    --name example-debian-8        --prompt ExD8         --tag example-patch-debian-8  --use-template example           --from debian:8                              --description 'Debian 8 with patch'                    --image-patch debian/8/filesystem
+
+### Explanation of the --image-patch Debian examples above:
   * Arguments are the same as Debian 12
   * ...but --image-patch applies updates to the container from DUE's image-patch/debian/9/ directory before template code runs.
+  * Currently this is needed to update the image's Apt repositories archived versions.
 
 ## Additional configuration
 This lists changes that are unique to this container.
