@@ -44,10 +44,15 @@ ifeq ($(PODMAN_PRESENT),podman)
 	DOCKER_TO_INSTALL := podman
 endif
 
-# Use ID_LIKE from /etc/os-release to make installation decisions.
-# Strip any "s from the string
-# Possible values: debian, fedora, suse
-HOST_OS :=	$(shell grep 'ID_LIKE=' /etc/os-release | sed -e 's/^.*=//' -e 's/"//g' )
+# /etc/os-release can be a mess. Assume that for a given image, it won't mention
+# other OSs, and search for only supported OSs. USe := so it can be overridden from
+# the command line.
+
+# Valid values: debian, fedora, suse
+IS_DEBIAN :=	$(shell grep -qi 'debian' /etc/os-release && echo 'debian' )
+IS_FEDORA :=	$(shell grep -qi 'fedora' /etc/os-release && echo 'fedora' )
+IS_SUSE   :=	$(shell grep -qi 'suse'   /etc/os-release && echo 'suse' )
+
 
 # Check for directories that would only be present if a .deb or rpm is being built.
 # In this case the Makefile should do nothng if invoked, since it should not
@@ -57,25 +62,32 @@ HOST_OS :=	$(shell grep 'ID_LIKE=' /etc/os-release | sed -e 's/^.*=//' -e 's/"//
 ifneq (,$(wildcard ./debian/control))
 	OS_PACKAGING_MESSAGE := debian/control file found, so Makefile is doing nothing.
 endif
+
+# If this fails to be set to something valid, give the user a hint as to why.
+PACKAGE_MANAGER = failed-to-determine-package-manager
+
 #
 # If Docker/Podman is not already installed, add one based on host OS.
 #
 # Red Hat like OSs lean towards Podman
 # Default to yum as it may be more universal than the new 'dnf'
-ifeq ($(HOST_OS),fedora)
+ifeq ($(IS_FEDORA),fedora)
 	DOCKER_TO_INSTALL ?= podman
 	PACKAGE_MANAGER := yum
+	HOST_OS := fedora
 endif
 
-ifeq ($(HOST_OS),debian)
+ifeq ($(IS_DEBIAN),debian)
 	PACKAGE_MANAGER := apt
 	ADDITIONAL_PACKAGES := bsdutils
 	DOCKER_TO_INSTALL ?= docker.io
+	HOST_OS := debian
 endif
 
-ifeq ($(HOST_OS),suse)
+ifeq ($(IS_SUSE),suse)
 	DOCKER_TO_INSTALL ?= docker.io
 	PACKAGE_MANAGER := zypper
+	HOST_OS := suse
 endif
 
 # If Docker is, or is going to be installed, remind the user about group membership.
@@ -308,7 +320,7 @@ depends:
 	@echo "#                                                                    #"
 	@echo "######################################################################"
 	@echo ""
-	@echo "Detected $(HOST_OS) Linux. Installing dependencies."
+	@echo "Detected [ $(HOST_OS) ] Linux. Installing dependencies."
 	@echo "" 
 	$(Q) sudo $(PACKAGE_MANAGER) install $(DUE_DEPENDENCIES) $(DOCKER_TO_INSTALL) 
 	@echo "" 
