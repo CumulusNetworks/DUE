@@ -1,9 +1,10 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: due
-Upstream-Contact: Alex Doyle <alexddoyle@gmail.com>
+Upstream-Contact: Alex Doyle <adoyle@nvidia.com>
 Source: https://github.com/CumulusNetworks/DUE
 
 Files: *
+Copyright: 2021-2024 Nvidia Corporation
 Copyright: 2019,2020 Cumulus Networks, Inc.
 License: MIT
 
