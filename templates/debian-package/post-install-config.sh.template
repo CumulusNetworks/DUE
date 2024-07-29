@@ -3,8 +3,8 @@
 # Bash should be installed at this point.
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 
-# Copyright 2021 NVIDIA Corporation.  All rights reserved.
-# Copyright 2019 Cumulus Networks, Inc.  All rights reserved.
+# Copyright 2021-2024 NVIDIA Corporation.  All rights reserved.
+# Copyright 2019 Cumulus Networks, Inc.    All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
 
@@ -106,6 +106,7 @@ KERNEL_BUILD_PACKAGES=" build-essential rsync gcc bc bison cpio flex kmod quilt 
 # and let Apt sort out what to pull in
 LINTIAN_PACKAGES=" lintian "
 
+
 # If you expect to do development in the container, these are useful.
 EDITORS="vim emacs-nox"
 
@@ -134,7 +135,8 @@ DEBIAN_FRONTEND=noninteractive \
                $EDITORS \
                $NICE_TO_HAVE \
                apt-utils \
-               dpkg-dev  || exit 1
+               dpkg-dev \
+               fakeroot || exit 1
 
 #
 # Check for any local software to install.
