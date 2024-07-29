@@ -4,6 +4,7 @@
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 
 set -e
+# Copyright 2021-2024 NVIDIA Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
@@ -161,7 +162,7 @@ esac
 #
 
 # Note: packages after xorriso are optional, but convenient to have.
-set -x
+
 $APT_FAKE_TIME $APT_FAKE_DATE  apt-get update
 
 
@@ -262,7 +263,7 @@ git config --global user.email "oniebuild@localhost"
 # Only pull it in on Debian containers, as that is
 # 'official build environment'. Let other distributions build
 # without it ( or change the initial check below to include it.
-set -x
+
 if [ "$DEBIAN_RELEASE" != "" ];then
     if [ "$DEBIAN_RELEASE" = "8" ];then
         echo "Not installing $SPHINX_NAME You'll have to get creative."
