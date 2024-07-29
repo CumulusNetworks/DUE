@@ -415,7 +415,7 @@ COPYRIGHT
 =========
 SPDX-License-Identifier:     MIT
 
-Copyright (c) 2021,2022 Nvidia Corporation.  
+Copyright (c) 2021-2024 Nvidia Corporation.  
 Copyright (c) 2019,2020 Cumulus Networks, Inc.  
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
