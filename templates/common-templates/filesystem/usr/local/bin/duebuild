@@ -84,6 +84,7 @@ function fxnMSG ()
 
 function fxnHelp()
 {
+    echo ""
     echo "Usage  : $(basename "$0"): [options] [--cbuild | --default | --build-command <args> ]"
     echo "  Script to support building for the container's target."
     echo ""

@@ -1,4 +1,4 @@
-% DUE(1) Version 4.0.1 | Dedicated User Environment
+% DUE(1) Version 4.1.0 | Dedicated User Environment
 
 # NAME
 
@@ -253,6 +253,12 @@ See templates/README.md for more information.
 
 Creation example
 -------
+Use the example menu to create a particular image.
+
+--menu
+:	Choose from the creation examples in the README.md files under the templates directory.
+
+OR
 
 1 - Configure an image build directory under due-build-merge named from --name  
 
@@ -278,6 +284,10 @@ Optional:
 
 --prompt [prompt]
 :	Set in container prompt to [prompt] to provide user context
+
+--image-patch [ path relative to image-patches/<path> ]
+:   Add files under image-patches/<docker image>/<tag>/filesystem to update the container
+    before template files take effect. Useful for fixing older containers.
 
 --dockerarg [argument]
 :	Pass arguments to docker build. Argument is passed as a single
@@ -343,7 +353,7 @@ make working with containers/images easier.
 :    List available templates.
 
 --delete-matched [term]
-:    Delete containers that contain this term. USE WITH CAUTION!
+:    Delete images that contain this term. USE WITH CAUTION!
 
 --docker-clean
 :    Run 'docker system prune ; docker image prune' to reclaim disk space.
@@ -405,7 +415,7 @@ COPYRIGHT
 =========
 SPDX-License-Identifier:     MIT
 
-Copyright (c) 2021,2022 Nvidia Corporation.  
+Copyright (c) 2021-2024 Nvidia Corporation.  
 Copyright (c) 2019,2020 Cumulus Networks, Inc.  
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

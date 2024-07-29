@@ -1,0 +1,18 @@
+# As container sources.list may not have updated to the Stretch debs
+#  moving to archive.debian.org, this forces the update
+
+# deb http://snapshot.debian.org/archive/debian/20220622T000000Z stretch main
+# URL was:
+#   http://deb.debian.org/debian stretch main
+deb http://archive.debian.org/debian-archive/debian stretch main
+
+# deb http://snapshot.debian.org/archive/debian-security/20220622T000000Z stretch/updates main
+# URL was:
+#   http://security.debian.org/debian-security stretch/updates main
+deb http://archive.debian.org/debian-security stretch/updates main
+
+# deb http://snapshot.debian.org/archive/debian/20220622T000000Z stretch-proposed-updates main
+# URL was:
+#   http://deb.debian.org/debian stretch-updates main
+deb http://archive.debian.org/debian-archive/debian stretch-proposed-updates main
+

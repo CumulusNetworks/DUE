@@ -80,6 +80,31 @@ fxnConfigureRPM()
 # Debian uses APT and .deb
 fxnConfigureDebian()
 {
+    
+    local forceYes=' --allow-unauthenticated --allow-downgrades --allow-remove-essential --allow-change-held-packages '
+
+    #
+    # Use the VERSION_ID from /etc/os-release to get the Debian version.
+    # Older versions of APT have different force arguments.
+    #
+    case "$VERSION_ID" in
+        '8' | '9' )
+            forceYes=' --force-yes '
+            ;;
+    esac
+    
+    # For older distributions, the package repositories on the Internet may have moved.
+    # In that case, a new sources.list file may have been supplied as part of the
+    # due-configuration. If so, use it to retry the install.
+    if [ -e /due-configuration/filesystem/etc/apt/patch-sources.list ];then
+        echo "$0 Found /due-configuration/filesystem/etc/apt/patch-sources.list. Overwriting image version."
+        cp /due-configuration/filesystem/etc/apt/patch-sources.list /etc/apt/sources.list
+        if [ $? != 0 ];then
+            echo "$0 ERROR! Failed to copy patch-sources.list to /etc/apt/sources.list. Exiting."
+            exit 1
+        fi
+    fi
+
     # For older distributions, key expired errors like:
     # W: GPG error: http://deb.debian.org jessie-updates InRelease: The following signatures were invalid: KEYEXPIRED 1668891673
     # may be seen. However, apt does not error out on this, so continue.
@@ -98,13 +123,13 @@ fxnConfigureDebian()
     DEBIAN_FRONTEND=noninteractive \
                    apt-get install \
                    --assume-yes \
-                   --force-yes \
+                   $forceYes \
                    --no-install-recommends \
                    $USEFUL_PACKAGES \
                    $BASE_PACKAGES
 
     if [ $? != 0 ];then
-        echo "$0 ERROR! Failed apt-get install. Exiting."
+        echo "$0 ERROR! Failed initial apt-get install."
         exit 1
     fi
 
@@ -122,7 +147,7 @@ fxnConfigureDebian()
         # Install packages (expect dependency errors)
         sudo dpkg -i *.deb
         # Resolve dependency errors with --fix-broken
-        apt-get install --assume-yes --force-yes --fix-broken || exit 1
+        apt-get install --assume-yes $forceYes --fix-broken || exit 1
         echo "Pre installing local software: DONE"
     fi
 

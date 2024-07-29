@@ -1,5 +1,5 @@
 # Troubleshooting
-Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
+Copyright 2022-2024 Nvidia Corporation.  All rights reserved.
 
 ...for when things don't go as expected
 
@@ -132,7 +132,7 @@ To get inside the failed container and debug it, run:
 
 `due --run --debug`  
 and select the image.  
-Then:
+Then:  
 `cd /due_configuration`
 
 Here you'll find all the configuration scripts that were run to create the container,
@@ -140,6 +140,16 @@ so you can run them in the container as needed to track down the failure.
 
 Your home directory will be mounted under `/home/root`, so any file changes you make
 can be persisted by copying them there.
+
+## Complaints about a split filesystem, `usrmerge` and `everything-in-usr`
+
+Newer releases of Debian are replacing the /bin, /sbin, /lib directories with links
+to /usr/bin, /usr/sbin/, /usr/lib.  
+If you are using an older base Docker image with a newer release, you may encounter errors where the terms `usrmerge` and `split filesystem` are used.
+
+The easiest solution is to update your base image. I had encounted this when DUE was using a cached 2 year old release of the Debian:sid image. Deleting the old image and running the sid creation command again fixed the install problem.
+
+It may be possible to fix the issue with the `usrmerge` package, but that is beyond the scope of this FAQ.  Although if anyone does resolve things that way please let the maintainer know so the documenatation can be updated.  
 
 ## Cleaning up failed images
 Run `due --manage --delete-matched none`  

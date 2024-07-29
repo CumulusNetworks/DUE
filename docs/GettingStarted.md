@@ -8,13 +8,25 @@ are start and end with back ticks like `this`. If you are using a Markdown viewe
 **The point**  
 If you cut and paste from this file, do not copy the `s
 
-# Debian/Ubuntu based hosts
+
+
+# Quickstart
+1.  Install DUE and its dependencies (details below for .deb or .rpm installs).
+     `make install`
+2.  Choose an image to create from existing configurations with:  
+      `due --create --menu`
+3.  Run that image.
+      `due --run`
+
+
+# Installing DUE
+## Debian/Ubuntu based hosts (.deb file)
 You have a few install options here:  
 
-## Install a released version with APT
+### Install a released version with APT
 Newer versions of Debian and Ubuntu have upstreamed versions of DUE, so `sudo apt-get install due` may work for you.  
 
-## Install a prebuilt release .deb file
+### Install a prebuilt release .deb file
 .deb files associated with each release are available at DUE's GitHub page here:  
 [https://github.com/CumulusNetworks/DUE/releases](https://github.com/CumulusNetworks/DUE/releases)  
 Or you can build your own from source by creating a DUE container for your desired operating system and using it with `make debian-package`
@@ -23,13 +35,9 @@ Once you have the .deb file,
 1. Install the deb and expect dependency errors with: `sudo dpkg -i due_*all.deb`  
 2. Use APT to resolve the dependency errors with: `sudo apt-get install --fix-broken`  
   
-## Install from a Git checkout of the source code  
-See **Installing from a Git checkout** below.
-
-# Red Hat/SUSE based hosts
+## Red Hat/SUSE based hosts (.rpm file)
 You have a few install options here
   
-## Install a prebuilt release .rpm file
 .rpm files associated with each release are available at DUE's GitHub page here:  
 [https://github.com/CumulusNetworks/DUE/releases](https://github.com/CumulusNetworks/DUE/releases)    
 Or you can build your own by creating a DUE container for your desired operating system and using it with `make rpm-package`  
@@ -41,10 +49,9 @@ Once you have the .rpm file, use your package manager to install it, and the dep
     
 And, of course, there is always:  
 
+## Git checkout (source code)
 
-# Installing from a Git checkout
-
-## Install DUE's software dependencies
+### Install DUE's software dependencies
 To run DUE from the source directory, you will need to install the following
 packages:  
   *  One of: docker.io, docker.ce, or podman
@@ -57,7 +64,7 @@ packages:
 
 Running `make install` from the `master` Git branch as root will attempt to install these packages for both Debian and Red Hat Linux, as well as placing DUE's files in the appropriate directories on your host system.
 
-## If you are using Docker, add yourself to the Docker group 
+### If you are using Docker, add yourself to the Docker group 
 Podman (which is preferred on Red Hat/SUSE host systems) does not require a group membership for users to run containers, but Docker (preferred on Debian based systems) does. So if Docker is installed, make sure you add yourself to the docker group with:
 
 `sudo /usr/sbin/usermod -a -G docker $(whoami)`
@@ -220,6 +227,14 @@ This allows me to preserve the prompt hints that describe the container.
  with the contents of `common-templates` to produce the image.  
  Files ending in `.template` are processed to contain values set by using arguments in conjunction with
  `--create`, so that things like the source container, prompt, or name can be set dynamically.
+ 
+
+ **`image-patches`**  
+ Holds files that are added to image creation before the template files.  
+ For example, there is a patch to the Debian 9 `/etc/apt/sources.list` file which updates
+ the package repositories the container uses to reference repositories that have been moved for archiving.
+ Since the Debian 9 image can be used by the `ONIE` and `debian-package` templates, this file needs to be in a location where it can be accessed by both.    
+This these files are applied using --image-patch with the --create option. Run `due --create --help` to see an example.
  
 
  **`due-build-merge`**  

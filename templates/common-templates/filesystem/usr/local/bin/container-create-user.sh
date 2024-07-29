@@ -345,6 +345,27 @@ function fxnAddUserInContainer()
             fxnEC adduser "$USER_NAME" docker > /dev/null || exit 1
         fi
     fi
+
+	#
+	# There isn't a use case for merging the host's /etc/groups, as the reason I researched 
+	# this turned out be irrelevant. However, it was enough work that I don't want to figure
+	# it out again, so I'm leaving it in with 'due-group' as the file to merge, since using 
+	# that name indicates intent to invoke this undocumented feature.
+    if [ -e /due-configuration/filesystem/etc/due-group ];then
+        # Merge in group file, defaulting to the container's /etc/group settings if there is a conflict.
+		# 
+        # Sort
+        #  --generic-numberic-sort - treat numbers as numbers,not strings
+        #  --field separator       - columns are split by :, not whitespace
+        #  --key 3                 - sort on the 3rd field, which is numeric
+        awk -F: -vOFS=":" '{if(!($1 in groupname || $3 in groupnumber)){print $1,"x",$3,$4};groupname[$1]=1;groupnumber[$3]=1}' \
+            /etc/group /due-configuration/filesystem/etc/group | \
+            sort --general-numeric-sort \
+                 --field-separator ':' \
+                 --key 3 \
+                 > /tmp/new-group
+        cp /tmp/new-group /etc/group
+    fi
     echo "|___________________________________________________________________________|"
     if [ -e /etc/due-bashrc ];then
         echo "|                                                                           |"

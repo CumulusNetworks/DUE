@@ -23,7 +23,7 @@ Suggested configuration:
 
 ## Image creation example.
 <br>
-Create default frr build environment with: ./due --create --platform linux/amd64    --name frr-debian-10           --prompt frrd10       --tag frr-debian10            --use-template frr               --from debian:10                             --description "Free Range Routing Debian 10"  
+Create default frr build environment with: ./due --create --platform linux/amd64    --name frr-debian-10           --prompt frrd10       --tag frr-debian10            --use-template frr               --from debian:10                             --description 'Free Range Routing Debian 10'  
 ## Reference link
  http://docs.frrouting.org/projects/dev-guide/en/latest/building-frr-for-ubuntu1804.html#installing-dependencies
 
@@ -34,11 +34,11 @@ I'll look at a pre build configuration script option to 'just handle' this.
 
 --- start bash script ----
 #!/bin/bash
-echo "Executing FRR prebuild script"
+echo 'Executing FRR prebuild script'
 pwd
-echo "Running bootstrap.sh"
+echo 'Running bootstrap.sh'
 ./bootstrap.sh
-echo "Running configure"
+echo 'Running configure'
 
 ./configure \
     --prefix=/usr \

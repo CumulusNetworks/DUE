@@ -1,28 +1,54 @@
 # Example template
-Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
+Copyright 2022-2024 NVIDIA Corporation.  All rights reserved.
 
-Use this as a starting point for any container development. Replace the EXAMPLE strings and update text as necessary
+Use this as a starting point for any container development. Replace the EXAMPLE strings and update text as necessary.
+
+It has also become a collection point for base image issues one should be aware of before using them to, say, create a build environment.  
+For example, older Debian images require a patch to their repository files to build nowadays, and Ubuntu 24.04 has introduced an `ubuntu` user with ID 1000 that will probably conflict with a user account on the host system.  
 
 This image is configured to EXAMPLE
 
 ## EXAMPLE creation
-The use of debian:10 here is arbitrary. Any Debian based operating system Docker image will do.  
+The use of debian:12 here is arbitrary. Any Debian based operating system Docker image will do.  
 **NOTE** DUE parses these README.md files looking for lines that start with Create to use in the command line help.  
 You'll want to make sure your template follows this convention.
 
-Create default Debian EXAMPLE with: ./due --create --platform linux/amd64    --name example-debian-10       --prompt ExD10        --tag example-debian-10       --use-template example           --from debian:10                             --description "Debian 10 example"  
+Create default Debian EXAMPLE with: ./due --create --platform linux/amd64    --name example-debian-12       --prompt ExD12        --tag example-debian-12       --use-template example           --from debian:12                             --description 'Debian 12 example'  
 
 ### Explanation of the Debian example  above:
-  * Use a Debian 10 image
-  * Name it example-debian-10
-  * Tag it as example-debian-10
+  * Use a Debian 12 image
+  * Name it example-debian-12
+  * Tag it as example-debian-12
   * Set the user's PS1 prompt in the image to be Ex so the context is (more) obvious
   * Merge in the files from ./templates/example when creating the configuration directory
 
-## Additional configuration
-This lists changes that are unique to this container.
+# Image quirks
+While most images will behave themselves with DUE, some require a little extra attention to function properly.  
+Those images and their corrective action should be listed here.
 
-EXAMPLE
+## 1 - Old Debian images cannot Apt update  
+...due to the repositoires moving. This can be worked around by applying patches to the container's `/etc/apt/sources*` directory, as follows:  
+
+Create patched Debian 9 EXAMPLE with: ./due --create --platform linux/amd64    --name example-debian-9        --prompt ExD9         --tag example-patch-debian-9  --use-template example           --from debian:9                              --description 'Debian 9 with patch'                    --image-patch debian/9/filesystem
+
+Create patched Debian 8 EXAMPLE with: ./due --create --platform linux/amd64    --name example-debian-8        --prompt ExD8         --tag example-patch-debian-8  --use-template example           --from debian:8                              --description 'Debian 8 with patch'                    --image-patch debian/8/filesystem
+
+### Explanation of the --image-patch Debian examples above:
+  * Arguments are the same as Debian 12
+  * ...but --image-patch applies updates to the container from DUE's image-patch/debian/9/ directory before template code runs.
+  * Currently this is needed to update the image's Apt repositories archived versions.
+
+## 2 - Ubuntu 24.04 has an `ubuntu` user with ID 1000  
+This image comes with an `ubuntu` user with ID **1000**, which, if that happens to be your ID,breaks the addition of your account in the container.  
+Since it is unclear if there's something special about a pre-existing account DUE will not try to "get clever", but will intentionally throw   
+an error and allow the user to decide what the proper course of action is.  
+Options include:  
+    1. Stealing the identity of the ubuntu account, by invoking due with  
+        * `due --run --username ubuntu`  
+    2. Using a different user ID when logging in to the container, with  
+        * `due --run --userid 1001`  
+    3. Update the  
+        * `post-install-config.sh.template` to delete or reassign the user.  
 
 # Use
 

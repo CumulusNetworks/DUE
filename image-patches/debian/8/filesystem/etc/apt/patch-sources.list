@@ -1,0 +1,7 @@
+# As container sources.list may not have updated to the Jesse debs
+#  moving to archive.debian.org, this forces the update
+
+deb http://archive.debian.org/debian/ jessie main non-free contrib
+ deb-src http://archive.debian.org/debian/ jessie main non-free contrib
+deb http://archive.debian.org/debian-security/ jessie/updates main non-free contrib
+ deb-src http://archive.debian.org/debian-security/ jessie/updates main non-free contrib

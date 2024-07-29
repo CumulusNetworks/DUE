@@ -4,7 +4,7 @@ Copyright 2022,2023 Nvidia Corporation.  All rights reserved.
 Configure the image to build Red Hat packages.
 
 ## RedHat 9 build environment creation example
-Create default RedHat 9 build environment with: ./due --create --platform linux/amd64    --name pkg-redhat-9-amd64      --prompt PKGRH9       --tag pkg-amd64-redhat-9      --use-template rhel-package      --from docker.io/redhat/ubi9                 --description "Red Hat Enterprise Linux 9"  
+Create default RedHat 9 build environment with: ./due --create --platform linux/amd64    --name pkg-redhat-9-amd64      --prompt PKGRH9       --tag pkg-amd64-redhat-9      --use-template rhel-package      --from docker.io/redhat/ubi9                 --description 'Red Hat Enterprise Linux 9'  
 
 ### Explanation of the above:
   * Use a RedHat 9 image as the starting point.
@@ -16,5 +16,5 @@ Create default RedHat 9 build environment with: ./due --create --platform linux/
   * This will include files from the ./templates/redhat directory as well.
 
 ## RedHat 9 arm64 build environment creation example:
-Create default RedHat 9 package build environment with: ./due --create --platform linux/aarch64  --name pkg-redhat-9-arm64      --prompt PKGRH9-arm64 --tag pkg-arm64v8-redhat-9    --use-template rhel-package      --from docker.io/redhat/ubi9                 --description "Red Hat Enterprise Linux 9"  
+Create default RedHat 9 package build environment with: ./due --create --platform linux/aarch64  --name pkg-redhat-9-arm64      --prompt PKGRH9-arm64 --tag pkg-arm64v8-redhat-9    --use-template rhel-package      --from docker.io/redhat/ubi9                 --description 'Red Hat Enterprise Linux 9'  
 
