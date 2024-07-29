@@ -1,8 +1,13 @@
 due (4.1.0-1) unstable; urgency=medium
   * Version bump to 4.1.0
-  * Added patch-images to fix broken Debian 9 image APT URLS
+  * Remove Recommends of qemu package.  Closes: bug#1010082
+  * Remove Recommends of binfmt-support package.  Closes: bug#1023396
+  * Added image-patch to fix broken Debian 8 & 9 image APT URLS
+  * Updated examples to default to newer supported OS releases
+  * Code clean up with copyright update, spell check, Shellcheck, and Lintian
+  * Reduced typing with a numbered menu to choose example images to build
 
- -- Alex Doyle <adoyle@nvidia.com>  Sun, 02 Jul 2023 12:30:00 -0800
+ -- Alex Doyle <adoyle@nvidia.com>  Mon, 29 Jul 2024 12:21:00 -0800
 
 due (4.0.1-1) unstable; urgency=medium
 
