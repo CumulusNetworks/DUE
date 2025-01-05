@@ -1,3 +1,4 @@
+# Copyright 2021-2025 NVIDIA Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
@@ -53,5 +54,5 @@ COPY ./ /due-configuration/
 #  named <none> to be cleaned up later (see due --manage --delete-matched )
 
 RUN /due-configuration/pre-install-config.sh \
-    && mkdir /run/sshd \
+    && mkdir -p /run/sshd \
 	&& /due-configuration/post-install-config.sh
