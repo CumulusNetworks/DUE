@@ -1,7 +1,7 @@
 #!/bin/bash
 # SCRIPT_PURPOSE: Dedicated User Environment CLI
 
-# Copyright 2021-2024 NVIDIA Corporation.  All rights reserved.
+# Copyright 2021-2025 NVIDIA Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
@@ -166,9 +166,6 @@ function fxnHelpExamples()
     echo " Create a DUE image from a menu that has been filtered to show only debian."
     echo "  $0 --create --menu --filter debian "
     echo ""
-    
-
-
 
 }
 
@@ -352,7 +349,7 @@ function fxnHelpCreateExamples()
     echo " Ex: Create an image using the --menu option and filter for fedora only"
     echo " $0  --create --menu --filter fedora \\ "
     echo ""
-    
+
 }
 
 
@@ -382,7 +379,8 @@ function fxnHelpRun()
     echo ""
     echo " Run time options:"
     echo ""
-    echo "  Image selection:"
+    echo "  Image selection"
+    echo "------------------"
     echo "   <default>                  Select image to run from a menu."
     echo "        --all                 Do not filter list of available containers."
     echo "        --ignore-type         Treat container as if it was not made by DUE."
@@ -393,7 +391,8 @@ function fxnHelpRun()
     echo "                               it will be run automatically."
     echo "        --entrypoint <shell>  Override container's ENTRYPOINT. Defaults to create user if no shell path passed."
     echo ""
-    echo "  Image commands:"
+    echo "  Image commands"
+    echo "-----------------"
     echo "   -c | --command <cmd>       <cmd> will be executed by --login-shell in the container"
     echo "                               NOTE: this must be the last argument,  as everything after"
     echo "                                --command will be interpreted as the command."
@@ -416,19 +415,21 @@ function fxnHelpRun()
     echo "        --mount-dir <hp:cp>   Mount absolute path to host directory hp at location cp in container."
     echo "                               Ex: mount host /tmp in container /var/build:  --mount-dir /tmp:/var/build "
     echo ""
-    echo " Log in to an active container:"
+    echo " Login options"
+    echo "---------------"
     echo "   -l | --login               Choose existing running container to log in to."
     echo "   -a | --all                 Log into any container as root using sh"
     echo ""
-    echo "   Log in as a particular user:"
-    echo "        --username  <username>  Name to use when logging in.    Default: $USER_NAME"
-    echo "        --userid    <id#>       User ID to use when logging in. Default: $USER_ID"
-    echo "        --groupname <groupname> Container user's default group  Default: $USER_GROUP_NAME"
-    echo "        --groupid   <id#>       ID of container user's group    Default: $USER_GROUP_ID"
-    echo "        --login-shell <path>    Program to use as login         Default: $LOGIN_SHELL"
+    echo "      --username  <username>    Name to use when logging in.    Default: $USER_NAME"
+    echo "      --userid    <id#>         User ID to use when logging in. Default: $USER_ID"
+    echo "      --groupname <groupname>   Container user's default group  Default: $USER_GROUP_NAME"
+    echo "      --groupid   <id#>         ID of container user's group    Default: $USER_GROUP_ID"
+    echo "      --login-shell <path>      Program to use as login         Default: $LOGIN_SHELL"
+    echo "      --delete-conflicting-user If the UID exists in the container, delete that user."
     echo ""
     echo ""
-    echo " Help:"
+    echo " Help"
+    echo "------"
     echo "   --help --run                 This message."
     echo "   --run --help-examples        Show examples of use."
     echo ""
@@ -459,6 +460,9 @@ function fxnHelpRunExamples()
     echo ""
     echo "  ...mount additional host system directory 'work-dir' in the container at /build"
     echo "    $DUE_NAME --run --mount-dir /home/$(whoami)/work-dir/:/build"
+    echo ""
+    echo " If --user <name> account conflicts with the container, delete the container's instance."
+    echo "    $DUE_NAME --run --user $(whoami) --delete-conflicting-user"
     echo ""
     echo " Log into a container as user ufoo"
     echo "  ...and use the container home dir "
@@ -773,6 +777,14 @@ function fxnParseCreateArgs()
                 shift
                 ;;
 
+            -[^-]?* )
+                # Handle a blob of single character options.
+                # See Main argument processing for details.
+                EXPANDED_BLOB_OPTIONS=$(echo "$term" | sed -E 's/(.)/ -\1/g' )
+                shift
+                set -- $EXPANDED_BLOB_OPTIONS "$@"
+                ;;
+
             * )
                 fxnHelpCreate
                 if [ "$term" != "" ];then
@@ -1011,6 +1023,10 @@ function fxnParseRunArgs()
                 shift
                 ;;
 
+            --delete-conflicting-user )
+                DELETE_CONFLICTING_USER='TRUE'
+                ;;
+
             --groupname )
                 # name of group in container
                 USER_GROUP_NAME="$2"
@@ -1057,6 +1073,13 @@ function fxnParseRunArgs()
                 IGNORE_IMAGE_TYPE="TRUE"
                 ;;
 
+            -[^-]?* )
+                # Handle a blob of single character options.
+                # See Main argument processing for details.
+                EXPANDED_BLOB_OPTIONS=$(echo "$term" | sed -E 's/(.)/ -\1/g' )
+                shift
+                set -- $EXPANDED_BLOB_OPTIONS "$@"
+                ;;
 
             * )
                 fxnHelpRun
@@ -1245,6 +1268,13 @@ function fxnParseManageArgs()
                 exit
                 ;;
 
+            -[^-]?* )
+                # Handle a blob of single character options.
+                # See Main argument processing for details.
+                EXPANDED_BLOB_OPTIONS=$(echo "$term" | sed -E 's/(.)/ -\1/g' )
+                shift
+                set -- $EXPANDED_BLOB_OPTIONS "$@"
+                ;;
 
             * )
                 fxnHelpManage
@@ -1407,6 +1437,23 @@ do
             fi
             ;;
 
+
+        -[^-]?* )
+            # If a single - preceeds more than 1 character (ex: -abc)
+            # and the second character is NOT a '-'
+            # 1 - Split the blob in to single options (ex: -- -a -b -c)
+            # 2 - Prepend them command line array being parsed.
+
+            # Use sed to replace every character with ' -<character>'
+            EXPANDED_BLOB_OPTIONS=$(echo "$term" | sed -E 's/(.)/ -\1/g' )
+            # Get rid of original single '-' blob of options
+            shift
+            # Prepend the single character options expanded above.
+            set -- $EXPANDED_BLOB_OPTIONS "$@"
+            # The blob's leading '-' has been converted to ' --'.
+            # Leave it as the shift at the end of the case statement
+            # throws out the first option, which is that ' --'
+            ;;
 
         * )
             fxnHelp

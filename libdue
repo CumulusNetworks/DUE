@@ -1685,6 +1685,10 @@ function fxnDoLogin()
                     executeProgram=" $executeProgram --debug "
                 fi
 
+                if [ "$DELETE_CONFLICTING_USER" = 'TRUE' ];then
+                    # If stomping over a user account with the same ID in the container
+                    executeProgram+=" --delete-conflicting-user "
+                fi
                 # If running docker in the container, it has to match the host
                 # system's group ID.
                 # Only add it if you find it, as Podman systems probably won't have this.
@@ -2004,6 +2008,12 @@ function fxnDoLogin()
             # feels more like a real login.
             LoginCommand="${DOCKER_APP} exec $doInteractive --user root ${SELECTED_CONTAINER_ID} $executeProgram --username $USER_NAME --userid $USER_ID  --groupid $USER_GROUP_ID --groupname $USER_GROUP_NAME"
         fi
+
+        if [ "$DELETE_CONFLICTING_USER" = 'TRUE' ];then
+            # If stomping over a user account with the same ID in the container
+            LoginCommand+=" --delete-conflicting-user "
+        fi
+
         formatLoginCMD=$( echo $LoginCommand  | sed -e 's/                / /g' | sed -e 's# --#\\\n     --#g' )
         echo "Logging in to running  [ $SELECTED_CONTAINER_ID ] with: "
         echo " ---------------------------------------------------------------------------"

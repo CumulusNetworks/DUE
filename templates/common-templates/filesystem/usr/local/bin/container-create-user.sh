@@ -2,7 +2,7 @@
 # DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
 # SCRIPT_PURPOSE: Dynamically add a user to a docker container
 
-# Copyright 2021,2022 Nvidia Corporation.  All rights reserved.
+# Copyright 2021-2025 Nvidia Corporation.  All rights reserved.
 # Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
 #
 #  SPDX-License-Identifier:     MIT
@@ -21,6 +21,8 @@
 #      Handy for 'just building something' without having to log into the
 #      container.
 
+# Disable style check for direct check of return codes.
+# shellcheck disable=SC2181
 # Default to Debian, unless otherwise specified.
 OS_TYPE="Debian"
 
@@ -60,6 +62,7 @@ function fxnHelp()
     echo " --groupid  <GID>"
     echo " --groupname <name>"
     echo ""
+    echo " --delete-conflicting-user If the UID is already taken, delete that user."
 
     echo "$0 has to be run as root, and should be smart enough to not"
     echo "   overwrite any account configuration that may have been"
@@ -116,7 +119,8 @@ function fxnAddUserInContainer()
     # Check for namespace collisions
     local userAlreadyExistsInContainer="FALSE"
     local userIDAlreadyUsedBy=""
-    
+    local conflictUser=''
+
     # Arguments to create a home directory in the container
     local makeHomeDir=""
 
@@ -125,7 +129,7 @@ function fxnAddUserInContainer()
     local homeDirMountStatus="THIS_IS_A_CONTAINER_DIRECTORY"
     # Program that adds users
     local addUserProgram=""
-    
+
     echo " ___________________________________________________________________________"
     echo "|                                                                           |"
 
@@ -219,11 +223,19 @@ function fxnAddUserInContainer()
         # If it is already associated with the user account, then proceed,
         # since that is what we are aiming for anyway...
         if [[ "$userIDAlreadyUsedBy" != "${USER_NAME}:"* ]];then
+            conflictUser="$( echo "$userIDAlreadyUsedBy" | awk -F ':' '{print$1}' )"
             #
-            # user name is unique, but user ID is in use elsewhere. Fail the operation.
+            # user name is unique, but user ID is in use elsewhere.
             #
-            fxnERR "Cannot create user $USER_NAME with UID [ $USER_ID ]. UID in use by $userIDAlreadyUsedBy"
-            exit 1
+            if [ "$DELETE_CONFLICTING_USER" = 'TRUE' ];then
+                echo "| Deleting container's [ $conflictUser ] account as --delete-conflicting-user was passed."
+                # Try the delete, but do not exit as it may partially succeed.
+                fxnEC userdel -r "$conflictUser"
+            else
+                # Fail the operation
+                fxnERR "Cannot create user $USER_NAME with UID [ $USER_ID ]. UID in use by $conflictUser"
+                exit 1
+            fi
         fi
     fi
     #
@@ -255,7 +267,7 @@ function fxnAddUserInContainer()
                 addUserProgram="adduser"
                 ;;
         esac
-        
+
         #
         # User name and ID are unique: create the user
         #
@@ -279,19 +291,21 @@ function fxnAddUserInContainer()
         #
         # Add the user
         #
+        # Let unquoted variables expand
+        # shellcheck disable=SC2086
         fxnEC $addUserProgram \
-                  $makeHomeDir \
-                  --shell "$userShell" \
-                  --uid "$USER_ID" \
-                  $addGroupID \
-                  $DEBIAN_ADDUSER_ARGUMENTS \
-                  "$USER_NAME" \
-                  > /dev/null || exit 1
+              $makeHomeDir \
+              --shell "$userShell" \
+              --uid "$USER_ID" \
+              $addGroupID \
+              $DEBIAN_ADDUSER_ARGUMENTS \
+              "$USER_NAME" \
+              > /dev/null || exit 1
 
         # Leave a reminder that the home directory is not mounted.
         if [ "$homeDirMountStatus" != "" ];then
             # Leave a reminder about the home directory being local to the container.
-            touch /home/$USER_NAME/$homeDirMountStatus
+            touch "/home/$USER_NAME/$homeDirMountStatus"
         fi
     fi
 
@@ -304,15 +318,17 @@ function fxnAddUserInContainer()
     fxnPP "| $USER_NAME : Can sudo without password, uses shell [ $userShell ]."
 
     if [ "$DO_DEBUG" = "TRUE" ];then
-        echo "|  usermod --shell $userShell $addGroupID $USER_NAME" 
+        echo "|  usermod --shell $userShell $addGroupID $USER_NAME"
     fi
     # Usermod may echo 'no changes' to stderr, so filter that.
     # If there is a real problem, it'll exit.
+    # Let addGroupID expand
+    # shellcheck disable=SC2086
     fxnEC usermod \
           --shell "$userShell" \
           $addGroupID \
           "$USER_NAME"  > /dev/null 2>&1 || exit 1
-    
+
     #
     # Set up passwordless sudo, depending on OS run.
     #
@@ -325,7 +341,7 @@ function fxnAddUserInContainer()
     else
         # Allow this user to become root
         usermod -aG wheel "$USER_NAME"
-		# Sudo may be hampered by requiring a password in the container, so don't ask.
+        # Sudo may be hampered by requiring a password in the container, so don't ask.
         if [ ! -e /etc/sudoers.d/due-wheel-no-password ];then
             # Configure wheel group to not require a password
             echo "%wheel        ALL=(ALL)       NOPASSWD: ALL" > /etc/sudoers.d/due-wheel-no-password
@@ -346,20 +362,20 @@ function fxnAddUserInContainer()
         fi
     fi
 
-	#
-	# There isn't a use case for merging the host's /etc/groups, as the reason I researched 
-	# this turned out be irrelevant. However, it was enough work that I don't want to figure
-	# it out again, so I'm leaving it in with 'due-group' as the file to merge, since using 
-	# that name indicates intent to invoke this undocumented feature.
+    #
+    # There isn't a use case for merging the host's /etc/groups, as the reason I researched
+    # this turned out be irrelevant. However, it was enough work that I don't want to figure
+    # it out again, so I'm leaving it in with 'due-group' as the file to merge, since using
+    # that name indicates intent to invoke this undocumented feature.
     if [ -e /due-configuration/filesystem/etc/due-group ];then
         # Merge in group file, defaulting to the container's /etc/group settings if there is a conflict.
-		# 
+        #
         # Sort
         #  --generic-numberic-sort - treat numbers as numbers,not strings
         #  --field separator       - columns are split by :, not whitespace
         #  --key 3                 - sort on the 3rd field, which is numeric
         awk -F: -vOFS=":" '{if(!($1 in groupname || $3 in groupnumber)){print $1,"x",$3,$4};groupname[$1]=1;groupnumber[$3]=1}' \
-            /etc/group /due-configuration/filesystem/etc/group | \
+            /etc/group /due-configuration/filesystem/etc/due-group | \
             sort --general-numeric-sort \
                  --field-separator ':' \
                  --key 3 \
@@ -467,6 +483,11 @@ do
         -i|--userid )
             USER_ID="$2"
             shift
+            ;;
+
+        --delete-conflicting-user )
+            # If the user already exists in the container, delete it.
+            DELETE_CONFLICTING_USER='TRUE'
             ;;
 
         --groupid )
