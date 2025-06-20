@@ -44,6 +44,8 @@ function fxnPP()
     echo "== $*"
 }
 
+# Keep this for reference
+# shellcheck disable=SC2317
 function fxnWARN()
 {
     echo ""
@@ -146,13 +148,12 @@ function fxnHelp()
 function fxnHelpBuildTargets()
 {
     echo ""
-    echo "duebuild use examples for specifying how to build an RPM from a source RPM."
+    echo "# duebuild examples for specifying how to build an RPM from a source RPM."
+    echo "#------------------------------------------------------------------------"
     echo ""
-    echo ""
-    echo " Examples"
-    echo "  DUE command:   due --build <src rpm>"
+    echo "#  DUE command:   due --build <src rpm>"
     echo "   duebuild runs: duebuild --cbuild <src rpm>"
-    echo "  Build command: rpmbuild -bb <src rpm>"
+    echo "#  Build command: rpmbuild -bb <src rpm>"
     echo ""
 
 }
@@ -161,14 +162,14 @@ function fxnHelpBuildTargets()
 function fxnHelpExamples()
 {
     echo ""
-    echo " Examples using htop as the example package."
+    echo "# Examples using htop as the example package."
     echo ""
-    echo "  Build."
-    echo " -------"
+    echo "#  Build."
+    echo "#-------"
     echo "   $0 --cbuild "
     echo ""
-    echo "  Build default - a simple/standard build case."
-    echo " -----------------------------------------------"
+    echo "#  Build default - a simple/standard build case."
+    echo "#-----------------------------------------------"
     echo "   $0 --cbuild --default"
     echo ""
     # SUSE doesn't explicitly supply a src.rpm, unpacking it in to
@@ -176,50 +177,54 @@ function fxnHelpExamples()
     if [ ! -e /usr/bin/zypper ];then
         # Not SUSE
         echo ""
-        echo "  Download and build from source RPM:"
-        echo " -------------------------------------"
+        echo "#  Download and build from source RPM:"
+        echo "#-------------------------------------"
         echo "   $0 --download-src htop "
         echo "   $0 --cbuild ./htop-3.2.2-3.fc39.src.rpm "
         echo ""
         echo ""
-        echo "  Get kernel source rpm and build:"
-        echo " ----------------------------------"
+        echo "#  Get kernel source rpm and build:"
+        echo "#----------------------------------"
         echo "   $0 --download-src kernel "
         echo "   $0 --cbuild kernel-6.5.11-300.fc39.src.rpm "
     fi
-    echo "  Extract source code in to ~/rpmbuild from source rpm:"
-    echo " -------------------------------------------------------"
+    echo ""
+    echo "# Extract source code in to ~/rpmbuild from source rpm:"
+    echo "#-------------------------------------------------------"
     echo "   $0 --extract-source htop-3.2.2-3.fc39.src.rpm "
     echo ""
-    echo "  Apply patches from mypatches to an extracted source rpm:"
-    echo " ----------------------------------------------------------"
+    echo "# Apply patches from mypatches to an extracted source rpm:"
+    echo "#----------------------------------------------------------"
     echo "   $0 --extract-source htop-3.2.2-3.fc39.src.rpm  --patch-dir ./mypatches/ "
     echo ""
-    echo "  Build binary AND source rpm source RPM passing rpmbuild arguments '-ba' :"
-    echo " ---------------------------------------------------------------------------"
+    echo "# Build binary AND source rpm source RPM passing rpmbuild arguments '-ba' :"
+    echo "#---------------------------------------------------------------------------"
     echo "   $0 --rpmbuild-option -ba --cbuild ./htop-3.2.2-3.fc39.src.rpm "
     echo ""
-    echo "  Build using a .spec file:"
-    echo " ---------------------------"
-    echo "   Get the source code."
-    echo "      $0 --download-src htop"
+    echo "# Build using a .spec file:"
+    echo "#---------------------------"
+    echo "#  Get the source code."
+    echo "     $0 --download-src htop"
     if [ -e /usr/bin/zypper ];then
         # SUSE puts the source under /usr/src
-        echo "         ...source is now installed under /usr/src."
+        echo "#        ...source is now installed under /usr/src."
         echo "      $0 --build /usr/src/packages/SPECS/htop.spec"
-        echo "         ...code is copied and built under ~/rpmbuild."
+        echo "#        ...code is copied and built under ~/rpmbuild."
+        echo "#  Build."
+
     else
         # Red Hat puts it under ~/rpmbuild
-        echo "   Extract the source and .spec file from the RPM."
-        echo "    $0 --extract-source htop-3.2.2-3.fc39.src.rpm"
+        echo "#  Extract the source and .spec file from the RPM."
+        echo "     $0 --extract-source htop-3.2.2-3.fc39.src.rpm"
+        echo "#  Build using the .spec file extracted here."
+        echo "     $0 --build ~/rpmbuild/SPECS/htop.spec"
     fi
-    echo "   Build."
-    echo "      $0 --build ~/rpmbuild/SPECS/htop.spec"
-    echo ""
 
+    echo ""
 }
 
 # Set an exit trap to log completion.
+# shellcheck disable=SC2317
 function fxnExit()
 {
 
@@ -231,7 +236,7 @@ function fxnExit()
         echo "ERROR - $0 [ $INVOKED_WITH ] failed with return code [ $returnCode ]"
     fi
     echo ""
-    return $returnCode
+    return "$returnCode"
 }
 trap 'fxnExit $RETURN_CODE' EXIT
 
@@ -318,7 +323,7 @@ function fxnDoBuildPrep()
     # Update dependencies
     ######################################
 
-    if [  -e /usr/bin/zypper ] ;then
+    if [ ! -e /usr/bin/zypper ] ;then
 
         # Only do this on Red Hat
         # Install build dependencies:
@@ -417,17 +422,17 @@ function fxnDoBuild()
             #
             # Is there a tar file under ~/rpmbuild/SOURCES? Again, with the copy.
             # Get it and associated files like .keyring
-            fileFound=$( find ${BUILD_DIRECTORY}/SOURCES -name ${PACKAGE_NAME}*.tar* )
+            fileFound=$( find "${BUILD_DIRECTORY}/SOURCES" -name "${PACKAGE_NAME}"*.tar* )
             if [ "$fileFound" = '' ];then
                 # Look for source installed under /usr/src/packages
-                fileFound="$( find /usr/src/packages/SOURCES -name ${PACKAGE_NAME}*.tar* )"
+                fileFound="$( find /usr/src/packages/SOURCES -name "${PACKAGE_NAME}"*.tar* )"
                 if [ "$fileFound" = '' ];then
                     fxnERR "Failed to find source for [ $PACKAGE_NAME ] try: duebuild --download-src $PACKAGE_NAME"
                     exit 1
                 fi
                 fxnEC mkdir -p "${BUILD_DIRECTORY}/SOURCES" || exit 1
-                # Grab everythign that starts with the package name
-                fxnEC cp /usr/src/packages/SOURCES/${PACKAGE_NAME}* "${BUILD_DIRECTORY}/SOURCES" || exit 1
+                # Grab everything that starts with the package name
+                fxnEC cp "/usr/src/packages/SOURCES/${PACKAGE_NAME}"* "${BUILD_DIRECTORY}/SOURCES" || exit 1
             fi
 
             #
@@ -441,9 +446,9 @@ function fxnDoBuild()
             echo "== Built: rpmbuild --ba ${BUILD_DIRECTORY}/SPECS/${PACKAGE_NAME}.spec"
             echo " -------------------------------------------------------"
             # Packages built
-            find ${BUILD_DIRECTORY}/RPMS -iname \*.rpm
+            find "${BUILD_DIRECTORY}/RPMS" -iname \*.rpm
             # Source packages built
-            find ${BUILD_DIRECTORY}/SRPMS -iname \*.rpm
+            find "${BUILD_DIRECTORY}/SRPMS" -iname \*.rpm
             echo ""
             echo "DONE"
             exit
@@ -499,7 +504,7 @@ function fxnDoBuild()
 
         # Extracting the source is part of a build/patch by default.
         # If it was explicitly called out, that's all they want.
-        if [ "$DO_SOURCE_EXTRACT" = "TRUE" ];then
+        if [ "$DO_EXTRACT_SOURCE" = "TRUE" ];then
             echo "Exiting as --extract-source was passed."
             echo ""
             exit
@@ -621,6 +626,7 @@ function fxnApplyPatches()
             echo "    Adding it to [ $KERNEL_SPEC ]"
 
             grep -q  "ApplyOptionalPatch $patch" "$KERNEL_SPEC"
+            # shellcheck disable=SC2181
             if [ $? -eq 0 ];then
                 echo "    Patch was already applied:  $patch"
             else
@@ -647,7 +653,8 @@ function fxnApplyPatches()
 
 }
 
-# Restore things to an original state
+# Restore things to an original state - experimental. Unused for now.
+# shellcheck disable=SC2317
 function fxnRevertKernelPatch()
 {
 
@@ -688,6 +695,8 @@ function fxnDownloadSourceRPMs()
 
     echo "Downloading source package for [ $RPMS_TO_GET ]"
     if [ -e /usr/bin/zypper ];then
+        # Let RPMS_TO_GET expand
+        #shellcheck disable=SC2086
         fxnEC sudo "$PACKAGE_MANAGER" --non-interactive source-install $RPMS_TO_GET || exit 1
 
         fxnMSG "Zypper puts source under /usr/src/packages/SOURCES"
@@ -781,8 +790,9 @@ fi
 # Choose it for systems that have both it and yum
 if [ -e '/usr/bin/dnf' ];then
     PACKAGE_MANAGER='dnf'
+    # Not used but kept for reference
+    # shellcheck disable=SC2034
     PACKAGE_UPDATE=" $PACKAGE_MANAGER check-update"
-
     PACKAGE_LOOKUP=" $PACKAGE_MANAGER whatprovides "
 
 fi
@@ -790,13 +800,15 @@ fi
 if [ -e '/usr/bin/zypper' ];then
     # SUSE
     PACKAGE_MANAGER='zypper'
+    # Not used but kept for reference
+    # shellcheck disable=SC2034
     PACKAGE_UPDATE=" $PACKAGE_MANAGER update"
     PACKAGE_LOOKUP=" $PACKAGE_MANAGER se --provides "
 fi
 # Common
+# Not used but kept for reference
+# shellcheck disable=SC2034
 PACKAGE_INSTALL=" $PACKAGE_MANAGER install "
-
-PACKAGE_APP='rpm'
 
 BUILD_DIRECTORY="${HOME}/rpmbuild"
 DIR_SOURCES="${BUILD_DIRECTORY}/SOURCES"
@@ -999,7 +1011,7 @@ do
             ;;
 
         --extract-source )
-            DO_SOURCE_EXTRACT="TRUE"
+            DO_EXTRACT_SOURCE="TRUE"
             if [ "$2" != "" ];then
                 SOURCE_RPM="$2"
             fi
